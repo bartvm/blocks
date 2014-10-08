@@ -17,6 +17,14 @@ BRICK_PREFIX = 'brick'
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 
+class Undefined(object):
+    """The class of the UNDEF value.
+
+    The sole purpose of this class is to create an object UNDEF.
+    This object has semantics of an undefined configuration setting."""
+    pass
+
+UNDEF = Undefined()
 
 class LazyInitializationError(ValueError):
     def __init__(self, message, arg):
@@ -119,6 +127,14 @@ class Brick(object):
         self.allocated = False
         self.initialized = False
 
+    def __getattribute__(self, name):
+        value = object.__getattribute__(self, name)
+        if value == UNDEF:
+            raise LazyInitializationError(
+                    "{}: {} has not been initialized".
+                    format(self.__class__.__name__, name), name)
+        return value
+
     @staticmethod
     def apply_method(func):
         """Wraps methods that apply a brick to inputs in different ways.
@@ -174,70 +190,6 @@ class Brick(object):
                 output.tag.owner_brick = self
             return unpack(outputs)
         return wrapped_apply
-
-    @staticmethod
-    def lazy(func):
-        """Makes the initialization lazy.
-
-        All the positional arguments and keyword arguments are set as class
-        properties. If their value is None, they are assumed to be
-        uninitialized. If an attribute is uninitialized, it will result in
-        an error when it is requested.
-
-        Parameters
-        ----------
-        func : method
-            The __init__ method to make lazy.
-
-        Examples
-        --------
-
-        >>> class SomeBrick(Brick):
-        ...     @lazy
-        ...     def __init__(self, a, b=True, c=None):
-        ...         print self.a
-        ...         pass
-        >>> brick = SomeBrick(2)
-        2
-        >>> brick.c
-        LazyInitializationError: SomeBrick: c has not been initialized
-
-        """
-        def make_getter(arg_name):
-            def getter(self):
-                if not hasattr(self, '_' + arg_name):
-                    raise LazyInitializationError(
-                        "{}: {} has not been initialized".
-                        format(self.__class__.__name__, arg_name), arg_name)
-                else:
-                    return getattr(self, '_' + arg_name)
-            return getter
-
-        def make_setter(arg_name):
-            def setter(self, val):
-                setattr(self, '_' + arg_name, val)
-            return setter
-
-        arg_spec = inspect.getargspec(func)
-        arg_names = arg_spec.args[1:]
-        defaults = arg_spec.defaults
-        getters, setters = [], []
-        for arg_name in arg_names:
-            getters.append(make_getter(arg_name))
-            setters.append(make_setter(arg_name))
-
-        def init(self, *args, **kwargs):
-            for arg_name, getter, setter in zip(arg_names, getters, setters):
-                setattr(self.__class__, arg_name, property(getter, setter))
-            for arg_name, arg in zip(arg_names[::-1], defaults[::-1]):
-                if arg is not None:
-                    setattr(self, arg_name, arg)
-            for arg_name, arg in zip(arg_names, args):
-                setattr(self, arg_name, arg)
-            for arg_name, arg in kwargs.iteritems():
-                setattr(self, arg_name, arg)
-            func(self, *args, **kwargs)
-        return init
 
     def allocate(self):
         """Allocate shared variables for parameters.
@@ -323,9 +275,11 @@ class Linear(Brick):
     :class:`Brick`
 
     """
-    @Brick.lazy
-    def __init__(self, input_dim=None, output_dim=None, weights_init=None,
-                 biases_init=None, use_bias=True, **kwargs):
+    def __init__(self, input_dim=UNDEF, output_dim=UNDEF, weights_init=UNDEF,
+                 biases_init=UNDEF, use_bias=True, **kwargs):
+        self.__dict__.update(locals())
+        self.__dict__.pop('self')
+        self.__dict__.pop('kwargs')
         super(Linear, self).__init__(**kwargs)
 
     def _allocate(self):
