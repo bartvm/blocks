@@ -517,10 +517,10 @@ class Linear(DefaultRNG):
         super(Linear, self).__init__(**kwargs)
 
     def _allocate(self):
-        self.params.append(sharedX(np.zeros((self.input_dim,
+        self.params.append(sharedX(np.empty((self.input_dim,
                                              self.output_dim))))
         if self.use_bias:
-            self.params.append(sharedX(np.zeros((self.output_dim,))))
+            self.params.append(sharedX(np.empty((self.output_dim,))))
 
     def _initialize(self):
         if self.use_bias:
