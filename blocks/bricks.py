@@ -183,6 +183,33 @@ class Brick(object):
         self.initialized = False
         self.initialization_config_pushed = False
 
+    def __getstate__(self):
+        """Override the default __getstate__ method.
+
+        Ensures that `params` are not copied even when `copy.deepcopy`
+        is called by excluding them from the brick's state together
+        with the attributes `allocated` and `initialized`.
+        """
+        state = self.__dict__
+        for attr in ['allocated', 'initialized', 'params']:
+            state.pop(attr)
+        return state
+
+    def __setstate__(self, state):
+        """Override the default __setstate__ method.
+
+        Calls the __init__ method before setting the state to ensure
+        default initialization of the attributes excluded from the state
+        in __getstate__.
+
+        Parameters
+        ----------
+        state : dict
+            Dictionary of the attributes to set.
+        """
+        Brick.__init__(self)
+        self.__dict__.update(state)
+
     @staticmethod
     def apply_method(func):
         """Wraps methods that apply a brick to inputs in different ways.

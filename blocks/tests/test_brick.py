@@ -1,4 +1,7 @@
-from blocks.bricks import Brick
+import copy
+
+from blocks.bricks import Brick, Linear
+from blocks.initialization import Constant
 
 from numpy.testing import assert_raises
 from theano import tensor
@@ -45,3 +48,20 @@ def test_apply_method():
     # Case 5: variable was wrapped in a list. We can not handle that.
     u, v = brick.apply([x])
     assert_raises(AttributeError, check_output_variable, u)
+
+
+def test_deepcopy():
+    brick = Linear(input_dim=2, output_dim=3,
+                   weights_init=Constant(1),
+                   biases_init=Constant(1))
+    brick.initialize()
+    assert brick.allocated
+    assert brick.initialized
+    assert len(brick.params) == 2
+
+    brick_copy = copy.deepcopy(brick)
+    assert not brick_copy.allocated
+    assert not brick_copy.initialized
+    assert brick_copy.allocation_config_pushed
+    assert brick_copy.initialization_config_pushed
+    assert not hasattr(brick_copy, 'params')
