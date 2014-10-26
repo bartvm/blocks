@@ -2,6 +2,7 @@ import sys
 
 import numpy
 import theano
+from theano import tensor
 
 
 def pack(arg):
@@ -149,3 +150,36 @@ def reraise_as(new_exc):
     new_exc.__cause__ = orig_exc_value
     new_exc.reraised = True
     raise type(new_exc), new_exc, orig_exc_traceback
+
+
+def check_theano_variable(variable, n_dim, dtype):
+    """Check number of dimensions and dtype of a Theano variable.
+
+    If the input is not a Theano variable, it is converted to one. `None` input
+    is handled as a special case: no checks are done.
+
+    Parameters
+    ----------
+    variable : Theano variable or convertable to one
+        A variable to check.
+    n_dim : int
+        Expected number of dimensions.
+    dtype : str
+        Expected dtype.
+    """
+
+    if variable is None:
+        return
+
+    if not isinstance(variable, tensor.Variable):
+        variable = tensor.as_tensor_variable(variable)
+
+    if variable.ndim != n_dim:
+        raise ValueError("Wrong number of dimensions:"
+                         "\n\texpected {}, got {}".format(
+                             n_dim, variable.ndim))
+
+    if not dtype == variable.dtype:
+        raise ValueError("Wrong dtype:"
+                         "\n\texpected {}, got {}".format(
+                             dtype, variable.dtype))
