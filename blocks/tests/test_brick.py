@@ -1,3 +1,5 @@
+import operator
+
 import numpy
 import six
 import theano
@@ -100,6 +102,19 @@ def test_lazy():
     brick = TestBrick(config='config')
     assert brick.config == 'config'
     assert_raises(ValueError, TestBrick, 'config', config='config')
+
+
+def test_delegate():
+    Brick.lazy = True
+    brick = Brick()
+    child_brick = Brick()
+    brick.dims = {'x': 1}
+    brick.dims.delegate('y', child_brick)
+    child_brick.dims = {'y': 2, 'z': 3}
+    assert_raises(KeyError, operator.getitem, brick.dims, 'z')
+    assert_raises(KeyError, operator.getitem, child_brick.dims, 'x')
+    assert brick.dims['x'] == 1
+    assert brick.dims['y'] == 2
 
 
 def test_allocate():

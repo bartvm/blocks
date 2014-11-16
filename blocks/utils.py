@@ -154,6 +154,23 @@ def reraise_as(new_exc):
     six.reraise(type(new_exc), new_exc, orig_exc_traceback)
 
 
+def update_instance(self, kwargs, ignore=True):
+    """Set attributes of an instance from a dictionary.
+
+    Parameters
+    ----------
+    kwargs : dict
+        A dictionary with attributes and their values as keys and values.
+    ignore : bool
+        If ``True`` then ignore the keys ``self``, ``args`` and ``kwargs``.
+        Is ``True`` by default.
+
+    """
+    for key, value in kwargs.items():
+        if ignore and key not in ['self', 'args', 'kwargs']:
+            setattr(self, key, value)
+
+
 def check_theano_variable(variable, n_dim, dtype_prefix):
     """Check number of dimensions and dtype of a Theano variable.
 

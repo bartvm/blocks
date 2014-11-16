@@ -10,7 +10,7 @@ import numpy as np
 from theano import tensor
 
 from blocks.utils import (pack, repr_attrs, reraise_as, shared_floatx_zeros,
-                          unpack)
+                          unpack, update_instance)
 
 INPUT_SUFFIX = '_input'
 OUTPUT_SUFFIX = '_output'
@@ -18,6 +18,57 @@ DEFAULT_SEED = [2014, 10, 5]
 PARAM_OWNER_TAG = 'param_owner'
 
 logger = logging.getLogger(__name__)
+
+
+class DelegateDict(dict):
+    """A dict that allows keys to be retrieved from child bricks.
+
+    Acts like a normal ``dict`` but supports the :meth:`delegate` method
+    which allows certain keys to be requested from child bricks instead.
+
+    Parameters
+    -----------
+    attr: str
+        The attribute where the dictionary is stored on the child brick.
+    *args
+        Arguments to pass to ``dict``'s ``__init__`` method
+    **kwargs
+        Keywoard arguments to pass to ``dict``'s ``__init__`` method
+
+    Attributes
+    ----------
+    delegated : dict
+        A dictionary with keys as keys and objects as values, describing
+        which key requests should be referred to which objects
+    attr : str
+        The attribute on the child brick (stored as values in
+        :attr:`delegated`) that the dictionary to refer to is stored in.
+
+    """
+    def __init__(self, attr, *args, **kwargs):
+        self.delegated = {}
+        self.attr = attr
+        super(DelegateDict, self).__init__(*args, **kwargs)
+
+    def __getitem__(self, key):
+        if key in self.delegated:
+            return getattr(self.delegated[key], self.attr)[key]
+        else:
+            return dict.__getitem__(self, key)
+
+    def delegate(self, key, brick):
+        """Delegate requests for a given key to a given brick.
+
+        Parameters
+        ----------
+        key : hashable object
+            The key for which to refer to the child brick.
+        brick : object
+            The object, usually a :class:`Brick`, to request the dictionary
+            from.
+
+        """
+        self.delegated[key] = brick
 
 
 class Brick(object):
@@ -182,6 +233,17 @@ class Brick(object):
 
     def __repr__(self):
         return repr_attrs(self, 'name')
+
+    @property
+    def dims(self):
+        return self._dims
+
+    @dims.setter
+    def dims(self, value):
+        try:
+            self._dims = DelegateDict('dims', value)
+        except:
+            self._dims = value
 
     def allocate(self):
         """Allocate shared variables for parameters.
@@ -692,8 +754,7 @@ class Linear(DefaultRNG):
     @lazy
     def __init__(self, input_dim, output_dim, weights_init,
                  biases_init=None, use_bias=True, **kwargs):
-        self.__dict__.update(locals())
-        del self.self
+        update_instance(self, locals())
         super(Linear, self).__init__(**kwargs)
 
     def _allocate(self):
@@ -817,8 +878,7 @@ class MLP(DefaultRNG):
                           if activation is not None])
         if not dims:
             dims = [None] * (len(activations) + 1)
-        self.__dict__.update(locals())
-        del self.self
+        update_instance(self, locals())
 
     def _push_allocation_config(self):
         assert len(self.dims) - 1 == len(self.linear_transformations)
