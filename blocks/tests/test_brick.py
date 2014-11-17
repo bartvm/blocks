@@ -1,3 +1,5 @@
+import operator
+
 import numpy
 import six
 import theano
@@ -102,6 +104,19 @@ def test_lazy():
     assert_raises(ValueError, TestBrick, 'config', config='config')
 
 
+def test_delegate():
+    Brick.lazy = True
+    brick = Brick()
+    child_brick = Brick()
+    brick.dims = {'x': 1}
+    brick.dims.delegate('y', child_brick)
+    child_brick.dims = {'y': 2, 'z': 3}
+    assert_raises(KeyError, operator.getitem, brick.dims, 'z')
+    assert_raises(KeyError, operator.getitem, child_brick.dims, 'x')
+    assert brick.dims['x'] == 1
+    assert brick.dims['y'] == 2
+
+
 def test_allocate():
     Brick.lazy = True
     brick = TestBrick()
@@ -182,7 +197,7 @@ def test_tagging():
     check_output_variable(u)
     assert v == 1
 
-    # Case 5: variable was wrapped in a list. We can not handle that.
+    # Case 5: variable was wrapped in a list. We cannot handle that.
     u, v = brick.apply([x])
     assert_raises(AttributeError, check_output_variable, u)
 

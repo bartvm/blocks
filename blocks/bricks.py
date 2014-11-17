@@ -20,6 +20,57 @@ PARAM_OWNER_TAG = 'param_owner'
 logger = logging.getLogger(__name__)
 
 
+class DelegateDict(dict):
+    """A dict that allows keys to be retrieved from child bricks.
+
+    Acts like a normal ``dict`` but supports the :meth:`delegate` method
+    which allows certain keys to be requested from child bricks instead.
+
+    Parameters
+    -----------
+    attr: str
+        The attribute where the dictionary is stored on the child brick.
+    *args
+        Arguments to pass to ``dict``'s ``__init__`` method
+    **kwargs
+        Keywoard arguments to pass to ``dict``'s ``__init__`` method
+
+    Attributes
+    ----------
+    delegated : dict
+        A dictionary with keys as keys and objects as values, describing
+        which key requests should be referred to which objects
+    attr : str
+        The attribute on the child brick (stored as values in
+        :attr:`delegated`) that the dictionary to refer to is stored in.
+
+    """
+    def __init__(self, attr, *args, **kwargs):
+        self.delegated = {}
+        self.attr = attr
+        super(DelegateDict, self).__init__(*args, **kwargs)
+
+    def __getitem__(self, key):
+        if key in self.delegated:
+            return getattr(self.delegated[key], self.attr)[key]
+        else:
+            return dict.__getitem__(self, key)
+
+    def delegate(self, key, brick):
+        """Delegate requests for a given key to a given brick.
+
+        Parameters
+        ----------
+        key : hashable object
+            The key for which to refer to the child brick.
+        brick : object
+            The object, usually a :class:`Brick`, to request the dictionary
+            from.
+
+        """
+        self.delegated[key] = brick
+
+
 class Brick(object):
     """A brick encapsulates Theano operations with parameters.
 
@@ -182,6 +233,17 @@ class Brick(object):
 
     def __repr__(self):
         return repr_attrs(self, 'name')
+
+    @property
+    def dims(self):
+        return self._dims
+
+    @dims.setter
+    def dims(self, value):
+        if isinstance(value, dict):
+            self._dims = DelegateDict('dims', value)
+        else:
+            self._dims = value
 
     def allocate(self):
         """Allocate shared variables for parameters.
