@@ -240,9 +240,9 @@ class Brick(object):
 
     @dims.setter
     def dims(self, value):
-        try:
+        if isinstance(value, dict):
             self._dims = DelegateDict('dims', value)
-        except:
+        else:
             self._dims = value
 
     def allocate(self):

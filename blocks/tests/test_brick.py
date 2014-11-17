@@ -197,7 +197,7 @@ def test_tagging():
     check_output_variable(u)
     assert v == 1
 
-    # Case 5: variable was wrapped in a list. We can not handle that.
+    # Case 5: variable was wrapped in a list. We cannot handle that.
     u, v = brick.apply([x])
     assert_raises(AttributeError, check_output_variable, u)
 
