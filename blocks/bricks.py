@@ -817,10 +817,27 @@ class Linear(DefaultRNG):
         return output
 
 
+class BaseActivation(Brick):
+    """Base class for activation functions.
+
+    Most activation functions are just applied elementwise yielding an
+    output of the same dimension as the input. Some (e.g. Maxout ) however
+    do reduce the data dimension, typically making it :math:`k` times smaller.
+
+    Attributes
+    ----------
+    shrinks_times : int
+        The number of times the output is smaller than the input.
+
+    """
+    shrinks_times = 1
+
+
 def _activation_factory(name, activation):
     """Class factory for Bricks which perform simple Theano calls."""
-    class Activation(Brick):
+    class Activation(BaseActivation):
         """Element-wise application of {0} function."""
+
         @application(inputs=['inp'], outputs=['output'])
         def apply(self, inp):
             """Apply the {0} function element-wise.
@@ -901,10 +918,11 @@ class MLP(DefaultRNG):
 
     def _push_allocation_config(self):
         assert len(self.dims) - 1 == len(self.linear_transformations)
-        for input_dim, output_dim, layer in zip(self.dims[:-1], self.dims[1:],
-                                                self.linear_transformations):
+        for input_dim, output_dim, act, layer in zip(self.dims[:-1], self.dims[1:],
+                                                     self.activations,
+                                                     self.linear_transformations):
             layer.input_dim = input_dim
-            layer.output_dim = output_dim
+            layer.output_dim = output_dim * act.shrinks_times
             layer.use_bias = self.use_bias
 
     def _push_initialization_config(self):
