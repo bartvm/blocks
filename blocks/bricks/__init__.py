@@ -169,10 +169,8 @@ class Brick(object):
     # Turns on debug logging of input/output shapes
     print_shapes = False
 
-    def __init__(self, name=None):
-        if name is None:
-            name = self.__class__.__name__.lower()
-        self.name = name
+    def __init__(self, **kwargs):
+        self.name = kwargs.get('name', self.__class__.__name__.lower())
 
         self.children = []
 
@@ -319,7 +317,7 @@ class Brick(object):
         of child bricks manually, then you can call this function manually.
 
         """
-        
+
         if not hasattr(self, '_push_initialization_config'):
             return
         self._push_initialization_config()
@@ -1035,10 +1033,15 @@ class MLP(DefaultRNG):
 
 class Initializeable(object):
     """mixin class"""
+
+    def __init__(self, **kwargs):
+        import ipdb; ipdb.set_trace()
     def _push_initialization_config(self):
         for child in self.children:
             if self.weights_init:
                 child.weights_init = self.weights_init
-            if self.biases_init:
-                child.biases_init = self.biases_init
+        if self.push_init_bias:
+            for child in self.children:
+                if self.biases_init:
+                    child.biases_init = self.biases_init
 

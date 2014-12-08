@@ -42,6 +42,7 @@ class Parallel(Brick, Initializeable):
             self.transforms.append(copy.deepcopy(self.prototype))
             self.transforms[-1].name = "transform_{}".format(name)
         self.children = self.transforms
+        self.push_init_bias = True
 
     def _push_allocation_config(self):
         for name, transform in zip(self.channel_names, self.transforms):
