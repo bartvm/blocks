@@ -319,6 +319,9 @@ class Brick(object):
         of child bricks manually, then you can call this function manually.
 
         """
+        
+        if not hasattr(self, '_push_initialization_config'):
+            return
         self._push_initialization_config()
         self.initialization_config_pushed = True
         for child in self.children:
@@ -327,20 +330,6 @@ class Brick(object):
             except:
                 self.initialization_config_pushed = False
                 raise
-
-    def _push_initialization_config(self):
-        """Brick implementation of configuring child before initialization.
-
-        Implement this if your brick needs to set the configuration of its
-        children before initialization.
-
-        .. warning::
-
-           This method should never be called directly. Call
-           :meth:`push_initialization_config` instead.
-
-        """
-        pass
 
     def get_dim(self, name):
         """Get dimension of an input/output variable of a brick.
@@ -1043,3 +1032,13 @@ class MLP(DefaultRNG):
             else:
                 output = activation.apply(linear.apply(output))
         return output
+
+class Initializeable(object):
+    """mixin class"""
+    def _push_initialization_config(self):
+        for child in self.children:
+            if self.weights_init:
+                child.weights_init = self.weights_init
+            if self.biases_init:
+                child.biases_init = self.biases_init
+
