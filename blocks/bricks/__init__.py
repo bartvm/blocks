@@ -1040,7 +1040,7 @@ class Initializeable(object):
         for child in self.children:
             if self.weights_init:
                 child.weights_init = self.weights_init
-        if self.push_init_bias:
+        if not self.__dict__.get('_no_initialization_bias', False):
             for child in self.children:
                 if self.biases_init:
                     child.biases_init = self.biases_init

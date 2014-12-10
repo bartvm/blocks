@@ -451,7 +451,7 @@ class Bidirectional(DefaultRNG, Initializeable):
         self.children = [copy.deepcopy(prototype) for i in range(2)]
         self.children[0].name = 'forward'
         self.children[1].name = 'backward'
-        self.push_init_bias = False
+        self._no_initialization_bias = True
 
     @application
     def apply(self, *args, **kwargs):

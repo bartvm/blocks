@@ -79,7 +79,6 @@ class SequenceContentAttention(Brick, Initializeable):
             self.energy_computer = MLP([Identity()], name="energy_comp")
         self.children = [self.state_transformers, self.sequence_transformer,
                          self.energy_computer]
-        self.push_init_bias = True
 
     def _push_allocation_config(self):
         self.state_transformers.input_dims = self.state_dims

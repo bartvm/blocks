@@ -94,7 +94,6 @@ class BaseSequenceGenerator(Brick, Initializeable):
         self.context_names = transition.apply.contexts
         self.glimpse_names = transition.take_look.outputs
         self.children = [self.readout, self.fork, self.transition]
-        self.push_init_bias = True
 
     def _push_allocation_config(self):
         # Configure readout
@@ -375,7 +374,6 @@ class LinearReadout(Readout, Initializeable):
                                activations=[Identity()])
                            for name in self.source_names]
         self.children.extend(self.projectors)
-        self.push_init_bias = True
 
     def _push_allocation_config(self):
         super(LinearReadout, self)._push_allocation_config()
@@ -493,7 +491,6 @@ class LookupFeedback(AbstractFeedback, Initializeable):
         self.lookup = LookupTable(num_outputs, feedback_dim,
                                   kwargs.get("weights_init"))
         self.children = [self.lookup]
-        self.push_init_bias = True
 
     def _push_allocation_config(self):
         self.lookup.length = self.num_outputs
@@ -562,7 +559,6 @@ class AttentionTransition(AbstractAttentionTransition, DefaultRNG, Initializeabl
             if name in self.attention.take_look.inputs]
 
         self.children = [self.transition, self.attention, self.mixer]
-        self.push_init_bias = True
 
     def _push_allocation_config(self):
         self.attention.state_dims = self.transition.get_dims(self.state_names)
@@ -734,7 +730,6 @@ class FakeAttentionTransition(AbstractAttentionTransition, Initializeable):
         self.glimpse_names = []
 
         self.children = [self.transition]
-        self.push_init_bias = True
 
     @application
     def apply(self, *args, **kwargs):
