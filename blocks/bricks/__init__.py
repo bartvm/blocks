@@ -169,10 +169,8 @@ class Brick(object):
     # Turns on debug logging of input/output shapes
     print_shapes = False
 
-    def __init__(self, name=None):
-        if name is None:
-            name = self.__class__.__name__.lower()
-        self.name = name
+    def __init__(self, **kwargs):
+        self.name = kwargs.get('name', self.__class__.__name__.lower())
 
         self.children = []
 
@@ -319,6 +317,9 @@ class Brick(object):
         of child bricks manually, then you can call this function manually.
 
         """
+
+        if not hasattr(self, '_push_initialization_config'):
+            return
         self._push_initialization_config()
         self.initialization_config_pushed = True
         for child in self.children:
@@ -327,20 +328,6 @@ class Brick(object):
             except:
                 self.initialization_config_pushed = False
                 raise
-
-    def _push_initialization_config(self):
-        """Brick implementation of configuring child before initialization.
-
-        Implement this if your brick needs to set the configuration of its
-        children before initialization.
-
-        .. warning::
-
-           This method should never be called directly. Call
-           :meth:`push_initialization_config` instead.
-
-        """
-        pass
 
     def get_dim(self, name):
         """Get dimension of an input/output variable of a brick.
@@ -1043,3 +1030,18 @@ class MLP(DefaultRNG):
             else:
                 output = activation.apply(linear.apply(output))
         return output
+
+class Initializeable(object):
+    """mixin class"""
+
+    def __init__(self, **kwargs):
+        import ipdb; ipdb.set_trace()
+    def _push_initialization_config(self):
+        for child in self.children:
+            if self.weights_init:
+                child.weights_init = self.weights_init
+        if not self.__dict__.get('_no_initialization_bias', False):
+            for child in self.children:
+                if self.biases_init:
+                    child.biases_init = self.biases_init
+
