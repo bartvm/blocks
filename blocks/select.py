@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class Path(object):
     """Encapsulates a path in a hierarchy of bricks.
 
-    Currently the only allowed elements of pathes are names of the bricks
+    Currently the only allowed elements of paths are names of the bricks
     and names of parameters. The latter can only be put in the end of the
     path. It is planned to support regular expressions in some way later.
 
@@ -29,19 +29,17 @@ class Path(object):
 
     """
 
-    separator = "/"
-    param_separator = "."
-    separator_re = re.compile("([{}{}])".format(separator, param_separator))
+    SEPARATOR = "/"
+    PARAM_SEPARATOR = "."
+    SEPARATOR_RE = re.compile("([{}{}])".format(SEPARATOR, PARAM_SEPARATOR))
 
     class BrickName(str):
-
         def part(self):
-            return Path.separator + self
+            return Path.SEPARATOR + self
 
     class ParamName(str):
-
         def part(self):
-            return Path.param_separator + self
+            return Path.PARAM_SEPARATOR + self
 
     def __init__(self, nodes):
         assert isinstance(nodes, (list, tuple))
@@ -73,19 +71,19 @@ class Path(object):
             More error checking.
 
         """
-        elements = Path.separator_re.split(string)[1:]
+        elements = Path.SEPARATOR_RE.split(string)[1:]
         separators = elements[::2]
         parts = elements[1::2]
         assert len(elements) == 2 * len(separators) == 2 * len(parts)
 
         nodes = []
         for separator, part in zip(separators, parts):
-            if separator == Path.separator:
+            if separator == Path.SEPARATOR:
                 nodes.append(Path.BrickName(part))
-            elif Path.param_separator == Path.param_separator:
+            elif separator == Path.PARAM_SEPARATOR:
                 nodes.append(Path.ParamName(part))
             else:
-                # This can not if separator_re is a correct regexp
+                # This should not happen if SEPARATOR_RE is a correct regexp
                 raise ValueError("Wrong separator {}".format(separator))
 
         return Path(nodes)
@@ -123,7 +121,6 @@ class Selector(object):
 
         Returns
         -------
-
         Depending on the path given, one of the following:
 
         * A :class:`Selector` with desired bricks.
@@ -152,6 +149,13 @@ class Selector(object):
     def get_params(self, param_name=None):
         """Returns parameters the selected bricks and their ancestors.
 
+        .. todo::
+
+           The parameters could be functions of shared variables (e.g. when
+           using the transpose of a weight matrix, or when the shared
+           variables have been collected into a single large one), and this
+           method should probably return the underlying shared variables.
+
         Parameters
         ----------
         param_name : :class:`Path.ParamName`
@@ -171,7 +175,7 @@ class Selector(object):
                              Path.ParamName(param.name)]),
                        param)
                       for param in brick.params
-                      if not param_name or param.name == param_name]
+                      if param_name is None or param.name == param_name]
             result = OrderedDict(result)
             for child in brick.children:
                 for path, param in recursion(child).items():

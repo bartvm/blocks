@@ -70,7 +70,7 @@ def shared_floatx(value, name=None, borrow=False, dtype=None):
     value : array_like
         The value to associate with the Theano shared.
     name : str, optional
-        The name for the shared varaible. Defaults to `None`.
+        The name for the shared variable. Defaults to `None`.
     borrow : bool, optional
         If set to True, the given `value` will not be copied if possible.
         This can save memory and speed. Defaults to False.
