@@ -15,7 +15,7 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams
 from blocks.utils import (pack, repr_attrs, reraise_as, shared_floatx_zeros,
                           unpack, update_instance, put_hook)
 
-DEFAULT_SEED = [2014, 10, 5]
+DEFAULT_SEED = 1
 
 logger = logging.getLogger(__name__)
 
