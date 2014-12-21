@@ -121,7 +121,7 @@ sensible defaults for a particular usecase.
     ...           Sigmoid(name='sigmoid_1')], dims=[16, 8, 4],
     ...           weights_init=IsotropicGaussian(), biases_init=Constant(0.01))
     >>> [child.name for child in mlp.children]
-    ['linear_0', 'linear_1', 'sigmoid_0', 'sigmoid_1']
+    ['linear_0', 'sigmoid_0', 'linear_1', 'sigmoid_1']
     >>> y = mlp.apply(x)
     >>> mlp.children[0].input_dim
     16

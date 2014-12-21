@@ -7,6 +7,7 @@ import functools
 import logging
 from abc import ABCMeta
 from collections import OrderedDict
+from itertools import chain
 
 import numpy
 from theano import tensor
@@ -1010,7 +1011,60 @@ Sigmoid = _activation_factory('Sigmoid', tensor.nnet.sigmoid)
 Softmax = _activation_factory('Softmax', tensor.nnet.softmax)
 
 
-class MLP(DefaultRNG):
+class Sequence(Brick):
+    """A sequence of bricks.
+
+    This brick simply applies a sequence of bricks, assuming that their in-
+    and outputs are compatible.
+
+    Parameters
+    ----------
+    bricks : list of :class:`Brick` instances
+        The bricks in the order that they need to be applied.
+    application_methods : list of application method names, optional
+        If not given, it uses ``'apply'`` for each brick.
+
+    """
+    def __init__(self, bricks, application_methods=None, **kwargs):
+        super(Sequence, self).__init__(**kwargs)
+        if application_methods is None:
+            application_methods = ['apply' for brick in bricks]
+        assert len(application_methods) == len(bricks)
+        self.children = bricks
+        self.application_methods = application_methods
+
+    @application(inputs=['input_'], outputs=['output'])
+    def apply(self, input_):
+        child_input = input_
+        for child, application_method in zip(self.children,
+                                             self.application_methods):
+            output = getattr(child, application_method)(*pack(child_input))
+            child_input = output
+        return output
+
+
+class Initializeable(Brick):
+    """Base class for bricks which push parameter initialization.
+
+    Set :meth:`_no_bias_initialization = True`
+    if the brick should only push :meth:`weights_init`.
+    For an example, see :class:`Bidirectional`.
+
+    """
+    def _push_initialization_config(self):
+        for child in self.children:
+            if self.weights_init:
+                child.weights_init = self.weights_init
+        if not getattr(self, '_no_bias_initialization', False):
+            for child in self.children:
+                if getattr(child, '_no_bias_initialization', False):
+                    continue
+                if self.biases_init:
+                    child.biases_init = self.biases_init
+            super(Initializeable, self)._push_initialization_config()
+
+
+class MLP(Sequence, DefaultRNG):
     """A simple multi-layer perceptron
 
     Parameters
@@ -1049,15 +1103,16 @@ class MLP(DefaultRNG):
     @lazy
     def __init__(self, activations, dims, weights_init, biases_init=None,
                  use_bias=True, **kwargs):
-        super(MLP, self).__init__(**kwargs)
+        update_instance(self, locals())
         self.linear_transformations = [Linear(name='linear_{}'.format(i))
                                        for i in range(len(activations))]
-        self.children = (self.linear_transformations +
-                         [activation for activation in activations
-                          if activation is not None])
+        # Interleave the transformations and activations
+        children = [child for child in list(chain(*zip(
+            self.linear_transformations, activations))) if child is not None]
         if not dims:
             dims = [None] * (len(activations) + 1)
-        update_instance(self, locals())
+        self.dims = dims
+        super(MLP, self).__init__(children, **kwargs)
 
     def _push_allocation_config(self):
         assert len(self.dims) - 1 == len(self.linear_transformations)
@@ -1071,48 +1126,3 @@ class MLP(DefaultRNG):
         for layer in self.linear_transformations:
             for attr in ['weights_init', 'biases_init']:
                 setattr(layer, attr, getattr(self, attr))
-
-    @application(inputs=['input_'], outputs=['output'])
-    def apply(self, input_):
-        """Perform the forward propagation.
-
-        Parameters
-        ----------
-        input_ : Theano variable
-            Perform the forward propogation of the MLP.
-
-        Returns
-        -------
-        output : Theano variable
-            The output of the last layer.
-
-        """
-        output = input_
-        for activation, linear in zip(self.activations,
-                                      self.linear_transformations):
-            if activation is None:
-                output = linear.apply(output)
-            else:
-                output = activation.apply(linear.apply(output))
-        return output
-
-
-class Initializeable(Brick):
-    """Base class for bricks which push parameter initialization.
-
-    Set :meth:`_no_bias_initialization = True`
-    if the brick should only push :meth:`weights_init`.
-    For an example, see :class:`Bidirectional`.
-
-    """
-    def _push_initialization_config(self):
-        for child in self.children:
-            if self.weights_init:
-                child.weights_init = self.weights_init
-        if not getattr(self, '_no_bias_initialization', False):
-            for child in self.children:
-                if getattr(child, '_no_bias_initialization', False):
-                    continue
-                if self.biases_init:
-                    child.biases_init = self.biases_init
-            super(Initializeable, self)._push_initialization_config()
