@@ -106,7 +106,9 @@ class BaseSequenceGenerator(Initializeable):
         self.glimpse_dims = {name: self.transition.get_dim(name)
                              for name in self.glimpse_names}
         self.readout.source_dims = dict_union(
-            state_dims, context_dims, self.glimpse_dims)
+            state_dims, context_dims, self.glimpse_dims,
+            feedback=self.readout.get_dim('feedback'),
+            )
 
         # Configure fork
         feedback_names = self.readout.feedback.outputs
@@ -193,16 +195,27 @@ class BaseSequenceGenerator(Initializeable):
         next_readouts = self.readout.readout(
             feedback=self.readout.feedback(outputs),
             **dict_union(states, next_glimpses, contexts))
+        next_outputs, next_states, next_costs = \
+            self.compute_next_states(next_readouts,
+                                     next_glimpses,
+                                     **kwargs)
+        return (next_states + [next_outputs]
+                + list(next_glimpses.values()) + [next_costs])
+
+    @application
+    def compute_next_states(self, next_readouts, next_glimpses, **kwargs):
+        states = {name: kwargs[name] for name in self.state_names}
+        contexts = {name: kwargs[name] for name in self.context_names}
+
         next_outputs = self.readout.emit(next_readouts)
-        next_costs = self.readout.cost(next_readouts, next_outputs)
         next_feedback = self.readout.feedback(next_outputs)
         next_inputs = (self.fork.apply(next_feedback, return_dict=True)
                        if self.fork else {'feedback': next_feedback})
         next_states = self.transition.compute_states(
             return_list=True,
             **dict_union(next_inputs, states, next_glimpses, contexts))
-        return (next_states + [next_outputs]
-                + list(next_glimpses.values()) + [next_costs])
+        next_costs = self.readout.cost(next_readouts, next_outputs)
+        return next_outputs, next_states, next_costs
 
     @generate.delegate
     def generate_delegate(self):
@@ -237,19 +250,55 @@ class BaseSequenceGenerator(Initializeable):
 
 
 class AbstractEmitter(Brick):
-    """The interface for the emitter component of a readout."""
+    """
+    The interface for the emitter component of a readout.
+    For details see `BaseSequenceGenerator`
+    """
     __metaclass__ = ABCMeta
 
     @abstractmethod
     def emit(self, readouts):
+        """
+        Computes next outputs
+
+        :param readouts: current readouts
+        :return: next readouts
+        """
+        pass
+
+    @abstractmethod
+    def emit_probs(self, readouts):
+        """
+        Computes next probabilities
+
+        :param readouts: readouts
+        :return: next probabilities
+        """
+
         pass
 
     @abstractmethod
     def cost(self, readouts, outputs):
+        """
+        Computes next costs
+
+        :param readouts: current readouts
+        :param outputs: previous outputs
+        :return: next costs
+        """
         pass
 
     @abstractmethod
     def initial_outputs(self, batch_size, *args, **kwargs):
+        """
+        Computes initial outputs
+        :param batch_size: int, size of batch
+        :return: initial outputs
+
+        Note
+        ----
+            All additional arguments are expected as keyword arguments
+        """
         pass
 
 
@@ -333,6 +382,10 @@ class Readout(AbstractReadout):
         return self.emitter.emit(readouts)
 
     @application
+    def emit_probs(self, readouts):
+        return self.emitter.emit_probs(readouts)
+
+    @application
     def cost(self, readouts, outputs):
         return self.emitter.cost(readouts, outputs)
 
@@ -390,6 +443,8 @@ class LinearReadout(Readout, Initializeable):
             return projections[0]
         return sum(projections[1:], projections[0])
 
+    # add  property input
+
 
 class TrivialEmitter(AbstractEmitter):
     """An emitter for the trivial case when readouts are outputs.
@@ -410,6 +465,10 @@ class TrivialEmitter(AbstractEmitter):
         return readouts
 
     @application
+    def emit_probs(self, readouts):
+        raise ValueError('Cannot compute probabilities in TrivialEmitter')
+
+    @application
     def initial_outputs(self, batch_size, *args, **kwargs):
         return tensor.zeros((batch_size, self.readout_dim))
 
@@ -426,7 +485,8 @@ class SoftmaxEmitter(AbstractEmitter, DefaultRNG):
 
     """
 
-    def _probs(self, readouts):
+    @application
+    def emit_probs(self, readouts):
         shape = readouts.shape
         return tensor.nnet.softmax(readouts.reshape(
             (tensor.prod(shape[:-1]), shape[-1]))).reshape(shape)
