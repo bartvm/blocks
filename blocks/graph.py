@@ -7,7 +7,7 @@ from theano import Variable
 from theano.scalar import ScalarConstant
 from theano.tensor import TensorConstant
 from theano.tensor.sharedvar import SharedVariable
-from theano.tensor.shared_randomstreams import RandomStreams
+from theano.sandbox.rng_mrg import MRG_RandomStreams
 
 
 logger = logging.getLogger(__name__)
@@ -115,7 +115,7 @@ def apply_noise(graph, variables, level, rng=None):
 
     """
     if not rng:
-        rng = RandomStreams(1)
+        rng = MRG_RandomStreams(1)
     replace = {}
     for variable in variables:
         replace[variable] = (variable +

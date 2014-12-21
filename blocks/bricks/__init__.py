@@ -10,11 +10,12 @@ from collections import OrderedDict
 
 import numpy
 from theano import tensor
+from theano.sandbox.rng_mrg import MRG_RandomStreams
 
 from blocks.utils import (pack, repr_attrs, reraise_as, shared_floatx_zeros,
                           unpack, update_instance, put_hook)
 
-DEFAULT_SEED = [2014, 10, 5]
+DEFAULT_SEED = 1
 
 logger = logging.getLogger(__name__)
 
@@ -751,7 +752,7 @@ class DefaultRNG(Brick):
     rng : object
         A ``numpy.RandomState`` instance.
     theano_rng : object
-        A ``tensor.shared_randomstreams.RandomStreams`` instance.
+        A ``MRG_RandomStreams`` instance.
 
     """
     def __init__(self, rng=None, theano_rng=None, **kwargs):
@@ -777,13 +778,13 @@ class DefaultRNG(Brick):
     @property
     def theano_rng(self):
         """
-        If a RandomStreams was given in the constructor, return it.
+        If a MRG_RandomStreams was given in the constructor, return it.
         Otherwise, return one seeded with ``blocks.bricks.DEFAULT_SEED``.
         """
         if getattr(self, '_rng', None) is not None:
             return self._rng
         else:
-            return tensor.shared_randomstreams.RandomStreams(DEFAULT_SEED)
+            return MRG_RandomStreams(DEFAULT_SEED)
 
     @theano_rng.setter
     def theano_rng(self, theano_rng):
