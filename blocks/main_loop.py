@@ -1,5 +1,4 @@
 """The event-based main loop of Blocks."""
-
 try:
     from queue import PriorityQueue
 except ImportError:
@@ -12,12 +11,12 @@ class Event(object):
     """The base class for all events.
 
     In Blocks main loop consists of handling so-called events. Examples of
-    events include the start, the finish, a resumption of a training procedure,
-    the start of an iteration of the training procedure.
+    events include the start, the finish, a resumption of a training
+    procedure, the start of an iteration of the training procedure.
 
-    Every event has a priority, which in most cases is a class attribute. When
-    multiple events happen at the same time, they are processed in the order
-    of decreasing priority.
+    Every event has a priority, which in most cases is a class attribute.
+    When multiple events happen at the same time, they are processed in the
+    order of decreasing priority.
 
     Attributes
     ----------
@@ -132,9 +131,15 @@ class AbstractTrainingLog(object):
 
 class RAMTrainingLog(AbstractTrainingLog):
     """A simple training log storing information in main memory."""
-
     def __init__(self):
         self._storage = defaultdict(dict)
+        self._default_values = {}
+
+    def get_default_value(self, key):
+        return self._default_values.get(key)
+
+    def set_default_value(self, key, value):
+        self._default_values[key] = value
 
     def _add_record(self, time, key, value):
         self._storage[time][key] = value
@@ -154,18 +159,12 @@ class RAMTrainingLog(AbstractTrainingLog):
 class MainLoop(object):
     """The Blocks main loop.
 
-    The main loop consists of repeatedly performed iterations. Each iteration
-    is handling of a bunch of events, the first of which is an `IterationStart`
-    events and the others are generated on the way. When all the events,
-    including `IterationFinish`, are processed, the iteration is over. If a
-    `TrainingFinish` event was triggered during the iteration, training is
-    stopped.
-
-    Attributes
-    ----------
-    handlers : dict
-        The mapping from an event class to a list of actions to be executed
-        when this event is fetched from the queue.
+    The main loop consists of repeatedly performed iterations. Each
+    iteration is handling of a bunch of events, the first of which is an
+    `IterationStart` events and the others are generated on the way. When
+    all the events, including `IterationFinish`, are processed, the
+    iteration is over. If a `TrainingFinish` event was triggered during the
+    iteration, training is stopped.
 
     Parameters
     ----------
@@ -174,6 +173,12 @@ class MainLoop(object):
     log_events : bool
         When ``True`` the sequence of events in the order they were handled
         is logged.
+
+    Attributes
+    ----------
+    handlers : dict
+        The mapping from an event class to a list of actions to be executed
+        when this event is fetched from the queue.
 
     """
     def __init__(self, log, log_events=False):

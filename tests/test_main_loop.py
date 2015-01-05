@@ -32,5 +32,6 @@ def test_main_loop():
     assert are_instances(
         log[3].event_sequence,
         [IterationStart, IterationFinish, TrainingFinish])
+    assert not log[2].training_finished
     assert log[3].training_finished
     assert len(list(log)) == 5
