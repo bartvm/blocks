@@ -20,7 +20,7 @@ def test_main_loop():
     log = RAMTrainingLog()
     main_loop = MainLoop(log=log, log_events=True)
 
-    def on_iteration_start():
+    def on_iteration_start(event):
         if main_loop.iterations_done == 3:
             main_loop.add_event(TrainingFinish())
     main_loop.handlers[IterationStart].append(on_iteration_start)

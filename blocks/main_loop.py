@@ -219,7 +219,7 @@ class MainLoop(object):
 
         self._events = PriorityQueue()
 
-    def _on_training_finished(self):
+    def _on_training_finished(self, event):
         self.current_row.training_finished = True
 
     @property
@@ -241,7 +241,7 @@ class MainLoop(object):
         for event in self._pop_events():
             self._event_sequence.append(event)
             for handler in self.handlers[event.__class__]:
-                handler()
+                handler(event)
 
     def _iterate(self):
         while not self.previous_row.training_finished:
