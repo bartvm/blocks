@@ -6,6 +6,9 @@ import six
 import theano
 from theano import tensor
 from theano import printing
+from theano.scalar import ScalarConstant
+from theano.tensor import TensorConstant
+from theano.tensor.sharedvar import SharedVariable
 
 
 def pack(arg):
@@ -95,6 +98,28 @@ def shared_floatx(value, name=None, borrow=False, dtype=None):
     return theano.shared(theano._asarray(value, dtype=dtype),
                          name=name,
                          borrow=borrow)
+
+
+def shared_for_expression(expression, name=None):
+    """Construct a shared variable to hold the results of a theano expression.
+
+    Parameters
+    ----------
+    expression : theano variable
+        The expression whose dtype and ndim will be used to construct
+        the new shared variable.
+
+    name : string or None
+        The name of the shared variable. If None, the name is determined
+        based on expression's name.
+
+    """
+    expression = tensor.as_tensor_variable(expression)
+    if name is None:
+        name = "shared_{}".format(expression.name)
+    return theano.shared(numpy.zeros((2,) * expression.ndim,
+                                     dtype=expression.dtype),
+                         name=name)
 
 
 def reraise_as(new_exc):
@@ -198,6 +223,49 @@ def check_theano_variable(variable, n_dim, dtype_prefix):
                              dtype_prefix, variable.dtype))
 
 
+def is_graph_input(variable):
+    """Check if variable is a user-provided graph input.
+
+    To be considered an input the variable must have no owner, and not
+    be a constant or shared variable.
+
+    Parameters
+    ----------
+        variable: theano expression
+
+    Returns
+    -------
+        bool
+
+    """
+    return (not variable.owner
+            and not isinstance(variable, SharedVariable)
+            and not isinstance(variable, TensorConstant)
+            and not isinstance(variable, ScalarConstant))
+
+
+def graph_inputs(variables, blockers=None):
+    """Compute inputs needed to compute values in variables.
+
+    This function is similar to :meth:`theano.gof.graph.inputs`. However,
+    it doesn't tread shared and constant values as inputs.
+
+    Parameters
+    ----------
+    variables : list of theano variables
+        The outputs whose inputs are sought for.
+
+    blockers : list of theano variables
+        See :meth:`theano.gof.graph.inputs` for documentation.
+
+    Returns:
+        list of theano variables which are non-constant and non-shared
+        inputs to the computational graph.
+    """
+    inps = theano.gof.graph.inputs(variables, blockers=blockers)
+    return [i for i in inps if is_graph_input(i)]
+
+
 def dict_subset(dikt, keys, pop=False, must_have=True):
     """Return a subset of a dictionary corresponding to a set of keys.
 
@@ -233,7 +301,7 @@ def dict_subset(dikt, keys, pop=False, must_have=True):
         return dikt.get(k, not_found)
 
     result = [(key, extract(key)) for key in keys]
-    return OrderedDict([(k, v) for k, v in result if v != not_found])
+    return OrderedDict([(k, v) for k, v in result if v is not not_found])
 
 
 def dict_union(*dicts, **kwargs):
