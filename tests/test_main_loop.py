@@ -4,6 +4,18 @@ from blocks.main_loop import (
     TrainingStart, TrainingFinish)
 
 
+def test_ram_training_log():
+    log = RAMTrainingLog()
+    log[0].field = 45
+    assert log[0].field == 45
+    assert log[1].field is None
+    log.set_default_value('flag', True)
+    assert log[0].flag
+    log[1].flag = False
+    assert not log[1].flag
+    assert len(list(log)) == 2
+
+
 def test_main_loop():
     log = RAMTrainingLog()
     main_loop = MainLoop(log=log, log_events=True)

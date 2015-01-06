@@ -30,7 +30,7 @@ class Event(object):
 class TrainingStart(object):
     """The event corresponding to the start of the training procedure.
 
-    Has very high priority to be handler before all other events.
+    Has very high priority to be handled before all other events.
 
     """
     priority = 100
@@ -56,7 +56,7 @@ class IterationFinish(object):
 
 
 class TrainingLogRow(object):
-    """A convinience interface for a row of the training log.
+    """A convenience interface for a row of the training log.
 
     Parameters
     ----------
@@ -85,40 +85,67 @@ class AbstractTrainingLog(object):
     A training log stores the training timeline, statistics and
     other auxiliary information. Information is represented as a set of
     time-key-value triples. A default value can be set for a key that
-    will be used when no other value is provided explicitly.
-
-    Notes
-    -----
-        ``None`` is not allowed as a default value.
+    will be used when no other value is provided explicitly. The default
+    default value is ''None''.
 
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
     def set_default_value(self, key, value):
+        """Sets a default value for 'key'."""
         pass
 
     @abstractmethod
     def get_default_value(self, key):
+        """Returns the default value set for the 'key'.
+
+        Returns
+        -------
+        The default value for the `key`, or ``None`` if not set.
+
+        """
         pass
 
     def add_record(self, time, key, value):
+        """Adds a record to the log.
+
+        If `value` equals to the default value for the `key`, nothing is
+        done.
+
+        """
         default_value = self.get_default_value(key)
         if value != default_value:
             self._add_record(time, key, value)
 
     @abstractmethod
     def _add_record(self, time, key, value):
+        """Adds a record to the log.
+
+        The implementation method to be overriden.
+
+        """
         pass
 
     def fetch_record(self, time, key):
-        default_value = self.get_default_value(key)
-        if default_value:
-            return default_value
-        return self._fetch_record(time, key)
+        """Fetches a record from the log.
+
+        If no such 'key' for the `time` is found or if the value for the
+        key is ``None``, the default value for the 'key' is returned.
+
+        """
+        value = self._fetch_record(time, key)
+        if value is not None:
+            return value
+        return self.get_default_value(key)
 
     @abstractmethod
     def _fetch_record(self, time, key):
+        """Fetches a record from the log.
+
+        The implementation method to be overriden.
+
+        """
         pass
 
     def __getitem__(self, time):
@@ -126,6 +153,7 @@ class AbstractTrainingLog(object):
 
     @abstractmethod
     def __iter__(self):
+        """Returns an iterator over time-key-value triples of the log."""
         pass
 
 
