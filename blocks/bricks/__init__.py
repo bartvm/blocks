@@ -463,17 +463,21 @@ class ApplicationCall(object):
         self.auxiliary_variables = []
         self.updates = []
 
-    def add_auxiliary_variable(self, expression, role):
+    def add_auxiliary_variable(self, expression, role, name=None):
+        if name is not None:
+            expression.name = name
         expression.tag.role = role
         self.auxiliary_variables.append(expression)
 
-    def add_monitor(self, expression):
+    def add_monitor(self, expression, name=None):
         return self.add_auxiliary_variable(expression,
-                                           role=VariableRole.MONITOR)
+                                           role=VariableRole.MONITOR,
+                                           name=name)
 
-    def add_additional_cost(self, expression):
+    def add_additional_cost(self, expression, name=None):
         return self.add_auxiliary_variable(expression,
-                                           role=VariableRole.ADDITIONAL_COST)
+                                           role=VariableRole.ADDITIONAL_COST,
+                                           name=name)
 
 
 class Application(object):
