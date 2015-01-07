@@ -19,7 +19,7 @@ from pylearn2.space import CompositeSpace
 from pylearn2.utils import serial
 from pylearn2.monitor import push_monitor
 
-from blocks.select import Selector
+from blocks.select import BrickSelection
 from blocks.utils import pack
 from blocks.graph import ComputationGraph
 from blocks.utils import shared_floatx, unpack
@@ -43,7 +43,7 @@ class Pylearn2Model(pylearn2.models.Model):
         super(Pylearn2Model, self).__init__(**kwargs)
 
     def get_params(self):
-        return Selector(self.brick).get_params().values()
+        return BrickSelection(self.brick).get_params().values()
 
     @staticmethod
     def load(path):

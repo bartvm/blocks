@@ -1,181 +1,418 @@
+"""
+The select module offers means to select sets of bricks and to filter
+lists of variables, application calls and the like by their attributes,
+brick ownership etc.
+
+Selecting bricks
+----------------
+
+Bricks are selected using expressions similar to XPath formed of:
+- the child selector '/'
+- the all children selector '//'
+- the name matcher (a valid python identifier)
+
+Guys comment do we want this:
+- the regexp name matcher in square brackets
+
+- the attribute existence matcher @attribute
+- the attribute value matcher @attribute==value
+"""
+
 import logging
 import re
-from collections import OrderedDict
+import operator
 
-import six
-
-from blocks.bricks import Brick
-from blocks.utils import dict_union
+import warnings
 
 logger = logging.getLogger(__name__)
 
 
-class Path(object):
-    """Encapsulates a path in a hierarchy of bricks.
-
-    Currently the only allowed elements of pathes are names of the bricks
-    and names of parameters. The latter can only be put in the end of the
-    path. It is planned to support regular expressions in some way later.
-
-    Parameters
-    ----------
-    nodes : list or tuple of path nodes
-        The nodes of the path.
-
-    Attributes
-    ----------
-    nodes : tuple
-        The tuple containing path nodes.
-
+class SelectorParseException(Exception):
     """
-    separator = "/"
-    param_separator = "."
-    separator_re = re.compile("([{}{}])".format(separator, param_separator))
+    Exception raised when the selector expression can't be parsed.
+    """
 
-    class BrickName(str):
 
-        def part(self):
-            return Path.separator + self
+class AbstractSelector(object):
+    @staticmethod
+    def partial_parse_path(path):
+        """
+        Check whether the be begining of the path can be interpreted
+        as this selector. If it can, return the number of characters
+        this type of selector matches and the selector.
+        If it cannot, return 0, None.
+        """
+        return 0, None
 
-    class ParamName(str):
+    def _match(self, brick):
+        "Helper for enumerate, do not use directly"
+        return False
 
-        def part(self):
-            return Path.param_separator + self
+    def enumerate(self, bricks):
+        for brick in bricks:
+            if self._match(brick):
+                yield brick
 
-    def __init__(self, nodes):
-        assert isinstance(nodes, (list, tuple))
-        self.nodes = tuple(nodes)
+    def _enumerate_paths(self, paths_to_bricks):
+        for path, brick in paths_to_bricks.iteritems():
+            if self._match(brick):
+                yield path, brick
 
-    def __str__(self):
-        return "".join([node.part() for node in self.nodes])
+    def enumerate_paths(self, bricks, path=''):
+        if isinstance(bricks, dict):
+            return self._enumerate_paths(bricks)
+        else:
+            paths_to_bricks = {"{}{}".format(path, b.name): b for b in bricks}
+            return self._enumerate_paths(paths_to_bricks)
 
-    def __add__(self, other):
-        return Path(self.nodes + other.nodes)
 
-    def __eq__(self, other):
-        return self.nodes == other.nodes
+class ChildSelector(AbstractSelector):
+    """
+    The single '/' selector - enumerate children
 
-    def __hash__(self):
-        return hash(self.nodes)
+    Parses:
+    /
+    """
+
+    CHILDREN_FIELD = 'children'
 
     @staticmethod
-    def parse(string):
-        """Constructs a path from its string representation.
+    def partial_parse_path(path):
+        if path.startswith('/'):
+            if path.startswith('//'):
+                warnings.warn("The AllDescendantsSelector (//) selector should"
+                              "be matched before the Child (/) selector")
+                return 0, None
+            return 1, ChildSelector()
+        else:
+            return 0, None
 
-        Parameters
-        ----------
-        string : str
-            String representation of the path.
+    def __init__(self, **kwargs):
+        super(ChildSelector, self).__init__(**kwargs)
 
-        .. todo::
+    def enumerate(self, bricks):
+        for brick in bricks:
+            for c in getattr(brick, ChildSelector.CHILDREN_FIELD, []):
+                yield c
 
-            More error checking.
+    def _enumerate_paths(self, paths_to_bricks):
+        for path, brick in paths_to_bricks.iteritems():
+            for c in getattr(brick, ChildSelector.CHILDREN_FIELD, []):
+                yield ("{}/{}".format(path, c.name), c)
 
-        """
-        elements = Path.separator_re.split(string)[1:]
-        separators = elements[::2]
-        parts = elements[1::2]
-        assert len(elements) == 2 * len(separators) == 2 * len(parts)
 
-        nodes = []
-        for separator, part in zip(separators, parts):
-            if separator == Path.separator:
-                nodes.append(Path.BrickName(part))
-            elif Path.param_separator == Path.param_separator:
-                nodes.append(Path.ParamName(part))
+class FieldSelector(AbstractSelector):
+    """
+    The single '.field' selector - enumerate contents of .field
+
+    Parses:
+    .field
+    """
+
+    FIELD_IDENTIFIER_RE = re.compile('^\.([^\d\W]\w*)')
+
+    @staticmethod
+    def partial_parse_path(path):
+        m = FieldSelector.FIELD_IDENTIFIER_RE.match(path)
+        if m:
+            return m.end(), FieldSelector(m.group(1))
+        return 0, None
+
+    def __init__(self, field_name, **kwargs):
+        super(FieldSelector, self).__init__(**kwargs)
+        self.field_name = field_name
+
+    def enumerate(self, bricks):
+        for brick in bricks:
+            for c in getattr(brick, self.field_name, []):
+                yield c
+
+    def _enumerate_paths(self, paths_to_bricks):
+        for path, brick in paths_to_bricks.iteritems():
+            for c in getattr(brick, self.field_name, []):
+                yield ('{}.{}[{}]'.format(path,
+                                          self.field_name,
+                                          c.name),
+                       c)
+
+
+class AllDescendantsSelector(AbstractSelector):
+    """
+    The double '//' selector yields a brick and all its descendants.
+
+    Parses:
+    //
+    """
+
+    @staticmethod
+    def partial_parse_path(path):
+        if path.startswith('//'):
+            return 2, AllDescendantsSelector()
+        else:
+            return 0, None
+
+    def __init__(self, **kwargs):
+        super(AllDescendantsSelector, self).__init__(**kwargs)
+
+    def enumerate(self, bricks):
+        def list_subbricks(brick):
+            yield brick
+            for child in brick.children:
+                for c in list_subbricks(child):
+                    yield c
+
+        for brick in bricks:
+            for r in list_subbricks(brick):
+                yield r
+
+    def _enumerate_paths(self, paths_to_bricks):
+        def list_subbricks(path, brick):
+            yield path, brick
+            for child in brick.children:
+                for c in list_subbricks("{}/{}".format(path, child.name),
+                                        child):
+                    yield c
+
+        for path, brick in paths_to_bricks.iteritems():
+            for r in list_subbricks(path, brick):
+                yield r
+
+
+class RegexpSelector(AbstractSelector):
+    """
+    The [name_regexp] selector matches names matching exactly the given
+    regexp.
+
+    Parses:
+    -------
+    [regular_expression]
+    """
+    @staticmethod
+    def partial_parse_path(path):
+        if not path.startswith('['):
+            return 0, None
+        num_paren = 1
+        for offset, char in enumerate(path[1:]):
+            if char == '[':
+                num_paren += 1
+            elif char == ']':
+                num_paren -= 1
+                if num_paren == 0:
+                    break
+        pattern_end = offset + 1
+        if path[pattern_end] != ']':
+            raise SelectorParseException("couldn't parse regexp selector "
+                                         "starting with: {}".format(path))
+        return pattern_end + 1, RegexpSelector(path[1:pattern_end])
+
+    def __init__(self, name_re, **kwargs):
+        super(RegexpSelector, self).__init__(**kwargs)
+        self.name_re = re.compile('^{}$'.format(name_re))
+
+    def _match(self, brick):
+        return self.name_re.match(brick.name) is not None
+
+
+class NotFound():
+    pass
+
+
+def recurrent_getattr(obj, fields):
+    """Recursively get fields of obj.
+
+    """
+    for f in fields:
+        if obj is NotFound:
+            break
+        obj = getattr(obj, f, NotFound)
+    return obj
+
+
+def recurrent_setattr(obj, fields, value):
+    """Recursively set fields of obj.
+
+    """
+    for f in fields[::-1]:
+        obj = getattr(obj, f)
+    return setattr(obj, fields[-1], value)
+
+
+class AttributeMatchSelector(AbstractSelector):
+    """
+    Realize matches by tests on attributes (by default on the name).
+
+    Parses:
+    name
+    \@attr?
+    \@attr == value
+    \@attr != value
+    """
+    _operator_dict = {'==': operator.eq,
+                      '!=': operator.ne,
+                      }
+
+    PYTHON_IDENTIFIER_RE = re.compile('^[^\d\W]\w*')
+    ATTR_CHECK_RE = re.compile('^@([^\d\W]\w*'  # @ single identifier
+                               '(?:\.[^\d\W]\w*)*)'  # dotted subfields
+                               '(?:\?|'  # a ? or..
+                               '(?:\s*({})\s*([^\d\W]\w*))'  # op & identifier
+                               ')'  #
+                               .format('|'.join(_operator_dict.keys())))
+
+    @staticmethod
+    def partial_parse_path(path):
+        # 1. try a direct match on name
+        m = AttributeMatchSelector.PYTHON_IDENTIFIER_RE.match(path)
+        if m:
+            return m.end(), AttributeMatchSelector('name',
+                                                   operator.eq,
+                                                   m.group(0))
+        # 2. try a match on attribute value
+        m = AttributeMatchSelector.ATTR_CHECK_RE.match(path)
+        if m:
+            attr_name, op, attr_val = m.groups()
+            if op is not None:
+                op = AttributeMatchSelector._operator_dict[op]
             else:
-                # This can not if separator_re is a correct regexp
-                raise ValueError("Wrong separator {}".format(separator))
+                op = operator.is_not
+                attr_val = NotFound
+            return m.end(), AttributeMatchSelector(attr_name,
+                                                   op,
+                                                   attr_val)
+        return 0, None
 
-        return Path(nodes)
+    def __init__(self, attr_name, operator, attr_val, **kwargs):
+        super(AttributeMatchSelector, self).__init__(**kwargs)
+        self.attr_names = attr_name
+        if isinstance(self.attr_names, str):
+            self.attr_names = self.attr_names.split('.')
+        self.attr_val = attr_val
+        self.operator = operator
+
+    def _match(self, brick):
+        val = recurrent_getattr(brick, self.attr_names)
+        return self.operator(val, self.attr_val)
 
 
-class Selector(object):
-    """Selection of elements of a hierarchy of bricks.
+class TerminatorSelector(AbstractSelector):
+    """
+    A dummy selector class which raises whtn the path is non-empty.
+    It is used as a canary at the end of the Selector.ParseOrder list.
+    """
+
+    @staticmethod
+    def partial_parse_path(path):
+        raise SelectorParseException()
+
+
+# Non-parsable selectors
+class Filter(AbstractSelector):
+    def __init__(self, filter_fun, **kwargs):
+        super(Filter, self).__init__(**kwargs)
+        self.filter_fun = filter_fun
+
+    def _match(self, brick):
+        return self.filter_fun(brick)
+
+
+def _op_in(v, s):
+    return v in s
+
+
+def in_(set_or_attr_name, value_set=None):
+    """Select based on set membership.
+
+    Two variants are supported:
+    1. in_(value_set) selects bricks that are in `value_set`
+    2. in_(attr_name, value_set) selects bricks whose attribute (or sub-
+       attributes) are in the `value_set`.
 
     Parameters
     ----------
-    bricks : list of Bricks
-        The bricks of the selection.
+    attr_name : string
+        The name of the attribute, or dot-delimited chain of attribute names.
+    value_set : set
+        Set of values in which membership is evaluated.
 
     """
-    def __init__(self, bricks):
-        if isinstance(bricks, Brick):
-            bricks = [bricks]
-        self.bricks = bricks
+    if value_set:
+        return AttributeMatchSelector(set_or_attr_name,
+                                      _op_in,
+                                      value_set)
+    else:
+        return Filter(lambda brick: brick in set_or_attr_name)
+
+
+class BrickSelection(set):
+    """A set of selected bricks. Provides conveninece methods on sets.
+
+    """
+
+    def enumerate(self, selector):
+        if not isinstance(selector, AbstractSelector):
+            selector = Selector(selector)
+        return BrickSelection(selector.enuerate(self))
+
+    def get_params(self):
+        """Select all parameters.
+
+        Shorthand for:
+            Selector('//.params').enumerate_paths(self)
+
+        """
+        return Selector('//.params').enumerate_paths(self)
 
     def select(self, path):
-        """Select a subset of current selection matching the path given.
+        """Compatibility with old interface select method
 
-        Parameters
-        ----------
-        path : :class:`Path` or str
-            The path for the desired selection. If a string is given
-            it is parsed into a path.
-
-        .. warning::
-
-            Current implementation is very inefficient (theoretical
-            complexity is :math:`O(n^3)`, where :math:`n` is the number
-            of bricks in the hierarchy). It can be sped up easily.
-
-        Returns
-        -------
-        Depending on the path given, one of the following:
-
-        * A :class:`Selector` with desired bricks.
-        * A list of shared Theano variables.
+        It differs from the :meth:`enumerate` method in the way forward
+        slash is treated: select ignores it, while enumerate will select
+        children.
 
         """
-        if isinstance(path, six.string_types):
-            path = Path.parse(path)
+        if path.startswith('/') and not path.startswith('//'):
+            path = path[1:]
+        return self.enumerate(path)
 
-        current_bricks = [None]
-        for node in path.nodes:
-            next_bricks = []
-            if isinstance(node, Path.ParamName):
-                return list(Selector(current_bricks).get_params(node).values())
-            if isinstance(node, Path.BrickName):
-                for brick in current_bricks:
-                    children = brick.children if brick else self.bricks
-                    matching_bricks = [child for child in children
-                                       if child.name == node]
-                    for match in matching_bricks:
-                        if match not in next_bricks:
-                            next_bricks.append(match)
-            current_bricks = next_bricks
-        return Selector(current_bricks)
+    def setattr(self, name, value):
+        fields = name.split('.')
+        for o in self:
+            recurrent_setattr(o, fields, value)
 
-    def get_params(self, param_name=None):
-        """Returns parameters the selected bricks and their ancestors.
 
-        Parameters
-        ----------
-        param_name : :class:`Path.ParamName`
-            If given, only parameters with the name `param_name` are
-            returned.
+class Selector(AbstractSelector):
+    ParseOrder = [AllDescendantsSelector, ChildSelector,
+                  FieldSelector,
+                  RegexpSelector,
+                  AttributeMatchSelector,
+                  TerminatorSelector]
 
-        Returns
-        -------
-        params : OrderedDict
-            A dictionary of (`path`, `param`) pairs, where `path` is the
-            string representation of the part to the parameter, `param` is
-            the parameter.
+    def __init__(self, path_or_selector_list, **kwargs):
+        super(Selector, self).__init__(**kwargs)
+        self.selectors = []
+        if not isinstance(path_or_selector_list, list):
+            selector_list = [path_or_selector_list]
+        for path_or_sel in selector_list:
+            if isinstance(path_or_sel, AbstractSelector):
+                self.selectors.append(path_or_sel)
+            else:
+                assert isinstance(path_or_sel, str)
+                path = path_or_sel
+                while path:
+                    for selector_klass in Selector.ParseOrder:
+                        offset, sel = selector_klass.partial_parse_path(path)
+                        if offset:
+                            path = path[offset:]
+                            self.selectors.append(sel)
+                            break
 
-        """
-        def recursion(brick):
-            # TODO path logic should be separate
-            result = [(Path([Path.BrickName(brick.name),
-                             Path.ParamName(param.name)]),
-                       param)
-                      for param in brick.params
-                      if not param_name or param.name == param_name]
-            result = OrderedDict(result)
-            for child in brick.children:
-                for path, param in recursion(child).items():
-                    new_path = Path([Path.BrickName(brick.name)]) + path
-                    result[new_path] = param
-            return result
-        result = dict_union(*[recursion(brick)
-                            for brick in self.bricks])
-        return OrderedDict((str(key), value) for key, value in result.items())
+    def enumerate(self, bricks):
+        for sel in self.selectors:
+            bricks = set(sel.enumerate(bricks))
+        return BrickSelection(bricks)
+
+    def _enumerate_paths(self, paths_to_bricks):
+        for sel in self.selectors:
+            paths_to_bricks = dict(sel.enumerate_paths(paths_to_bricks,
+                                                       None))
+        return paths_to_bricks

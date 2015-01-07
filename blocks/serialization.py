@@ -2,7 +2,7 @@ import numpy
 import logging
 
 from blocks.bricks import Brick
-from blocks.select import Selector
+from blocks.select import BrickSelection
 
 logger = logging.getLogger(__name__)
 
@@ -14,15 +14,15 @@ def save_params(bricks, path):
 
     Parameters
     ----------
-    bricks : Brick or Selector
+    bricks : Brick or BrickSelection
         The bricks.
     path : str of file
         Destination for saving.
 
     """
     if isinstance(bricks, Brick):
-        bricks = Selector([bricks])
-    assert isinstance(bricks, Selector)
+        bricks = BrickSelection([bricks])
+    assert isinstance(bricks, BrickSelection)
 
     params = bricks.get_params()
     # numpy.savez is vulnerable to slashes in names
@@ -38,15 +38,15 @@ def load_params(bricks, path):
 
     Parameters
     ----------
-    bricks : Brick or Selector
+    bricks : Brick or BrickSelection
         The bricks.
     path : str or file
         Source for loading.
 
     """
     if isinstance(bricks, Brick):
-        bricks = Selector([bricks])
-    assert isinstance(bricks, Selector)
+        bricks = BrickSelection([bricks])
+    assert isinstance(bricks, BrickSelection)
 
     param_values = {name.replace("-", "/"): value
                     for name, value in numpy.load(path).items()}

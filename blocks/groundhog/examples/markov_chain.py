@@ -13,7 +13,7 @@ from groundhog.trainer.SGD import SGD
 
 from blocks.bricks import Tanh
 from blocks.bricks.recurrent import GatedRecurrent
-from blocks.select import Selector
+from blocks.select import BrickSelection
 from blocks.graph import ComputationGraph
 from blocks.bricks.sequence_generators import (
     SequenceGenerator, LinearReadout, SoftmaxEmitter, LookupFeedback)
@@ -100,7 +100,7 @@ def main():
     logger.debug("Parameters:\n" +
                  pprint.pformat(
                      [(key, value.get_value().shape) for key, value
-                      in Selector(generator).get_params().items()],
+                      in BrickSelection(generator).get_params().items()],
                      width=120))
 
     if args.mode == "train":
