@@ -1,4 +1,18 @@
-"""Support for computing monitoring channels from bricks."""
+"""This part of the framework helps you monitor your model during training.
+
+:class:`MonitorChannels` describe quantities that should be monitored. They
+can either be Theano variables (e.g. the objective function, the weight
+norms, etc.) or they can be callable functions (e.g. if you want to use
+NumPy to calculate eigenvalues, or sample text from your language model).
+
+.. todo::
+
+   Monitored Theano variables might depend on inputs beyond those given to
+   the model. There should be a way of providing these to the monitoring
+   channels, collecting them, and compiling them as part of the Theano
+   function that performs monitoring.
+
+"""
 import logging
 from abc import ABCMeta, abstractmethod
 
@@ -7,11 +21,96 @@ from blocks.utils import shared_expression, update_instance
 logger = logging.getLogger(__name__)
 
 
+class MonitorChannel(object):
+    """A channel to monitor
+
+    Parameters
+    ----------
+    name : str
+        The name of this monitor channel, should be unique in order to
+        distinguish channels.
+
+    """
+    def __init__(self, name):
+        update_instance(self, locals())
+
+
+class VariableMonitorChannel(MonitorChannel):
+    """Monitors a Theano variable, optionally with an aggregation scheme.
+
+    .. warning::
+
+       The VariableMonitorChannel should be instantiated by the
+       :meth:`AggregationScheme.get_channel` method, not directly.
+
+    Example usages are:
+
+    * computing the mean of some value over examples, sequence lengths etc.
+    * tracking a parameter of a model
+    * monitoring a regularization penalty
+
+    The VariableMonitorChannel maintains a set of Theano shared values
+    called accumulators and specifies how they shoud be initialized, and
+    updated with incremental calculations. Finally, it provides a Theano
+    expression that reads the accumulators and computes the final value.
+
+    Parameters
+    ----------
+    aggregation_scheme : :class:`AggregationScheme`
+        The aggregation scheme that constructed this VariableMonitorChannel
+    initialization_updates : list of Theano updates
+        Updates that specify how to initialize shared variables of this
+        VariableMonitorChannel. *Should only use shared variables and
+        constants in the update expression.*
+    accumulation_updates : list of Theano updates
+        Updates that specify how a new batch of data gets processed
+        by this VariableMonitorChannel. *Can refer to model inputs.*
+    readout_expression : list of Theano variables
+        Theano variable that computes the final value based on accumulated
+        partial results. *Expression should only consist of shared
+        variables and constants.*
+
+    Attributes
+    ----------
+    All constructor parameters are accessible as attributes.
+
+    """
+    def __init__(self, aggregation_scheme, initialization_updates=None,
+                 accumulation_updates=None, readout_expression=None, **kwargs):
+        super(VariableMonitorChannel, self).__init__(**kwargs)
+        if initialization_updates is None:
+            initialization_updates = []
+        if accumulation_updates is None:
+            accumulation_updates = []
+        update_instance(self, locals())
+
+
+class FunctionMonitorChannel(MonitorChannel):
+    """A function whose output should be monitored
+
+    Parameters
+    ----------
+    function : callable
+        A callable function, which takes a model, training dataset, and set
+        of monitoring datasets as arguments.
+
+    Notes
+    -----
+    The values returned by callable monitor channels can be any Python
+    object.
+
+    """
+    def __init__(self, function, **kwargs):
+        super(FunctionMonitorChannel, self).__init__(**kwargs)
+        assert callable(function)
+        update_instance(self, locals())
+
+
 class AggregationScheme(object):
     """Specify how to incrementally evaluate a Theano variable on data.
 
-    An AggregationScheme allocates :class:`VariableMonitorChannel`s
-    that can incrementally compute the value of a Theano variable on a full
+    An AggregationScheme allocates :class:`VariableMonitorChannel`s that
+    can incrementally compute the value of a Theano variable on a full
     dataset by aggregating partial results computed on multiple batches.
 
     The AggregationScheme should be attached via the tag
@@ -92,52 +191,3 @@ def model_property(expression, name=None):
         expression.name = name
     expression.tag.aggregation_scheme = ModelProperty(expression)
     return expression
-
-
-class VariableMonitorChannel(object):
-    """Monitors a Theano variable, optionally with an aggregation scheme.
-
-    .. warning::
-
-       The VariableMonitorChannel should be instantiated by the
-       :meth:`AggregationScheme.get_channel` method, not directly.
-
-    Example usages are:
-
-    * computing the mean of some value over examples, sequence lengths etc.
-    * tracking a parameter of a model
-    * monitoring a regularization penalty
-
-    The VariableMonitorChannel maintains a set of Theano shared values
-    called accumulators and specifies how they shoud be initialized, and
-    updated with incremental calculations. Finally, it provides a Theano
-    expression that reads the accumulators and computes the final value.
-
-    Parameters
-    ----------
-    aggregation_scheme : :class:`AggregationScheme`
-        The aggregation scheme that constructed this VariableMonitorChannel
-    initialization_updates : list of Theano updates
-        Updates that specify how to initialize shared variables of this
-        VariableMonitorChannel. *Should only use shared variables and
-        constants in the update expression.*
-    accumulation_updates : list of Theano updates
-        Updates that specify how a new batch of data gets processed
-        by this VariableMonitorChannel. *Can refer to model inputs.*
-    readout_expression : list of Theano variables
-        Theano variable that computes the final value based on accumulated
-        partial results. *Expression should only consist of shared
-        variables and constants.*
-
-    Attributes
-    ----------
-    All constructor parameters are accessible as attributes.
-
-    """
-    def __init__(self, aggregation_scheme, initialization_updates=None,
-                 accumulation_updates=None, readout_expression=None):
-        if initialization_updates is None:
-            initialization_updates = []
-        if accumulation_updates is None:
-            accumulation_updates = []
-        update_instance(self, locals())
