@@ -84,7 +84,7 @@ class ComputationGraph(object):
         return ComputationGraph(theano.clone(self.outputs,
                                              replace=replacements))
 
-    def function(self):
+    def get_theano_function(self):
         """Create Theano function from the graph contained."""
         return theano.function(self.inputs, self.outputs, updates=self.updates)
 
