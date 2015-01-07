@@ -100,16 +100,15 @@ def shared_floatx(value, name=None, borrow=False, dtype=None):
                          borrow=borrow)
 
 
-def shared_for_expression(expression, name=None):
-    """Construct a shared variable to hold the results of a theano expression.
+def shared_expression(expression, name=None):
+    """Construct a shared variable to hold the value of Theano expression.
 
     Parameters
     ----------
-    expression : theano variable
+    expression : Theano variable
         The expression whose dtype and ndim will be used to construct
         the new shared variable.
-
-    name : string or None
+    name : string or None, optional
         The name of the shared variable. If None, the name is determined
         based on expression's name.
 
@@ -117,9 +116,8 @@ def shared_for_expression(expression, name=None):
     expression = tensor.as_tensor_variable(expression)
     if name is None:
         name = "shared_{}".format(expression.name)
-    return theano.shared(numpy.zeros((2,) * expression.ndim,
-                                     dtype=expression.dtype),
-                         name=name)
+    return theano.shared(numpy.zeros((0,) * expression.ndim,
+                                     dtype=expression.dtype), name=name)
 
 
 def reraise_as(new_exc):
@@ -231,24 +229,25 @@ def is_graph_input(variable):
 
     Parameters
     ----------
-        variable: theano expression
+    variable : Theano variable
 
     Returns
     -------
-        bool
+    bool
+        True if the variable is a graph input, False otherwise.
 
     """
-    return (not variable.owner
-            and not isinstance(variable, SharedVariable)
-            and not isinstance(variable, TensorConstant)
-            and not isinstance(variable, ScalarConstant))
+    return (not variable.owner and
+            not isinstance(variable, SharedVariable) and
+            not isinstance(variable, TensorConstant) and
+            not isinstance(variable, ScalarConstant))
 
 
 def graph_inputs(variables, blockers=None):
     """Compute inputs needed to compute values in variables.
 
     This function is similar to :meth:`theano.gof.graph.inputs`. However,
-    it doesn't tread shared and constant values as inputs.
+    it doesn't consider shared and constant values inputs.
 
     Parameters
     ----------
