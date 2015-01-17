@@ -26,6 +26,13 @@ class BinaryCrossEntropy(CostMatrix):
         return cost
 
 
+class CategoricalCrossEntropy(CostMatrix):
+    @application
+    def cost_matrix(self, y, y_hat):
+        cost = tensor.nnet.categorical_crossentropy(y_hat, y)
+        return cost
+
+
 class AbsoluteError(CostMatrix):
     @application
     def cost_matrix(self, y, y_hat):
