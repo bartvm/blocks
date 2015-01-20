@@ -23,7 +23,7 @@ def test_in_memory():
     filename = 'epoch_test.pkl'
     assert not os.path.exists(filename)
     with open(filename, 'wb') as f:
-        dill.dump(epoch, f, protocol=dill.HIGHEST_PROTOCOL)
+        dill.dump(epoch, f)
     try:
         assert os.path.getsize(filename) < 1024 * 1024  # Less than 1MB
 

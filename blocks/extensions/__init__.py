@@ -13,12 +13,27 @@ class TrainingExtension(object):
     typically add a certain functionality to the training procedure,
     e.g. running validation on auxiliarry datasets or early stopping.
 
+    Parameters
+    ----------
+    name : str, optional
+        The name of the extension. The names are useful in order to
+        distinguish between several extensions of the same type that
+        belongs to the same main loop. By default the name is set to
+        the name of the class.
+
     Attributes
     ----------
     main_loop : :class:`MainLoop`
         The main loop to which the extension belongs.
+    name : str
+        The name of the extension.
 
     """
+    def __init__(self, name=None):
+        if not name:
+            name = self.__class__.__name__
+        self.name = name
+
     def dispatch(self, callback_name, *args):
         """Runs callback with the given name.
 
@@ -92,18 +107,22 @@ class SimpleExtension(TrainingExtension):
         If ``True``, :meth:`do` is invoked before the first epoch.
     after_every_epoch : bool
         If ``True``, :meth:`do` is invoked after every epoch.
-    after_every_iteration : bool
-        If ``True``, :meth:`do` is invoked after every iteration.
+    after_every_batch: bool
+        If ``True``, :meth:`do` is invoked after every batch.
     after_training : bool
         If ``True``, :meth:`do` is invoked after training.
     after_n_epochs : int, optional
-        If not ``None``, :meth:`do` is invoked when `after_n_epochs` are
-        done.
+        If not ``None``, :meth:`do` is invoked when `after_n_epochs`
+        epochs are done.
+    after_n_batches : int, optional
+        If not ``None``, :meth:`do` is invoked when `after_n_batches`
+        batches are processed.
 
     """
     def __init__(self, before_first_epoch=False, after_every_epoch=False,
-                 after_every_iteration=False, after_training=False,
-                 after_n_epochs=None):
+                 after_every_batch=False, after_training=False,
+                 after_n_epochs=None, after_n_batches=None, **kwargs):
+        super(SimpleExtension, self).__init__(**kwargs)
         self._conditions = []
         if before_first_epoch:
             self.add_condition(
@@ -111,15 +130,14 @@ class SimpleExtension(TrainingExtension):
                 predicate=lambda log: log.status.epochs_done == 0)
         if after_every_epoch:
             self.add_condition("after_epoch")
-        if after_every_iteration:
-            self.add_condition("after_iteration")
+        if after_every_batch:
+            self.add_condition("after_batch")
         if after_training:
             self.add_condition("after_training")
         if after_n_epochs:
-            self.add_condition(
-                "after_epoch",
-                predicate=lambda log:
-                    log.status.epochs_done == after_n_epochs)
+            self.invoke_after_n_epochs(after_n_epochs)
+        if after_n_batches:
+            self.invoke_after_n_batches(after_n_batches)
 
     def add_condition(self, callback_name, predicate=None, arguments=None):
         """Adds a condition under which a :meth:`do` is called.
@@ -144,6 +162,18 @@ class SimpleExtension(TrainingExtension):
         if not predicate:
             predicate = lambda log: True
         self._conditions.append((callback_name, predicate, arguments))
+
+    def invoke_after_n_epochs(self, n_epochs):
+        self.add_condition(
+            "after_epoch",
+            predicate=lambda log:
+                log.status.epochs_done == n_epochs)
+
+    def invoke_after_n_batches(self, n_batches):
+        self.add_condition(
+            "after_batch",
+            predicate=lambda log:
+                log.status.iterations_done == n_batches)
 
     @abstractmethod
     def do(self, which_callback, *args):
@@ -183,19 +213,16 @@ class FinishAfter(SimpleExtension):
     def __init__(self, **kwargs):
         super(FinishAfter, self).__init__(**kwargs)
 
-    def do(self, which_callback):
+    def do(self, which_callback, *args):
         self.main_loop.log.current_row.training_finish_requested = True
 
 
 class Printing(SimpleExtension):
     """Prints log messages to the screen."""
     def __init__(self, **kwargs):
-        def set_if_absent(name):
-            if name not in kwargs:
-                kwargs[name] = True
-        set_if_absent("before_first_epoch")
-        set_if_absent("after_training")
-        set_if_absent("after_every_epoch")
+        kwargs.setdefault("before_first_epoch", True)
+        kwargs.setdefault("after_training", True)
+        kwargs.setdefault("after_every_epoch", True)
         super(Printing, self).__init__(**kwargs)
 
     def _print_attributes(self, attribute_tuples):
@@ -203,7 +230,7 @@ class Printing(SimpleExtension):
             if not attr.startswith("_"):
                 print("\t", "{}:".format(attr), value)
 
-    def do(self, which_callback):
+    def do(self, which_callback, *args):
         log = self.main_loop.log
         print("".join(79 * "-"))
         if which_callback == "before_epoch" and log.status.epochs_done == 0:
