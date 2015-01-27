@@ -1,0 +1,28 @@
+#!/usr/bin/env python
+import sys
+from argparse import ArgumentParser, FileType
+
+from blocks.scripts import count_tokens
+
+if __name__ == '__main__':
+    parser = ArgumentParser(
+        description="Count words or characters in text files. Reads lines "
+                    "from a text file(s) or standard input and counts the "
+                    "number of tokens. Outputs a list of token counts and "
+                    "tokens separated by a space. Can be used in pipelines "
+                    "e.g. to count lowercased tokens use: `tr [:upper:] "
+                    "[:lower:] | blocks-count-tokens` ")
+    parser.add_argument(
+        'infile', type=FileType('r'), nargs='?', default=sys.stdin,
+        help="The file from which to read text")
+    parser.add_argument(
+        'outfile', type=FileType('w'), nargs='?', default=sys.stdout,
+        help="The file to which to write word counts")
+    parser.add_argument(
+        '-c', '--characters', action='store_true',
+        help="Count characters instead of words. To ignore spaces use "
+             "`tr -d ' '`")
+    args = parser.parse_args()
+
+    count_tokens(args.infile, args.outfile,
+                 'character' if args.characters else 'word')
