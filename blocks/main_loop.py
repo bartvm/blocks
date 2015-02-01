@@ -76,8 +76,10 @@ class MainLoop(object):
         a `training_finish_requested` record in the log.
 
         """
-        self.original_handler = signal.signal(
-            signal.SIGINT, self._handle_keyboard_interrupt)
+        self.sigint_handler = signal.signal(
+            signal.SIGINT, self._handle_interrupt)
+        self.sigterm_handler = signal.signal(
+            signal.SIGTERM, self._handle_interrupt)
         try:
             logger.info("Entered the main loop")
             if not self.status._training_started:
@@ -98,7 +100,8 @@ class MainLoop(object):
             self.log.current_row.training_finished = True
         finally:
             self._run_extensions('after_training')
-            signal.signal(signal.SIGINT, self.original_handler)
+            signal.signal(signal.SIGINT, self.sigint_handler)
+            signal.signal(signal.SIGTERM, self.sigterm_handler)
 
     def find_extension(self, name):
         """Find an extension with a given name.
@@ -156,16 +159,17 @@ class MainLoop(object):
         # the iteration the corresponding log record can be found only in
         # the previous row.
         if (self.log.current_row.training_finish_requested or
-                self.log.current_row.keyboard_interrupt_received or
-                self.log.previous_row.keyboard_interrupt_received):
+                self.log.current_row.interrupt_received or
+                self.log.previous_row.interrupt_received):
             raise TrainingFinish
 
-    def _handle_keyboard_interrupt(self, signal_number, frame):
+    def _handle_interrupt(self, signal_number, frame):
         # After receiving a first keyboard interrupt signal,
         # ignore all following ones.
-        signal.signal(signal.SIGINT, self.original_handler)
+        signal.signal(signal.SIGINT, self.sigint_handler)
+        signal.signal(signal.SIGTERM, self.sigterm_handler)
         self._run_extensions('on_interrupt')
-        self.log.current_row.keyboard_interrupt_received = True
+        self.log.current_row.interrupt_received = True
 
 
 class TrainingFinish(Exception):
