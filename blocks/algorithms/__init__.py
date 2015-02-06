@@ -181,7 +181,8 @@ class GradientDescent(DifferentiableCostMinimizer):
 
         self.total_gradient_norm = named_copy(L2_norm(self.gradients.values()),
                                               "total_gradient_norm")
-        self.steps = self.step_rule.compute_steps(self.gradients)
+        self.steps, self.step_rule_updates = (
+            self.step_rule.compute_steps(self.gradients))
         self.total_step_norm = named_copy(L2_norm(self.steps.values()),
                                           "total_step_norm")
 
@@ -193,6 +194,7 @@ class GradientDescent(DifferentiableCostMinimizer):
         # reproducibility.
         for param in self.params:
             all_updates.append((param, param + self.steps[param]))
+        all_updates += self.step_rule_updates
         self._function = theano.function(self.inputs, [], updates=all_updates)
         logger.info("The training algorithm is initialized")
 
@@ -223,7 +225,8 @@ class StepRule(object):
 
         Returns
         -------
-            A Theano expression for the descent step.
+        A tuple (step, updates). `step` is a Theano variable for the step
+        to take, updates are a list of Theano updates.
 
         """
         raise NotImplementedError
@@ -245,22 +248,18 @@ class StepRule(object):
 
         Returns
         -------
-        An ordered dictionary of the same form as `gradient`, with the
-        proposed steps as values.
+        A tuple (steps, updates). `steps` is ordered dictionary of the
+        same form as `gradients`, with the proposed steps as values.
+        Updates are a list of Theano updates.
 
         """
-        return OrderedDict((param, self.compute_step(param, gradients[param]))
-                           for param in gradients)
-
-    def additional_updates(self):
-        """Return updates to be done in addition to parameter modification.
-
-        Returns
-        -------
-        updates : :class:`~tensor.TensorSharedVariable` updates
-
-        """
-        return []
+        parameter_wise  = [self.compute_step(param, gradients[param])
+                           for param in gradients]
+        (steps, updates) = zip(*parameter_wise)
+        steps = OrderedDict((param, step) for param, step
+                            in zip(gradients.keys(), steps))
+        updates = list(itertools.chain(*updates))
+        return steps, updates
 
 
 class SteepestDescent(StepRule):
@@ -282,7 +281,26 @@ class SteepestDescent(StepRule):
         self.learning_rate = shared_floatx(learning_rate)
 
     def compute_step(self, param, gradient):
-        return -self.learning_rate * gradient
+        return -self.learning_rate * gradient, []
+
+
+class Momentum(StepRule):
+    """Accumulates the step with exponential discount.
+
+    Parameters
+    ----------
+    momentum : float, optional
+        The momentum coefficient.
+
+    """
+    def __init__(self, momentum=0.):
+        self.momentum = shared_floatx(momentum)
+
+    def compute_step(self, param, gradient):
+        velocity = shared_floatx(param.get_value() * 0.)
+        step = self.momentum * velocity + gradient
+        updates = [(velocity, step)]
+        return step, updates
 
 
 class GradientClipping(StepRule):
@@ -311,9 +329,10 @@ class GradientClipping(StepRule):
         norm = L2_norm(gradients.values())
         multiplier = tensor.switch(norm < self.threshold,
                                    1, self.threshold / norm)
-        return OrderedDict(
+        steps = OrderedDict(
             (param, gradient * multiplier)
             for param, gradient in gradients.items())
+        return steps, []
 
 
 class CompositeRule(StepRule):
@@ -331,10 +350,8 @@ class CompositeRule(StepRule):
 
     def compute_steps(self, gradients):
         result = gradients
+        updates = []
         for rule in self.components:
-            result = rule.compute_steps(result)
-        return result
-
-    def additional_updates(self):
-        return list(itertools.chain(*(component.additional_updates()
-                                      for component in self.components)))
+            result, more_updates = rule.compute_steps(result)
+            updates += more_updates
+        return result, updates
