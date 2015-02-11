@@ -55,7 +55,7 @@ Quickstart
    >>> from blocks.bricks.cost import CategoricalCrossEntropy, MisclassificationRate
    >>> from blocks.initialization import IsotropicGaussian, Constant
    >>> from blocks.datasets.streams import DataStream
-   >>> from blocks.datasets.mnist import MNIST
+   >>> from blocks.datasets.contrib.mnist import MNIST
    >>> from blocks.datasets.schemes import SequentialScheme
    >>> from blocks.extensions import FinishAfter, Printing
    >>> from blocks.extensions.monitoring import DataStreamMonitoring

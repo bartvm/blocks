@@ -206,7 +206,7 @@ class InMemoryDataset(Dataset):
     is ever called.
 
     >>> import dill
-    >>> from blocks.datasets.mnist import MNIST
+    >>> from blocks.contrib.datasets.mnist import MNIST
     >>> mnist = MNIST('train')
     >>> print("{:,d} KB".format(
     ...     mnist.features.nbytes / 1024)) # doctest: +SKIP

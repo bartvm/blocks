@@ -1,7 +1,4 @@
 sudo: false
-cache:
-  directories:
-    - $TRAVIS_BUILD_DIR/mnist
 branches:
   only:
     - master
@@ -20,18 +17,6 @@ before_install:
       ./miniconda.sh -b
       export PATH=$HOME/miniconda/bin:$PATH
       conda update -q --yes conda
-      # Download MNIST for tests if not loaded from cache
-      if find mnist -empty | read; then
-        mkdir mnist
-        cd mnist
-        curl -O http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz \
-             -O http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz \
-             -O http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz \
-             -O http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz
-        gunzip *-ubyte.gz
-        cd -
-      fi
-      export BLOCKS_DATA_PATH=$PWD
 install:
   # Install all Python dependencies
   - |
@@ -41,6 +26,7 @@ install:
 script:
   - |
       python setup.py install # Tests setup.py (should also install dill)
+      pip install git+git://github.com/bartvm/blocks-contrib.git
       # Must export environment variable so that the subprocess is aware of it
       export THEANO_FLAGS=floatX=$TESTS
       # Running nose2 within coverage makes imports count towards coverage

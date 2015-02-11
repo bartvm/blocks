@@ -156,7 +156,7 @@ control the training process.
 
 We want to train our model on the training set of MNIST.
 
->>> from blocks.datasets.mnist import MNIST
+>>> from blocks.contrib.datasets.mnist import MNIST
 >>> mnist = MNIST("train")
 
 Datasets only provide an interface to the data. For actual training, we will
