@@ -1,4 +1,5 @@
 """The event-based main loop of Blocks."""
+import sys
 import signal
 import logging
 import traceback
@@ -7,7 +8,7 @@ from blocks.log import TrainingLog
 from blocks.utils import reraise_as, unpack
 
 logger = logging.getLogger(__name__)
-
+sys.setrecursionlimit(10000)
 
 class MainLoop(object):
     """The standard main loop of Blocks.
