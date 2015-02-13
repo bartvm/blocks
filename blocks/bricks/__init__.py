@@ -503,7 +503,11 @@ class MLP(Sequence, Initializable, Feedforward):
     def __init__(self, activations, dims, **kwargs):
         self.activations = activations
 
-        self.linear_transformations = [Linear(name='linear_{}'.format(i))
+        # Another solution duplicates code from Brick and initializes Linears
+        # straight away with right name
+        # self.name = kwargs.get('name', self.__class__.__name__.lower())
+
+        self.linear_transformations = [Linear()
                                        for i in range(len(activations))]
         # Interleave the transformations and activations
         application_methods = [brick.apply for brick in interleave(
@@ -512,6 +516,8 @@ class MLP(Sequence, Initializable, Feedforward):
             dims = [None] * (len(activations) + 1)
         self.dims = dims
         super(MLP, self).__init__(application_methods, **kwargs)
+        for i, brick in enumerate(self.linear_transformations):
+            brick.name = '{}_l{}'.format(self.name, i)
 
     @property
     def input_dim(self):
