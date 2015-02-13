@@ -206,15 +206,16 @@ class Linear(Initializable, Feedforward):
         self.output_dim = output_dim
 
     def _allocate(self):
-        W = shared_floatx_zeros((self.input_dim, self.output_dim), name='W')
+        W = shared_floatx_zeros((self.input_dim, self.output_dim),
+                                name=self.name + '_W')
         add_role(W, WEIGHTS)
         self.params.append(W)
-        self.add_auxiliary_variable(W.norm(2), name='W_norm')
+        self.add_auxiliary_variable(W.norm(2), name=self.name + '_W_norm')
         if self.use_bias:
-            b = shared_floatx_zeros((self.output_dim,), name='b')
+            b = shared_floatx_zeros((self.output_dim,), name=self.name + '_b')
             add_role(b, BIASES)
             self.params.append(b)
-            self.add_auxiliary_variable(b.norm(2), name='b_norm')
+            self.add_auxiliary_variable(b.norm(2), name=self.name + '_b_norm')
 
     def _initialize(self):
         if self.use_bias:
