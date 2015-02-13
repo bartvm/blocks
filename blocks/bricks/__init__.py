@@ -206,15 +206,16 @@ class Linear(Initializable, Feedforward):
         self.output_dim = output_dim
 
     def _allocate(self):
-        W = shared_floatx_zeros((self.input_dim, self.output_dim), name='W')
+        W = shared_floatx_zeros((self.input_dim, self.output_dim),
+                                name=self.name + '_W')
         add_role(W, WEIGHTS)
         self.params.append(W)
-        self.add_auxiliary_variable(W.norm(2), name='W_norm')
+        self.add_auxiliary_variable(W.norm(2), name=self.name + '_W_norm')
         if self.use_bias:
-            b = shared_floatx_zeros((self.output_dim,), name='b')
+            b = shared_floatx_zeros((self.output_dim,), name=self.name + '_b')
             add_role(b, BIASES)
             self.params.append(b)
-            self.add_auxiliary_variable(b.norm(2), name='b_norm')
+            self.add_auxiliary_variable(b.norm(2), name=self.name + '_b_norm')
 
     def _initialize(self):
         if self.use_bias:
@@ -502,7 +503,11 @@ class MLP(Sequence, Initializable, Feedforward):
     def __init__(self, activations, dims, **kwargs):
         self.activations = activations
 
-        self.linear_transformations = [Linear(name='linear_{}'.format(i))
+        # Another solution duplicates code from Brick and initializes Linears
+        # straight away with right name
+        # self.name = kwargs.get('name', self.__class__.__name__.lower())
+
+        self.linear_transformations = [Linear()
                                        for i in range(len(activations))]
         # Interleave the transformations and activations
         application_methods = [brick.apply for brick in interleave(
@@ -511,6 +516,8 @@ class MLP(Sequence, Initializable, Feedforward):
             dims = [None] * (len(activations) + 1)
         self.dims = dims
         super(MLP, self).__init__(application_methods, **kwargs)
+        for i, brick in enumerate(self.linear_transformations):
+            brick.name = '{}_l{}'.format(self.name, i)
 
     @property
     def input_dim(self):
