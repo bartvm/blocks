@@ -40,11 +40,11 @@ install:
       pip install -q nose2[coverage-plugin] coveralls
 script:
   - |
-      python setup.py -q install # Tests setup.py (should also install dill)
+      python setup.py install # Tests setup.py (should also install dill)
       # Must export environment variable so that the subprocess is aware of it
-      export THEANO_FLAGS=floatX=$TESTS
+      export THEANO_FLAGS=floatX=$TESTS,optimizer=fast_compile
       # Running nose2 within coverage makes imports count towards coverage
       bokeh-server &> /dev/null &
-      coverage run --source=blocks -m nose2.__main__ tests
+      coverage run --source=blocks -m nose2.__main__ -v tests
 after_script:
   - coveralls

@@ -79,7 +79,7 @@ with applying the linear transformations and activations.
 >>> hidden_to_output = Linear(name='hidden_to_output', input_dim=100, output_dim=10)
 >>> y_hat = Softmax().apply(hidden_to_output.apply(h))
 
-Blocks' uses "bricks" to build models. Bricks are parametrized Theano
+Blocks uses "bricks" to build models. Bricks are parametrized Theano
 operations. What this means is that we start by initializing bricks with
 certain parameters e.g. ``input_dim``. After initialization we can apply our
 bricks on Theano variables to build the model we want. We'll talk more about
@@ -101,7 +101,7 @@ function is:
 
 .. math:: l(\mathbf{f}(\mathbf{x}), y) = -\log f(\mathbf{x})_y + \lambda_1\|\mathbf{W}^{(1)}\|^2 + \lambda_2\|\mathbf{W}^{(2)}\|^2
 
-To get the weights from our model, we will use Blocks' annotation futures (read
+To get the weights from our model, we will use Blocks' annotation features (read
 more about them in the :doc:`cg` tutorial).
 
 >>> from blocks.bricks import WEIGHTS
@@ -118,7 +118,7 @@ more about them in the :doc:`cg` tutorial).
    monitor the performance of our model, the progress monitor will know what
    name to report in the logs.
 
-Where we set :math:`\lambda_1 = \lambda_2 = 0.005`. And that's it! We now have
+Here we set :math:`\lambda_1 = \lambda_2 = 0.005`. And that's it! We now have
 the final objective function we want to optimize.
 
 But creating a simple MLP this way is rather cumbersome. In practice, we would
@@ -165,26 +165,26 @@ stream which makes use of a particular iteration scheme. We will use an
 iteration scheme that iterates over our MNIST examples sequentially in batches
 of size 256.
 
->>> from blocks.datasets import DataStream
+>>> from blocks.datasets.streams import DataStream
 >>> from blocks.datasets.schemes import SequentialScheme
 >>> data_stream = DataStream(mnist, iteration_scheme=SequentialScheme(
 ...     num_examples=mnist.num_examples, batch_size=256))
 
 As our algorithm we will use straightforward SGD with a fixed learning rate.
 
->>> from blocks.algorithms import GradientDescent, SteepestDescent
->>> algorithm = GradientDescent(cost=cost, step_rule=SteepestDescent(learning_rate=0.1))
+>>> from blocks.algorithms import GradientDescent, Scale
+>>> algorithm = GradientDescent(cost=cost, step_rule=Scale(learning_rate=0.1))
 
 During training we will want to monitor the performance of our model on
-separate validation. Let's create a new data stream for that.
+a separate set of examples. Let's create a new data stream for that.
 
 >>> mnist_test = MNIST("test")
 >>> data_stream_test = DataStream(mnist_test, iteration_scheme=SequentialScheme(
 ...     num_examples=mnist_test.num_examples, batch_size=1024))
 
 In order to monitor our performance on this data stream during training, we need
-to use one of Blocks' extensions. In particular, we need to use the
-:class:`.DataStreamMonitoring` extension.
+to use one of Blocks' extensions, namely the :class:`.DataStreamMonitoring`
+extension.
 
 >>> from blocks.extensions.monitoring import DataStreamMonitoring
 >>> monitor = DataStreamMonitoring(

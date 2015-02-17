@@ -1,39 +1,23 @@
-import os
+import logging
 import sys
-import shutil
-from functools import update_wrapper
+from functools import wraps
 
+from six import StringIO
 
-class Discarder(object):
-    def write(self, text):
-        pass
+import blocks
 
 
 def silence_printing(test):
+    @wraps(test)
     def wrapper(*args, **kwargs):
         stdout = sys.stdout
-        sys.stdout = Discarder()
+        sys.stdout = StringIO()
+        logger = logging.getLogger(blocks.__name__)
+        old_level = logger.level
+        logger.setLevel(logging.ERROR)
         try:
             test(*args, **kwargs)
         finally:
             sys.stdout = stdout
-    update_wrapper(wrapper, test)
+            logger.setLevel(old_level)
     return wrapper
-
-
-def temporary_files(*files):
-    def wrap_test(test):
-        def wrapped_test(*args, **kwargs):
-            if any(os.path.exists(file_) for file_ in files):
-                raise IOError
-            try:
-                test(*args, **kwargs)
-            finally:
-                for file_ in files:
-                    if os.path.exists(file_):
-                        rm = (shutil.rmtree if os.path.isdir(file_)
-                              else os.remove)
-                        rm(file_)
-        update_wrapper(wrapped_test, test)
-        return wrapped_test
-    return wrap_test

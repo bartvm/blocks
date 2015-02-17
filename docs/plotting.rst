@@ -40,7 +40,8 @@ function :math:`f(x) = x^a` to :math:`f(x) = x^2`.
 We train on a 150 random points in :math:`[0, 1]`.
 
 >>> import numpy
->>> from blocks.datasets import DataStream, ContainerDataset
+>>> from blocks.datasets.streams import DataStream
+>>> from blocks.datasets import ContainerDataset
 >>> sample = theano.tensor.scalar('data')
 >>> data_stream = DataStream(ContainerDataset(
 ...     numpy.random.rand(150).astype(theano.config.floatX)))
@@ -48,7 +49,7 @@ We train on a 150 random points in :math:`[0, 1]`.
 Now let's train with gradient descent and plot the results.
 
 >>> from blocks.main_loop import MainLoop
->>> from blocks.algorithms import GradientDescent, SteepestDescent
+>>> from blocks.algorithms import GradientDescent, Scale
 >>> from blocks.extensions import FinishAfter
 >>> from blocks.extensions.monitoring import TrainingDataMonitoring
 >>> from blocks.extensions.plot import Plot
@@ -57,7 +58,7 @@ Now let's train with gradient descent and plot the results.
 >>> main_loop = MainLoop(
 ...     model=None, data_stream=data_stream,
 ...     algorithm=GradientDescent(cost=cost,
-...                               step_rule=SteepestDescent(learning_rate=0.1)),
+...                               step_rule=Scale(learning_rate=0.1)),
 ...     extensions=[FinishAfter(after_n_epochs=1),
 ...                 TrainingDataMonitoring([cost, a_copy], after_every_batch=True),
 ...                 Plot('Plotting example', channels=[['cost'], ['a']],

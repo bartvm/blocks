@@ -1,11 +1,11 @@
 """The interface of bricks and some simple implementations."""
 import logging
-from itertools import chain
 
 import numpy
 from six import add_metaclass
 from theano import tensor
 from theano.sandbox.rng_mrg import MRG_RandomStreams
+from toolz import interleave
 
 from blocks import config
 from blocks.bricks.base import application, _Brick, Brick, lazy
@@ -248,6 +248,13 @@ class Linear(Initializable, Feedforward):
             output += b
         return output
 
+    def get_dim(self, name):
+        if name == 'input_':
+            return self.input_dim
+        if name == 'output':
+            return self.output_dim
+        super(Linear, self).get_dim(name)
+
 
 class Maxout(Brick):
     """Maxout pooling transformation.
@@ -292,8 +299,8 @@ class Maxout(Brick):
         """
         last_dim = input_.shape[-1]
         output_dim = last_dim // self.num_pieces
-        new_shape = ([input_.shape[i] for i in range(input_.ndim - 1)]
-                     + [output_dim, self.num_pieces])
+        new_shape = ([input_.shape[i] for i in range(input_.ndim - 1)] +
+                     [output_dim, self.num_pieces])
         output = tensor.max(input_.reshape(new_shape, ndim=input_.ndim + 1),
                             axis=input_.ndim)
         return output
@@ -498,8 +505,8 @@ class MLP(Sequence, Initializable, Feedforward):
         self.linear_transformations = [Linear(name='linear_{}'.format(i))
                                        for i in range(len(activations))]
         # Interleave the transformations and activations
-        application_methods = [brick.apply for brick in list(chain(*zip(
-            self.linear_transformations, activations))) if brick is not None]
+        application_methods = [brick.apply for brick in interleave(
+            [self.linear_transformations, activations]) if brick is not None]
         if not dims:
             dims = [None] * (len(activations) + 1)
         self.dims = dims

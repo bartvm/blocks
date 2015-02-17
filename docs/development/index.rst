@@ -181,33 +181,29 @@ intended. Instead, use:
            bar.append('baz')
            self.bar = bar
 
-Docstrings
-----------
-Blocks follows the `NumPy docstring standards`_. For a quick introduction, have
-a look at the NumPy_ or Napoleon_ examples of compliant docstrings. A few common
-mistakes to avoid:
+Writing error messages
+~~~~~~~~~~~~~~~~~~~~~~
+Comprehensive error messages can be a great way to inform users of what could
+have gone wrong. However, lengthy error messages can clutter code, and
+implicitly concatenated strings over multiple lines are frustrating to edit. To
+prevent this, use a separate triple-quoted string with escaped newlines to
+store the detailed explanation of your error. Keep a terse error message
+directly in the code though, so that someone reading the code still knows what
+the error is being raised for.
 
-* There is no line break after the opening quotes (``"""``).
-* There is an empty line before the closing quotes (``"""``).
-* The summary should not be more than one line.
+.. code-block:: python
 
-The docstrings are formatted using reStructuredText_, and can make use of all
-the formatting capabilities this provides. They are rendered into HTML
-documentation using the `Read the Docs`_ service. After code has been merged,
-please ensure that documentation was built successfully and that your docstrings
-rendered as you intended by looking at the `online documentation`_, which is
-automatically updated.
+   informative_error = """
 
-Writing doctests_ is encouraged, and they are run as part of the test suite.
-They should use Python 3 syntax.
+   You probably passed the wrong keyword argument, which caused this error. \
+   Please pass `b` instead of `{value}`, and have a look at the documentation \
+   of the `is_b` method for details."""
 
-.. _NumPy docstring standards: https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt
-.. _NumPy: https://github.com/numpy/numpy/blob/master/doc/example.py
-.. _Napoleon: http://sphinxcontrib-napoleon.readthedocs.org/en/latest/example_numpy.html
-.. _reStructuredText: http://docutils.sourceforge.net/rst.html
-.. _doctests: https://docs.python.org/2/library/doctest.html
-.. _Read the Docs: https://readthedocs.org/
-.. _online documentation: http://blocks.readthedocs.org/
+   def is_b(value):
+       """Raises an error if the value is not 'b'."""
+       if value != 'b':
+           raise ValueError("wrong value" + informative_error.format(value))
+       return value
 
 Unit testing
 ------------
@@ -234,6 +230,12 @@ The test suite can be executed locally using nose2_ [#]_.
 .. _nose2: https://readthedocs.org/projects/nose2/
 .. _nose: http://nose.readthedocs.org/en/latest/
 
+Writing and building documentation
+----------------------------------
+The :doc:`documentation guidelines <docs>` outline how to write documentation
+for Blocks, and how to build a local copy of the documentation for testing
+purposes.
+
 Internal API
 ------------
 The :doc:`development API reference <internal_api>` contains documentation on
@@ -244,3 +246,4 @@ to Blocks, have a look at the :doc:`user API reference </api/index>` instead.
    :hidden:
 
    internal_api
+   docs

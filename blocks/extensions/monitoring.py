@@ -1,7 +1,7 @@
 """Extensions for monitoring the training process."""
 import logging
 
-from blocks.extensions import SimpleExtension
+from blocks.extensions import SimpleExtension, TrainingExtension
 from blocks.algorithms import DifferentiableCostMinimizer
 from blocks.monitoring.evaluators import AggregationBuffer, DatasetEvaluator
 
@@ -9,16 +9,38 @@ PREFIX_SEPARATOR = '_'
 logger = logging.getLogger()
 
 
-def _add_records(log, prefix, record_tuples):
-    """Helper function to add monitoring records to the log."""
-    for name, value in record_tuples:
-        if not name:
-            raise ValueError("monitor variable without name")
-        prefixed_name = prefix + PREFIX_SEPARATOR + name if prefix else name
-        setattr(log.current_row, prefixed_name, value)
+class MonitoringExtension(TrainingExtension):
+    """A mixin with logic shared by monitoring extensions.
+
+    Parameters
+    ----------
+    prefix : str, optional
+        The prefix for the log records done by the extension.  It is
+        appended to the variable names with an underscore as a separator.
+        If not given, the names of the observed variables are used as is.
+
+    """
+    def __init__(self, prefix=None, **kwargs):
+        super(MonitoringExtension, self).__init__(**kwargs)
+        self.prefix = prefix
+
+    def _record_name(self, name):
+        """The record name for a variable name."""
+        return self.prefix + PREFIX_SEPARATOR + name if self.prefix else name
+
+    def record_name(self, variable):
+        """The record name for a variable."""
+        return self._record_name(variable.name)
+
+    def add_records(self, log, record_tuples):
+        """Helper function to add monitoring records to the log."""
+        for name, value in record_tuples:
+            if not name:
+                raise ValueError("monitor variable without name")
+            setattr(log.current_row, self._record_name(name), value)
 
 
-class DataStreamMonitoring(SimpleExtension):
+class DataStreamMonitoring(SimpleExtension, MonitoringExtension):
     """Monitors values of Theano variables on a data stream.
 
     By default monitoring is done before the first and after every epoch.
@@ -31,30 +53,26 @@ class DataStreamMonitoring(SimpleExtension):
     data_stream : instance of :class:`.DataStream`
         The data stream to monitor on. A data epoch is requested
         each time monitoring is done.
-    prefix : str, optional
-        A prefix to add to the names when adding records to the log. An
-        underscore will be used to separate the prefix.
 
     """
     PREFIX_SEPARATOR = '_'
 
-    def __init__(self, variables, data_stream, prefix=None, **kwargs):
+    def __init__(self, variables, data_stream, **kwargs):
         kwargs.setdefault("after_every_epoch", True)
         kwargs.setdefault("before_first_epoch", True)
         super(DataStreamMonitoring, self).__init__(**kwargs)
         self._evaluator = DatasetEvaluator(variables)
         self.data_stream = data_stream
-        self.prefix = prefix
 
     def do(self, callback_name, *args):
         """Write the values of monitored variables to the log."""
         logger.info("Monitoring on auxiliary data started")
         value_dict = self._evaluator.evaluate(self.data_stream)
-        _add_records(self.main_loop.log, self.prefix, value_dict.items())
+        self.add_records(self.main_loop.log, value_dict.items())
         logger.info("Monitoring on auxiliary data finished")
 
 
-class TrainingDataMonitoring(SimpleExtension):
+class TrainingDataMonitoring(SimpleExtension, MonitoringExtension):
     """Monitors values of Theano variables on training batches.
 
     Use this extension to monitor a quantity on every training batch
@@ -71,9 +89,6 @@ class TrainingDataMonitoring(SimpleExtension):
     variables : list of :class:`~tensor.TensorVariable`
         The variables to monitor. The variable names are used as record
         names in the logs.
-    prefix : str, optional
-        A prefix to add to variable names when adding records to the
-        log. An underscore will be used to separate the prefix.
 
     Notes
     -----
@@ -84,12 +99,11 @@ class TrainingDataMonitoring(SimpleExtension):
     :class:`.DifferentiableCostMinimizer`.
 
     """
-    def __init__(self, variables, prefix=None, **kwargs):
+    def __init__(self, variables, **kwargs):
         kwargs.setdefault("before_training", True)
         super(TrainingDataMonitoring, self).__init__(**kwargs)
         self._buffer = AggregationBuffer(variables, use_take_last=True)
         self._last_time_called = -1
-        self.prefix = prefix
 
     def do(self, callback_name, *args):
         """Initializes the buffer or commits the values to the log.
@@ -113,6 +127,6 @@ class TrainingDataMonitoring(SimpleExtension):
             if self.main_loop.status.iterations_done == self._last_time_called:
                 raise Exception("TrainingDataMonitoring.do should be invoked"
                                 " no more than once per iteration")
-            _add_records(self.main_loop.log, self.prefix,
-                         self._buffer.get_aggregated_values().items())
+            self.add_records(self.main_loop.log,
+                             self._buffer.get_aggregated_values().items())
             self._buffer.initialize_aggregators()

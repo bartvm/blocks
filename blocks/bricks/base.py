@@ -780,8 +780,8 @@ def lazy(func):
 
         # Check if positional arguments were passed as keyword arguments
         args = list(args)
-        for i, arg_name in enumerate(arg_names[:len(arg_names)
-                                               - len(defaults)]):
+        for i, arg_name in enumerate(arg_names[:len(arg_names) -
+                                               len(defaults)]):
             if arg_name in kwargs:
                 if args[i] is not None:
                     raise ValueError

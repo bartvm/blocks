@@ -1,9 +1,4 @@
-"""Generic transformations with multiple inputs and/or outputs.
-
-As bricks from this module are intended to serve as adapters, most of them
-are lazy-only, i.e. can not be initialized with a single constructor call.
-
-"""
+"""Generic transformations with multiple inputs and/or outputs."""
 import copy
 
 from blocks.bricks import Initializable, Linear
@@ -19,8 +14,7 @@ class Parallel(Initializable):
 
     >>> from theano import tensor
     >>> from blocks.initialization import Constant
-    >>> x = tensor.matrix('x')
-    >>> y = tensor.matrix('y')
+    >>> x, y = tensor.matrix('x'), tensor.matrix('y')
     >>> parallel = Parallel(
     ...     input_names=['x', 'y'],
     ...     input_dims=dict(x=2, y=3), output_dims=dict(x=4, y=5),
@@ -35,16 +29,27 @@ class Parallel(Initializable):
     Parameters
     ----------
     input_names : list of str
-        Input names.
+        The input names.
     input_dims : dict
-        Dictonary of input dimensions, keys are input names, values are
-        dimensions.
+        The dictionary of input dimensions, keys are input names, values
+        are dimensions.
     output_dims : dict
-        Dictionary of output dimensions, keys are input names, values are
-        dimensions of transformed inputs.
+        The dictionary of output dimensions, keys are input names, values
+        are dimensions of transformed inputs.
     prototype : :class:`~blocks.bricks.Feedforward`
         A transformation prototype. A copy will be created for every
         input.  If ``None``, a linear transformation without bias is used.
+    child_prefix : str, optional
+        A prefix for children names. By default "transform" is used.
+
+    Attributes
+    ----------
+    input_names : list of str
+        The input names.
+    input_dims : dict
+        Dictionary of input dimensions.
+    output_dims : dict
+        Dictionary of output dimensions.
 
     Notes
     -----
@@ -53,10 +58,12 @@ class Parallel(Initializable):
     """
     @lazy
     def __init__(self, input_names, input_dims, output_dims,
-                 prototype=None, **kwargs):
+                 prototype=None, child_prefix=None, **kwargs):
         super(Parallel, self).__init__(**kwargs)
         if not prototype:
             prototype = Linear(use_bias=False)
+        if not child_prefix:
+            child_prefix = "transform"
 
         self.input_names = input_names
         self.input_dims = input_dims
@@ -66,7 +73,8 @@ class Parallel(Initializable):
         self.transforms = []
         for name in input_names:
             self.transforms.append(copy.deepcopy(self.prototype))
-            self.transforms[-1].name = "transform_{}".format(name)
+            self.transforms[-1].name = (
+                "{}_{}".format(child_prefix, name))
         self.children = self.transforms
 
     def _push_allocation_config(self):
@@ -90,109 +98,165 @@ class Parallel(Initializable):
 
 
 class Fork(Parallel):
-    """Forks single input into multiple channels.
+    """Several outputs from one input by applying similar transformations.
+
+    Given a prototype brick, a :class:`Fork` brick makes several
+    copies of it (each with its own parameters). At the application time
+    the copies are applied to the input to produce different outputs.
+
+    A typical usecase for this brick is to produce inputs for gates
+    of gated recurrent bricks, such as
+    :class:`~blocks.bricks.GatedRecurrent`.
+
+    >>> from theano import tensor
+    >>> from blocks.initialization import Constant
+    >>> x = tensor.matrix('x')
+    >>> fork = Fork(output_names=['y', 'z'],
+    ...             input_dim=2, output_dims=dict(y=3, z=4),
+    ...             weights_init=Constant(2))
+    >>> fork.initialize()
+    >>> y, z = fork.apply(x)
+    >>> y.eval({x: [[1, 1]]}) # doctest: +ELLIPSIS
+    array([[ 4.,  4.,  4.]]...
+    >>> z.eval({x: [[1, 1]]}) # doctest: +ELLIPSIS
+    array([[ 4.,  4.,  4.,  4.]]...
 
     Parameters
     ----------
-    fork_names : list of str
-        Names of the channels to fork.
-    prototype : instance of :class:`.Brick`
-        A prototype for the input-to-fork transformations. A copy will be
-        created for every output channel.
+    output_names : list of str
+        Names of the outputs to produce.
+    input_dim : int
+        The input dimension.
 
     Attributes
     ----------
     input_dim : int
-        The input dimension. Required for allocation.
-    fork_dims : dict of (output_name, int) pairs
-        The dimensions of the forks. Required for allocation.
+        The input dimension.
+    output_dims : dict
+        Dictionary of output dimensions, keys are input names, values are
+        dimensions of transformed inputs.
 
     Notes
     -----
-        Lazy initialization only.
+    See :class:`.Initializable` for initialization parameters.
 
     """
-    def __init__(self, fork_names, prototype=None, **kwargs):
-        super(Fork, self).__init__(fork_names, prototype=prototype, **kwargs)
-        self.fork_names = fork_names
+    @lazy
+    def __init__(self, output_names, input_dim,  prototype=None, **kwargs):
+        self.output_names = output_names
+        self.input_dim = input_dim
+
+        super(Fork, self).__init__(output_names, prototype=prototype,
+                                   child_prefix="fork", **kwargs)
 
     def _push_allocation_config(self):
-        self.input_dims = {name: self.input_dim for name in self.fork_names}
-        self.output_dims = self.fork_dims
+        self.input_dims = {name: self.input_dim for name in self.output_names}
         super(Fork, self)._push_allocation_config()
 
     @application(inputs=['input_'])
     def apply(self, input_):
         return super(Fork, self).apply(**{name: input_
-                                          for name in self.fork_names})
+                                          for name in self.input_names})
 
     @apply.property('outputs')
     def apply_outputs(self):
         return super(Fork, self).apply.outputs
 
 
-class Mixer(Parallel):
-    """Mixes a new channel with old ones.
+class Distribute(Fork):
+    """Transform an input and add it to other inputs.
 
-    .. digraph:: mixer
+    This brick is designed for the following scenario: one has a group of
+    variables and another separate variable, and one needs to somehow
+    distribute information from the latter across the former. We call that
+    "to distribute a varible across other variables", and refer to the
+    separate variable as "the source" and to the variables from the group
+    as "the targets".
 
-       rankdir=TB;
-       splines=line;
-       subgraph cluster_0 {
-         label="old_inputs";
-         a[label=""]; b[label=""]; c[label=""];
-       }
-       subgraph cluster_1 {
-         label="outputs"; labelloc=b;
-         d[label=""]; e[label=""]; f[label=""];
-       }
-       a -> d;
-       b -> e;
-       c -> f;
-       new_input -> d;
-       new_input -> e;
-       new_input -> f;
+    Given a prototype brick, a :class:`Parallel` brick makes several copies
+    of it (each with its own parameters). At the application time the
+    copies are applied to the source and the transformation results
+    are added to the targets (in the literate sense).
+
+    >>> from theano import tensor
+    >>> from blocks.initialization import Constant
+    >>> x = tensor.matrix('x')
+    >>> y = tensor.matrix('y')
+    >>> z = tensor.matrix('z')
+    >>> distribute = Distribute(target_names=['x', 'y'], source_name='z',
+    ...                         target_dims=dict(x=2, y=3), source_dim=3,
+    ...                         weights_init=Constant(2))
+    >>> distribute.initialize()
+    >>> new_x, new_y = distribute.apply(x=x, y=y, z=z)
+    >>> new_x.eval({x: [[2, 2]], z: [[1, 1, 1]]}) # doctest: +ELLIPSIS
+    array([[ 8.,  8.]]...
+    >>> new_y.eval({y: [[1, 1, 1]], z: [[1, 1, 1]]}) # doctest: +ELLIPSIS
+    array([[ 7.,  7.,  7.]]...
 
     Parameters
     ----------
-    old_names : list of str
-        The names of the old channels.
-    new_name : list of str
-        The new channel's name.
+    target_names : list of str
+        The names of the targets.
+    source_name : str
+        The name of the source.
 
     Attributes
     ----------
-    channel_dims : dict of (channel_name, int) pairs
-        The dimensions of the channels. Required for allocation.
+    target_dims : dict
+        The dictionary of target inputs dimensions, keys are input names,
+        values are dimensions.
+    source_dim : dict
+        The dimension of the source input.
+
+    Notes
+    -----
+    See :class:`.Initializable` for initialization parameters.
 
     """
-    def __init__(self, old_names, new_name, prototype=None, **kwargs):
-        super(Mixer, self).__init__(old_names, prototype=prototype, **kwargs)
-        self.old_names = old_names
-        self.new_name = new_name
+    @lazy
+    def __init__(self, target_names, source_name, target_dims, source_dim,
+                 prototype=None, **kwargs):
+        self.target_names = target_names
+        self.source_name = source_name
+        self.target_dims = target_dims
+        self.source_dim = source_dim
+
+        super(Distribute, self).__init__(
+            output_names=target_names, output_dims=target_dims,
+            input_dim=source_dim, prototype=prototype, **kwargs)
 
     def _push_allocation_config(self):
-        self.input_dims = {name: self.channel_dims[self.new_name]
-                           for name in self.old_names}
-        self.output_dims = {name: self.channel_dims[name]
-                            for name in self.old_names}
-        super(Mixer, self)._push_allocation_config()
+        self.input_dim = self.source_dim
+        self.output_dims = self.target_dims
+        super(Distribute, self)._push_allocation_config()
 
     @application
     def apply(self, **kwargs):
-        new = kwargs.pop(self.new_name)
-        if not set(kwargs.keys()) == set(self.old_names):
+        r"""Distribute the source across the targets.
+
+        Parameters
+        ----------
+        \*\*kwargs : dict
+            The source and the target variables.
+
+        Returns
+        -------
+        output : list
+            The new target variables.
+
+        """
+        result = super(Distribute, self).apply(kwargs.pop(self.source_name),
+                                               return_list=True)
+        for i, name in enumerate(self.target_names):
+            result[i] += kwargs.pop(name)
+        if len(kwargs):
             raise ValueError
-        result = super(Mixer, self).apply(
-            return_list=True, **{name: new for name in self.old_names})
-        for i, name in enumerate(self.old_names):
-            result[i] += kwargs[name]
         return result
 
     @apply.property('inputs')
     def apply_inputs(self):
-        return [self.new_name] + self.old_names
+        return [self.source_name] + self.target_names
 
     @apply.property('outputs')
     def apply_outputs(self):
-        return self.old_names
+        return self.target_names

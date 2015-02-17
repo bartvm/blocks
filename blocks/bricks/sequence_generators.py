@@ -7,7 +7,7 @@ from theano import tensor
 from blocks.bricks import Initializable, Identity, MLP, Random
 from blocks.bricks.base import application, Brick, lazy
 from blocks.bricks.recurrent import BaseRecurrent
-from blocks.bricks.parallel import Fork, Mixer
+from blocks.bricks.parallel import Fork, Distribute
 from blocks.bricks.lookup import LookupTable
 from blocks.bricks.recurrent import recurrent
 from blocks.utils import dict_subset, dict_union
@@ -114,14 +114,15 @@ class BaseSequenceGenerator(Initializable):
         self.glimpse_dims = {name: self.transition.get_dim(name)
                              for name in self.glimpse_names}
         self.readout.source_dims = dict_union(
-            state_dims, context_dims, self.glimpse_dims)
+            state_dims, context_dims, self.glimpse_dims,
+            feedback=self.readout.get_dim('feedback'))
 
         # Configure fork
         feedback_names = self.readout.feedback.outputs
         if not len(feedback_names) == 1:
             raise ValueError
         self.fork.input_dim = self.readout.get_dim(feedback_names[0])
-        self.fork.fork_dims = {
+        self.fork.output_dims = {
             name: self.transition.get_dim(name)
             for name in self.fork.apply.outputs}
 
@@ -211,8 +212,8 @@ class BaseSequenceGenerator(Initializable):
         next_states = self.transition.compute_states(
             return_list=True,
             **dict_union(next_inputs, states, next_glimpses, contexts))
-        return (next_states + [next_outputs]
-                + list(next_glimpses.values()) + [next_costs])
+        return (next_states + [next_outputs] +
+                list(next_glimpses.values()) + [next_costs])
 
     @generate.delegate
     def generate_delegate(self):
@@ -224,8 +225,8 @@ class BaseSequenceGenerator(Initializable):
 
     @generate.property('outputs')
     def generate_outputs(self):
-        return (self.state_names + ['outputs']
-                + self.glimpse_names + ['costs'])
+        return (self.state_names + ['outputs'] +
+                self.glimpse_names + ['costs'])
 
     def get_dim(self, name):
         if name in self.state_names + self.context_names + self.glimpse_names:
@@ -455,8 +456,8 @@ class SoftmaxEmitter(AbstractEmitter, Initializable, Random):
         flat_outputs = outputs.flatten()
         num_outputs = flat_outputs.shape[0]
         return -tensor.log(
-            probs.flatten()[max_output * tensor.arange(num_outputs)
-                            + flat_outputs].reshape(outputs.shape))
+            probs.flatten()[max_output * tensor.arange(num_outputs) +
+                            flat_outputs].reshape(outputs.shape))
 
     @application
     def initial_outputs(self, batch_size, *args, **kwargs):
@@ -524,7 +525,7 @@ class AttentionTransition(AbstractAttentionTransition, Initializable):
     """Combines an attention mechanism and a recurrent transition.
 
     This brick is assembled from three components: an attention mechanism,
-    a recurrent transition and a mixer brick to make the first two work
+    a recurrent transition and a brick to make the first two work
     together.  It is expected that among the contexts of the transition's
     `apply` methods there is one, intended to be attended by the attention
     mechanism, and another one serving as a mask for the first one.
@@ -549,13 +550,13 @@ class AttentionTransition(AbstractAttentionTransition, Initializable):
     Currently lazy-only.
 
     """
-    def __init__(self, transition, attention, mixer,
+    def __init__(self, transition, attention, distribute,
                  attended_name=None, attended_mask_name=None,
                  **kwargs):
         super(AttentionTransition, self).__init__(**kwargs)
         self.transition = transition
         self.attention = attention
-        self.mixer = mixer
+        self.distribute = distribute
 
         self.sequence_names = self.transition.apply.sequences
         self.state_names = self.transition.apply.states
@@ -577,17 +578,18 @@ class AttentionTransition(AbstractAttentionTransition, Initializable):
             name for name in self.glimpse_names
             if name in self.attention.take_look.inputs]
 
-        self.children = [self.transition, self.attention, self.mixer]
+        self.children = [self.transition, self.attention, self.distribute]
 
     def _push_allocation_config(self):
         self.attention.state_dims = self.transition.get_dims(self.state_names)
         self.attention.sequence_dim = self.transition.get_dim(
             self.attended_name)
-        self.mixer.channel_dims = dict_subset(
+        self.distribute.target_dims = dict_subset(
             dict_union(
-                self.transition.get_dims(self.sequence_names),
-                self.attention.get_dims(self.glimpse_names)),
-            self.mixer.apply.inputs)
+                self.transition.get_dims(self.sequence_names)),
+            self.distribute.target_names)
+        self.distribute.source_dim = self.attention.get_dim(
+            self.distribute.source_name)
 
     @application
     def take_look(self, **kwargs):
@@ -635,10 +637,10 @@ class AttentionTransition(AbstractAttentionTransition, Initializable):
                                 must_have=False)
         states = dict_subset(kwargs, self.state_names, pop=True)
         glimpses = dict_subset(kwargs, self.glimpse_names, pop=True)
-        sequences.update(self.mixer.apply(
+        sequences.update(self.distribute.apply(
             return_dict=True,
             **dict_subset(dict_union(sequences, glimpses),
-                          self.mixer.apply.inputs)))
+                          self.distribute.apply.inputs)))
         current_states = self.transition.apply(
             iterate=False, return_list=True,
             **dict_union(sequences, states, kwargs))
@@ -817,9 +819,9 @@ class SequenceGenerator(BaseSequenceGenerator):
 
         fork = Fork(fork_inputs)
         if attention:
-            mixer = Mixer(fork_inputs, attention.take_look.outputs[0],
-                          name="mixer")
-            transition = AttentionTransition(transition, attention, mixer,
+            distribute = Distribute(fork_inputs,
+                                    attention.take_look.outputs[0])
+            transition = AttentionTransition(transition, attention, distribute,
                                              name="att_trans")
         else:
             transition = FakeAttentionTransition(transition,

@@ -2,6 +2,7 @@ from collections import OrderedDict
 import logging
 
 import theano
+from theano import tensor
 
 from blocks.utils import dict_subset
 from blocks.monitoring.aggregation import _DataIndependent, Mean, TakeLast
@@ -111,8 +112,13 @@ class AggregationBuffer(object):
         else:
             self._initialize_fun = None
 
+        # We need to call `as_tensor_variable` here
+        # to avoid returning `CudaNdarray`s to the user, which
+        # happens otherwise under some circumstances (see
+        # https://groups.google.com/forum/#!topic/theano-users/H3vkDN-Shok)
         self._readout_fun = theano.function(
-            [], list(self.readout_variables.values()))
+            [], [tensor.as_tensor_variable(v)
+                 for v in self.readout_variables.values()])
         logger.debug("Initialization and readout functions compiled")
 
     def initialize_aggregators(self):

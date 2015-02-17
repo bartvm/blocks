@@ -2,6 +2,7 @@ import sys
 import os
 import shutil
 import tempfile
+import contextlib
 from collections import OrderedDict
 
 import numpy
@@ -405,55 +406,6 @@ def ipdb_breakpoint(x):
     ipdb.set_trace()
 
 
-class LambdaIterator(six.Iterator):
-    """An iterator that calls a function to fetch the next element.
-
-    The reason for having this is that generators are not serializable
-    in Python (even when using third-party libraries).
-
-    Parameters
-    ----------
-    next_function : callable
-        A function to call every time the next element is requested.
-
-    """
-    def __init__(self, next_function):
-        self.next_function = next_function
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return self.next_function()
-
-
-class SequenceIterator(six.Iterator):
-    """A serializable iterator for list and tuple.
-
-    The reason for having this is that list iterators are not serializable
-    in Python (even when using third-party libraries).
-
-    Parameters
-    ----------
-    sequence : :obj:`list` or :obj:`tuple`
-        The sequence to iterate over.
-
-    """
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self._offset = 0
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self._offset == len(self.sequence):
-            raise StopIteration()
-        result = self.sequence[self._offset]
-        self._offset += 1
-        return result
-
-
 def secure_dill_dump(object_, path):
     """Robust serialization - does not corrupt your files when failed.
 
@@ -473,3 +425,12 @@ def secure_dill_dump(object_, path):
         if "temp" in locals():
             os.remove(temp.name)
         raise
+
+
+@contextlib.contextmanager
+def change_recursion_limit(limit):
+    """Temporarily changes the recursion limit."""
+    old_limit = sys.getrecursionlimit()
+    sys.setrecursionlimit(limit)
+    yield
+    sys.setrecursionlimit(old_limit)

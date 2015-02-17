@@ -1,13 +1,13 @@
 import os
 
 import numpy
+from picklable_itertools import chain
+from picklable_itertools.iter_dispatch import _iter
+from toolz import sliding_window
 
 from blocks import config
-from blocks.datasets import Dataset, CachedDataStream
-
-
-class TextFileState(object):
-    pass
+from blocks.datasets import Dataset
+from blocks.datasets.streams import CachedDataStream
 
 
 class TextFile(Dataset):
@@ -89,10 +89,7 @@ class TextFile(Dataset):
         super(TextFile, self).__init__()
 
     def open(self):
-        state = TextFileState()
-        state.current_index = 0
-        state.file = self._open_file(state.current_index)
-        return state
+        return chain(*[_iter(open(f)) for f in self.files])
 
     def _open_file(self, partition_index):
         return open(self.files[partition_index])
@@ -100,20 +97,7 @@ class TextFile(Dataset):
     def get_data(self, state=None, request=None):
         if request is not None:
             raise ValueError
-        while True:
-            if state.file is None:
-                raise StopIteration
-            sentence = state.file.readline()
-            if not sentence:
-                state.file.close()
-                state.file = None
-                if state.current_index == len(self.files) - 1:
-                    raise StopIteration
-                else:
-                    state.current_index += 1
-                    state.file = self._open_file(state.current_index)
-            else:
-                break
+        sentence = next(state)
         if self.preprocess is not None:
             sentence = self.preprocess(sentence)
         data = [self.dictionary[self.bos_token]] if self.bos_token else []
@@ -223,25 +207,18 @@ class NGramStream(CachedDataStream):
         self.ngram_order = ngram_order
 
     def get_data(self, request=None):
-        if not self.cache[0]:
-            self._cache()
         features, targets = [], []
         for _, sentence in enumerate(self.cache[0]):
-            for j in range(request):
-                features.append(sentence[j:j + self.ngram_order])
-                targets.append([sentence[j + self.ngram_order]])
-                if j + self.ngram_order == len(sentence) - 1:
-                    sentence_ended = True
-                    break
-                elif len(features) == request:
-                    sentence_ended = False
-                    break
-            if sentence_ended:
+            features.append(list(
+                sliding_window(self.ngram_order,
+                               sentence[:-1]))[:request - len(features)])
+            targets.append(
+                sentence[self.ngram_order:][:request - len(targets)])
+            self.cache[0][0] = self.cache[0][0][request:]
+            if not self.cache[0][0]:
                 self.cache[0].pop(0)
                 if not self.cache[0]:
                     self._cache()
-            else:
-                self.cache[0][0] = self.cache[0][0][j + 1:]
             if len(features) == request:
                 break
         return tuple(numpy.asarray(data) for data in (features, targets))

@@ -1,15 +1,14 @@
 import os
+import tempfile
 
 import dill
 import numpy
 
-from blocks.datasets import DataStream
+from blocks.datasets.streams import DataStream
 from blocks.datasets.mnist import MNIST
 from blocks.datasets.schemes import SequentialScheme
-from tests import temporary_files
 
 
-@temporary_files('epoch_test.pkl')
 def test_in_memory():
     # Load MNIST and get two batches
     mnist = MNIST('train')
@@ -22,9 +21,8 @@ def test_in_memory():
     assert numpy.all(features == mnist.features[256:512])
 
     # Pickle the epoch and make sure that the data wasn't dumped
-    filename = 'epoch_test.pkl'
-    assert not os.path.exists(filename)
-    with open(filename, 'wb') as f:
+    with tempfile.NamedTemporaryFile(delete=False) as f:
+        filename = f.name
         dill.dump(epoch, f, fmode=dill.CONTENTS_FMODE)
     assert os.path.getsize(filename) < 1024 * 1024  # Less than 1MB
 

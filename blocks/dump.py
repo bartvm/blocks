@@ -156,11 +156,11 @@ class MainLoopDumpManager(object):
 
     @property
     def path_to_parameters(self):
-        return "{}/{}".format(self.folder, "params.npz")
+        return os.path.join(self.folder, 'params.npz')
 
     @property
     def path_to_iteration_state(self):
-        return "{}/{}".format(self.folder, "iteration_state.pkl")
+        return os.path.join(self.folder, 'iterations_state.pkl')
 
     @property
     def path_to_log(self):
@@ -169,7 +169,7 @@ class MainLoopDumpManager(object):
         # then pickled file. Or alternatively, log will be dump as pure
         # text file of (time, key, value) triples. Currenly log is just
         # pickled though.
-        return "{}/{}".format(self.folder, "log")
+        return os.path.join(self.folder, 'log')
 
     def dump_parameters(self, main_loop):
         save_parameter_values(extract_parameter_values(main_loop.model),

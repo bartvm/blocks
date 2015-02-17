@@ -1,16 +1,17 @@
 from collections import OrderedDict
 
 import numpy
+import theano
 from six.moves import zip
 from nose.tools import assert_raises
 
-from blocks.datasets import (
-    CachedDataStream, ContainerDataset, DataStream,
-    DataStreamMapping, BatchDataStream, PaddingDataStream,
-    DataStreamFilter)
-from blocks.datasets.mnist import MNIST
-from blocks.datasets.schemes import (BatchSizeScheme, ConstantScheme,
-                                     SequentialScheme)
+from blocks.datasets import ContainerDataset
+from blocks.datasets.streams import (
+    CachedDataStream, DataStream, DataStreamMapping, BatchDataStream,
+    PaddingDataStream, DataStreamFilter, ForceFloatX)
+from blocks.datasets.schemes import BatchSizeScheme, ConstantScheme
+
+floatX = theano.config.floatX
 
 
 def test_dataset():
@@ -47,6 +48,15 @@ def test_data_stream_filter():
     stream = ContainerDataset(data).get_default_stream()
     wrapper = DataStreamFilter(stream, lambda d: d[0] % 2 == 1)
     assert list(wrapper.get_epoch_iterator()) == list(zip(data_filtered))
+
+
+def test_floatx():
+    x = [numpy.array(d, dtype="float64") for d in [[1, 2], [3, 4]]]
+    y = [numpy.array(d, dtype="int64") for d in [1, 2, 3]]
+    dataset = ContainerDataset(OrderedDict([("x", x), ("y", y)]))
+    data = next(ForceFloatX(dataset.get_default_stream()).get_epoch_iterator())
+    assert str(data[0].dtype) == floatX
+    assert str(data[1].dtype) == "int64"
 
 
 def test_sources_selection():
@@ -115,32 +125,32 @@ def test_data_driven_epochs():
 
 
 def test_cache():
-    mnist = MNIST('test')
-    stream = DataStream(
-        mnist, iteration_scheme=SequentialScheme(mnist.num_examples, 11))
-    cached_stream = CachedDataStream(stream, ConstantScheme(7))
+    dataset = ContainerDataset(range(100))
+    stream = DataStream(dataset)
+    batched_stream = BatchDataStream(stream, ConstantScheme(11))
+    cached_stream = CachedDataStream(batched_stream, ConstantScheme(7))
     epoch = cached_stream.get_epoch_iterator()
 
     # Make sure that cache is filled as expected
-    for (features, targets), cache_size in zip(epoch, [4, 8, 1, 5, 9, 2,
-                                                       6, 10, 3, 7, 0, 4]):
+    for (features,), cache_size in zip(epoch, [4, 8, 1, 5, 9, 2,
+                                               6, 10, 3, 7, 0, 4]):
         assert len(cached_stream.cache[0]) == cache_size
 
     # Make sure that the epoch finishes correctly
-    for features, targets in cached_stream.get_epoch_iterator():
+    for (features,) in cached_stream.get_epoch_iterator():
         pass
-    assert len(features) == mnist.num_examples % 7
+    assert len(features) == 100 % 7
     assert not cached_stream.cache[0]
 
     # Ensure that the epoch transition is correct
-    cached_stream = CachedDataStream(stream, ConstantScheme(7, times=3))
+    cached_stream = CachedDataStream(batched_stream,
+                                     ConstantScheme(7, times=3))
     for _, epoch in zip(range(2), cached_stream.iterate_epochs()):
         cache_sizes = [4, 8, 1]
-        for i, (features, targets) in enumerate(epoch):
+        for i, (features,) in enumerate(epoch):
             assert len(cached_stream.cache[0]) == cache_sizes[i]
             assert len(features) == 7
-            assert numpy.all(mnist.features[i * 7:(i + 1) * 7] ==
-                             features)
+            assert numpy.all(range(100)[i * 7:(i + 1) * 7] == features)
         assert i == 2
 
 
@@ -156,12 +166,14 @@ def test_batch_data_stream():
         assert (b[0] == e[0]).all()
 
     # Check the `strict` flag
-    def try_strict():
-        list(BatchDataStream(stream, ConstantScheme(2), strict=True)
-             .get_epoch_iterator())
-    assert_raises(ValueError, try_strict)
+    def try_strict(strictness):
+        return list(
+            BatchDataStream(stream, ConstantScheme(2), strictness=strictness)
+            .get_epoch_iterator())
+    assert_raises(ValueError, try_strict, 2)
+    assert len(try_strict(1)) == 2
     stream2 = ContainerDataset([1, 2, 3, 4, 5, 6]).get_default_stream()
-    assert len(list(BatchDataStream(stream2, ConstantScheme(2), strict=True)
+    assert len(list(BatchDataStream(stream2, ConstantScheme(2), strictness=2)
                     .get_epoch_iterator())) == 3
 
 

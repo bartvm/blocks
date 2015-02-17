@@ -59,6 +59,11 @@ class TrainingExtension(object):
 
     def on_resumption(self):
         """The callback invoked after training is resumed."""
+        pass
+
+    def on_error(self):
+        """The callback invoked when an error occurs."""
+        pass
 
     def before_training(self):
         """The callback invoked before training is started."""
@@ -268,8 +273,8 @@ class SimpleExtension(TrainingExtension):
 
         """
         for callback_name, predicate, arguments in self._conditions:
-            if (callback_name == callback_invoked
-                    and predicate(self.main_loop.log)):
+            if (callback_name == callback_invoked and
+                    predicate(self.main_loop.log)):
                 self.do(callback_invoked, *(from_main_loop + tuple(arguments)))
 
 

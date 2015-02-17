@@ -1,3 +1,5 @@
+import tempfile
+
 import numpy
 import theano
 
@@ -7,15 +9,14 @@ from blocks.dump import (
     load_parameter_values, save_parameter_values,
     extract_parameter_values, inject_parameter_values,
     MainLoopDumpManager)
-from tests import temporary_files, silence_printing
+from tests import silence_printing
 
 floatX = theano.config.floatX
 
 
-@temporary_files("__tmp.npz")
 def test_save_load_parameter_values():
     param_values = [("/a/b", numpy.zeros(3)), ("/a/c", numpy.ones(4))]
-    filename = "__tmp.npz"
+    filename = tempfile.mkdtemp() + 'params.npz'
     save_parameter_values(dict(param_values), filename)
     loaded_values = sorted(list(load_parameter_values(filename).items()),
                            key=lambda tuple_: tuple_[0])
@@ -46,7 +47,6 @@ def test_inject_parameter_values():
     assert numpy.all(mlp.linear_transformations[0].params[1].get_value() == 3)
 
 
-@temporary_files("__sqrt_folder", "__sqrt_folder2")
 @silence_printing
 def test_main_loop_state_manager():
     def assert_equal(main_loop1, main_loop2, check_log=True):
@@ -68,8 +68,8 @@ def test_main_loop_state_manager():
             next(main_loop1.epoch_iterator)["numbers"] ==
             next(main_loop2.epoch_iterator)["numbers"])
 
-    folder = '__sqrt_folder'
-    folder2 = folder + '2'
+    folder = tempfile.mkdtemp()
+    folder2 = tempfile.mkdtemp()
 
     main_loop1 = sqrt_example(folder, 17)
     assert main_loop1.log.status.epochs_done == 3

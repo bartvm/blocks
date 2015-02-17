@@ -6,13 +6,13 @@ import numpy
 import theano
 
 from blocks import config
-from blocks.datasets import InMemoryDataset, lazy_properties
+from blocks.datasets import InMemoryDataset
 from blocks.datasets.schemes import SequentialScheme
 MNIST_IMAGE_MAGIC = 2051
 MNIST_LABEL_MAGIC = 2049
 
 
-@lazy_properties('features', 'targets')
+@InMemoryDataset.lazy_properties('features', 'targets')
 class MNIST(InMemoryDataset):
     u"""The MNIST dataset of handwritten digits.
 
@@ -53,9 +53,9 @@ class MNIST(InMemoryDataset):
                  **kwargs):
         if which_set not in ('train', 'test'):
             raise ValueError("MNIST only has a train and test set")
-        if not stop:
+        if stop is None:
             stop = 60000 if which_set == "train" else 10000
-        if not start:
+        if start is None:
             start = 0
         self.num_examples = stop - start
         self.default_scheme = SequentialScheme(self.num_examples, 1)

@@ -152,3 +152,7 @@ checks:
         basic_bad_reversed_sequence: true
         basic_assert_on_tuple: true
         basic_abstract_class_instantiated: true
+filter:
+    paths:
+        - blocks/*
+        - bin/*

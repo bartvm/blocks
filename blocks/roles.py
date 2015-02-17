@@ -19,15 +19,23 @@ def add_role(var, role):
     --------
     >>> from theano import tensor
     >>> W = tensor.matrix()
-    >>> from blocks.bricks import WEIGHTS
+    >>> from blocks.roles import PARAMETER, WEIGHTS
+    >>> add_role(W, PARAMETER)
+    >>> print(*W.tag.roles)
+    PARAMETER
     >>> add_role(W, WEIGHTS)
+    >>> print(*W.tag.roles)
+    WEIGHTS
+    >>> add_role(W, PARAMETER)
     >>> print(*W.tag.roles)
     WEIGHTS
 
     """
     roles = getattr(var.tag, 'roles', [])
     roles = [old_role for old_role in roles
-             if not isinstance(role, old_role.__class__)] + [role]
+             if not isinstance(role, old_role.__class__)]
+    if not any(isinstance(old_role, role.__class__) for old_role in roles):
+        roles += [role]
     var.tag.roles = roles
 
 
@@ -48,7 +56,7 @@ class OutputRole(VariableRole):
     pass
 
 #: The output of a :class:`.Brick`
-OUTPUT = OutputRole
+OUTPUT = OutputRole()
 
 
 class CostRole(VariableRole):

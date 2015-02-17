@@ -1,7 +1,11 @@
 from abc import ABCMeta, abstractmethod
 
-import six
+import numpy
+from picklable_itertools import chain, repeat, imap, islice, _iter
 from six import add_metaclass
+from six.moves import xrange
+
+from blocks import config
 
 
 @add_metaclass(ABCMeta)
@@ -54,7 +58,11 @@ class BatchScheme(IterationScheme):
     labels to the dataset.
 
     """
-    pass
+    def __init__(self, num_examples, batch_size):
+        self.num_examples = num_examples
+        self.batch_size = batch_size
+        d, r = divmod(self.num_examples, self.batch_size)
+        self.num_batches = d + bool(r)
 
 
 class ConstantScheme(BatchSizeScheme):
@@ -63,32 +71,34 @@ class ConstantScheme(BatchSizeScheme):
     This subset iterator simply returns the same constant batch size
     for a given number of times (or else infinitely).
 
+    Parameters
+    ----------
+    batch_size : int
+        The size of the batch to return.
+    num_examples : int, optional
+        If given, the request iterator will return `batch_size` until the
+        sum reaches `num_exam;pes`. Note that this means that the last
+        batch size returned could be smaller than `batch_size`. If you want
+        to ensure all batches are of equal size, then pass `times` equal to
+        ``num_examples / batch-size`` instead.
+    times : int, optional
+        The number of times to return `batch_size`.
+
     """
-    def __init__(self, batch_size, times=None):
+    def __init__(self, batch_size, num_examples=None, times=None):
+        if num_examples and times:
+            raise ValueError
         self.batch_size = batch_size
+        self.num_examples = num_examples
         self.times = times
 
     def get_request_iterator(self):
-        return ConstantIterator(self.batch_size, self.times)
-
-
-class ConstantIterator(six.Iterator):
-    def __init__(self, batch_size, times=None):
-        self.batch_size = batch_size
-        self.times = times
-        if times is not None:
-            self.current = 0
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self.times is not None:
-            if self.current == self.times:
-                raise StopIteration
-            else:
-                self.current += 1
-        return self.batch_size
+        if self.times:
+            return repeat(self.batch_size, self.times)
+        if self.num_examples:
+            d, r = divmod(self.num_examples, self.batch_size)
+            return chain(repeat(self.batch_size, d), [r] if r else [])
+        return repeat(self.batch_size)
 
 
 class SequentialScheme(BatchScheme):
@@ -102,27 +112,36 @@ class SequentialScheme(BatchScheme):
     The batch size isn't enforced, so the last batch could be smaller.
 
     """
-    def __init__(self, num_examples, batch_size):
-        self.num_examples = num_examples
-        self.batch_size = batch_size
+    def get_request_iterator(self):
+        return imap(list, imap(
+            islice, repeat(_iter(xrange(self.num_examples)), self.num_batches),
+            repeat(self.batch_size, self.num_batches)))
+
+
+class ShuffledScheme(BatchScheme):
+    """Shuffled batches iterator.
+
+    Iterate over all the examples in a dataset of fixed size in shuffled
+    batches.
+
+    Notes
+    -----
+    The batch size isn't enforced, so the last batch could be smaller.
+
+    Shuffling the batches requires creating a shuffled list of indices in
+    memory. This can be memory-intensive for very large numbers of examples
+    (i.e. in the order of tens of millions).
+
+    """
+    def __init__(self, *args, **kwargs):
+        self.rng = kwargs.pop('rng', None)
+        if self.rng is None:
+            self.rng = numpy.random.RandomState(config.default_seed)
+        super(ShuffledScheme, self).__init__(*args, **kwargs)
 
     def get_request_iterator(self):
-        return SequentialIterator(self.num_examples, self.batch_size)
-
-
-class SequentialIterator(six.Iterator):
-    def __init__(self, num_examples, batch_size):
-        self.num_examples = num_examples
-        self.batch_size = batch_size
-        self.current = 0
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self.current >= self.num_examples:
-            raise StopIteration
-        slice_ = range(self.current, min(self.num_examples,
-                                         self.current + self.batch_size))
-        self.current += self.batch_size
-        return slice_
+        indices = list(range(self.num_examples))
+        self.rng.shuffle(indices)
+        return imap(list, imap(
+            islice, repeat(_iter(indices), self.num_batches),
+            repeat(self.batch_size, self.num_batches)))

@@ -127,6 +127,6 @@ class Plot(SimpleExtension):
         state['sub'] = None
         return state
 
-    def __setstate(self, state):
+    def __setstate__(self, state):
         self.__dict__.update(state)
         self._startserver()

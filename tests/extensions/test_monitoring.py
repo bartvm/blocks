@@ -7,7 +7,7 @@ from blocks.datasets import ContainerDataset
 from blocks.extensions import TrainingExtension, FinishAfter
 from blocks.extensions.monitoring import TrainingDataMonitoring
 from blocks.monitoring import aggregation
-from blocks.algorithms import GradientDescent, SteepestDescent
+from blocks.algorithms import GradientDescent, Scale
 from blocks.utils import shared_floatx, named_copy
 from blocks.main_loop import MainLoop
 
@@ -34,19 +34,19 @@ def test_training_data_monitoring():
 
         def before_batch(self, data):
             self.main_loop.log.current_row.true_cost = (
-                ((W.get_value() * data["features"]).sum()
-                 - data["targets"]) ** 2)
+                ((W.get_value() * data["features"]).sum() -
+                 data["targets"]) ** 2)
 
     main_loop = MainLoop(
         model=None, data_stream=dataset.get_default_stream(),
         algorithm=GradientDescent(cost=cost, params=[W],
-                                  step_rule=SteepestDescent(0.001)),
+                                  step_rule=Scale(0.001)),
         extensions=[
             FinishAfter(after_n_epochs=1),
-            TrainingDataMonitoring([W_sum, cost, V], "train1",
+            TrainingDataMonitoring([W_sum, cost, V], prefix="train1",
                                    after_every_batch=True),
-            TrainingDataMonitoring([aggregation.mean(W_sum), cost], "train2",
-                                   after_every_epoch=True),
+            TrainingDataMonitoring([aggregation.mean(W_sum), cost],
+                                   prefix="train2", after_every_epoch=True),
             TrueCostExtension()])
 
     main_loop.run()

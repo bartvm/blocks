@@ -1,9 +1,12 @@
 #!/usr/bin/env python
+import logging
 from argparse import ArgumentParser
 
 from blocks.scripts import dump
 
 if __name__ == "__main__":
+    logging.basicConfig()
+
     parser = ArgumentParser(
         "Dumps your pickled main loop. Dumps are a cross-platform way of"
         " sharing results of your experiments orthogonal to the standard"
@@ -13,8 +16,6 @@ if __name__ == "__main__":
         "pickle_path", help="A path to a file with a pickled main loop")
     parser.add_argument(
         "dump_path", help="A path where you want to dump")
-    parser.add_argument(
-        "--rec-limit", type=int, help="The recursion depth limit")
     args = parser.parse_args()
 
-    dump(args.pickle_path, args.dump_path, args.rec_limit)
+    dump(args.pickle_path, args.dump_path)

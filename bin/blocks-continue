@@ -1,14 +1,15 @@
 #!/usr/bin/env python
+import logging
 from argparse import ArgumentParser
 
 from blocks.scripts import continue_training
 
 if __name__ == "__main__":
+    logging.basicConfig()
+
     parser = ArgumentParser("Continues your pickled main loop")
     parser.add_argument(
         "path", help="A path to a file with a pickled main loop")
-    parser.add_argument(
-        "--rec-limit", type=int, help="The recursion depth limit")
     args = parser.parse_args()
 
-    continue_training(args.path, args.rec_limit)
+    continue_training(args.path)

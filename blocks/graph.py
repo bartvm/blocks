@@ -160,8 +160,8 @@ class ComputationGraph(object):
 
         """
         role_variables = [var for var in self.variables
-                          if hasattr(var.tag, "roles")
-                          and not is_shared_variable(var)]
+                          if hasattr(var.tag, "roles") and
+                          not is_shared_variable(var)]
         value_holders = [shared_like(var) for var in role_variables]
         function = self.get_theano_function(zip(value_holders, role_variables))
         function(*(data[input_.name] for input_ in self.inputs))

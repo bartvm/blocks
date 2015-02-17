@@ -145,8 +145,8 @@ class SequenceContentAttention(Initializable):
 
     @take_look.property('inputs')
     def take_look_inputs(self):
-        return (['sequence', 'preprocessed_sequence', 'mask']
-                + self.state_names)
+        return (['sequence', 'preprocessed_sequence', 'mask'] +
+                self.state_names)
 
     @application
     def initial_glimpses(self, name, batch_size, sequence):

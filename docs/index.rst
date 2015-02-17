@@ -50,11 +50,11 @@ Quickstart
    :hide:
 
    >>> from theano import tensor
-   >>> from blocks.algorithms import GradientDescent, SteepestDescent
+   >>> from blocks.algorithms import GradientDescent, Scale
    >>> from blocks.bricks import MLP, Tanh, Softmax
    >>> from blocks.bricks.cost import CategoricalCrossEntropy, MisclassificationRate
    >>> from blocks.initialization import IsotropicGaussian, Constant
-   >>> from blocks.datasets import DataStream
+   >>> from blocks.datasets.streams import DataStream
    >>> from blocks.datasets.mnist import MNIST
    >>> from blocks.datasets.schemes import SequentialScheme
    >>> from blocks.extensions import FinishAfter, Printing
@@ -91,7 +91,7 @@ And train!
 >>> main_loop = MainLoop(
 ...     model=mlp, data_stream=train_stream,
 ...     algorithm=GradientDescent(
-...         cost=cost, step_rule=SteepestDescent(learning_rate=0.1)),
+...         cost=cost, step_rule=Scale(learning_rate=0.1)),
 ...     extensions=[FinishAfter(after_n_epochs=5),
 ...                 DataStreamMonitoring(
 ...                     variables=[cost, error_rate],
@@ -118,8 +118,8 @@ In the future we also hope to support:
 
 * Dimension, type and axes-checking
 
-.. image:: https://coveralls.io/repos/bartvm/blocks/badge.svg?branch=master
-   :target: https://coveralls.io/r/bartvm/blocks?branch=master
+.. image:: https://img.shields.io/coveralls/bartvm/blocks.svg
+   :target: https://coveralls.io/r/bartvm/blocks
 
 .. image:: https://travis-ci.org/bartvm/blocks.svg?branch=master
    :target: https://travis-ci.org/bartvm/blocks
@@ -127,8 +127,11 @@ In the future we also hope to support:
 .. image:: https://readthedocs.org/projects/blocks/badge/?version=latest
    :target: https://blocks.readthedocs.org/
 
-.. image:: https://landscape.io/github/bartvm/blocks/master/landscape.svg
-   :target: https://landscape.io/github/bartvm/blocks/master
+.. image:: https://img.shields.io/scrutinizer/g/bartvm/blocks.svg
+   :target: https://scrutinizer-ci.com/g/bartvm/blocks/
+
+.. image:: https://img.shields.io/badge/license-MIT-blue.svg
+   :target: https://github.com/bartvm/blocks/blob/master/LICENSE
 
 |
 
