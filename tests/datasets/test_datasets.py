@@ -8,7 +8,7 @@ from nose.tools import assert_raises
 from blocks.datasets import ContainerDataset
 from blocks.datasets.streams import (
     CachedDataStream, DataStream, DataStreamMapping, BatchDataStream,
-    PaddingDataStream, DataStreamFilter, ForceFloatX)
+    PaddingDataStream, DataStreamFilter, ForceFloatX, SlidingWindowDataStream)
 from blocks.datasets.schemes import BatchSizeScheme, ConstantScheme
 
 floatX = theano.config.floatX
@@ -215,3 +215,16 @@ def test_padding_data_stream():
         .get_default_stream(),
         ConstantScheme(2)))
     assert len(next(stream3.get_epoch_iterator())) == 4
+
+
+def test_slidin_window_data_stream():
+    stream = ContainerDataset([1, 2, 3, 4, 5]).get_default_stream()
+    batches = list(SlidingWindowDataStream(stream, ConstantScheme(2))
+                   .get_epoch_iterator())
+    expected = [(numpy.array([1, 2]),),
+                (numpy.array([2, 3]),),
+                (numpy.array([3, 4]),),
+                (numpy.array([4, 5]),)]
+    assert len(batches) == len(expected)
+    for b, e in zip(batches, expected):
+        assert (b[0] == e[0]).all()

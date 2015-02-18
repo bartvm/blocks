@@ -314,6 +314,50 @@ class CachedDataStream(DataStreamWrapper):
             cache.extend(data)
 
 
+class SlidingWindowDataStream(DataStreamWrapper):
+    """Moves a sliding window over a stream that provides single examples.
+
+    This wrapper initially fills a buffer with the requested number of
+    samples. At every iteration it updates this batch by discarding
+    the first example and appending a new example from the stream it is
+    wrapping. At each iteration, the current state of the buffer is
+    returned.
+
+    Parameters
+    ----------
+    data_stream : :class:`AbstractDataStream` instance
+        The data stream to wrap.
+    iteration_scheme : :class:`.BatchSizeScheme` instance
+        The iteration scheme to use; should return integers representing
+        the size of the batch to return. Only ConstantScheme is supported.
+
+    """
+    def __init__(self, data_stream, iteration_scheme):
+        super(SlidingWindowDataStream, self).__init__(
+            data_stream, iteration_scheme=iteration_scheme)
+        self.buffer = [[] for _ in self.sources]
+
+    def get_data(self, request=None):
+        """Get data from the dataset."""
+        if request is None:
+            raise ValueError
+        if len(self.buffer[0]) < request:
+            for i in range(request):
+                try:
+                    for source_data, example in zip(
+                            self.buffer, next(self.child_epoch_iterator)):
+                        source_data.append(example)
+                except StopIteration:
+                    raise ValueError
+        else:
+            for source_data, example in zip(
+                    self.buffer, next(self.child_epoch_iterator)):
+                source_data.append(example)
+                del source_data[0]
+
+        return tuple(numpy.asarray(source_data) for source_data in self.buffer)
+
+
 class BatchDataStream(DataStreamWrapper):
     """Creates minibatches from data streams providing single examples.
 
