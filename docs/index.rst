@@ -25,6 +25,7 @@ In-depth
 .. toctree::
    :maxdepth: 1
 
+   rnn
    configuration
    datasets
    serialization

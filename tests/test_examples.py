@@ -11,6 +11,11 @@ from examples.markov_chain.main import main as markov_chain_test
 from examples.reverse_words import main as reverse_words_test
 from tests import silence_printing, skip_if_not_available
 
+import sys
+import Pyro4.util
+Pyro4.config.DETAILED_TRACEBACK=True
+sys.excepthook=Pyro4.util.excepthook
+
 
 @silence_printing
 def test_sqrt():
@@ -23,6 +28,10 @@ def test_sqrt():
 @silence_printing
 def test_mnist():
     skip_if_not_available(modules=['bokeh'])
+    import sys
+    import Pyro4.util
+    Pyro4.config.DETAILED_TRACEBACK=True
+    sys.excepthook=Pyro4.util.excepthook
     with tempfile.NamedTemporaryFile() as f:
         mnist_test(f.name, 1)
         with open(f.name, "rb") as source:
@@ -35,12 +44,20 @@ def test_mnist():
 
 @silence_printing
 def test_markov_chain():
+    import sys
+    import Pyro4.util
+    Pyro4.config.DETAILED_TRACEBACK=True
+    sys.excepthook=Pyro4.util.excepthook
     with tempfile.NamedTemporaryFile() as f:
         markov_chain_test("train", f.name, None, 10)
 
 
 @silence_printing
 def test_reverse_words():
+    import sys
+    import Pyro4.util
+    Pyro4.config.DETAILED_TRACEBACK=True
+    sys.excepthook=Pyro4.util.excepthook
     skip_if_not_available(modules=['bokeh'])
     old_limit = blocks.config.recursion_limit
     blocks.config.recursion_limit = 100000
@@ -51,3 +68,8 @@ def test_reverse_words():
                 print("A line.", file=data)
         reverse_words_test("train", f_save.name, 1, False, [f_data.name])
     blocks.config.recursion_limit = old_limit
+
+if __name__ == "__main__":
+    test_mnist()
+    test_markov_chain()
+    test_reverse_words()
