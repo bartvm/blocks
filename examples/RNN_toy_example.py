@@ -11,7 +11,7 @@ from blocks.initialization import IsotropicGaussian, Constant
 from blocks.datasets import Dataset, ContainerDataset
 from blocks.datasets.streams import DataStream
 from blocks.datasets.schemes import SequentialScheme
-from blocks.algorithms import (GradientDescent, Scale, 
+from blocks.algorithms import (GradientDescent, Scale,
                                StepClipping, CompositeRule)
 from blocks.extensions.monitoring import TrainingDataMonitoring
 from blocks.main_loop import MainLoop
@@ -44,7 +44,7 @@ def main(seq_u, seq_y, n_h, n_y, n_epochs):
     y_hat = state_to_output.apply(h)
     y_hat.name = 'output_sequence'
 
-    predict = theano.function(inputs = [u, ], outputs = y_hat)
+    predict = theano.function(inputs=[u, ], outputs=y_hat)
 
     # Cost
     y = T.tensor3('target_sequence')
@@ -61,19 +61,20 @@ def main(seq_u, seq_y, n_h, n_y, n_epochs):
     input_to_state.initialize()
 
     # Data
-    dataset = ContainerDataset({'input_sequence': seq_u, 'target_sequence': seq_y})
+    dataset = ContainerDataset({'input_sequence': seq_u,
+                                'target_sequence': seq_y})
     stream = DataStream(dataset)
 
     # Training
-    algorithm = GradientDescent(cost=cost, 
+    algorithm = GradientDescent(cost=cost,
                                 step_rule=CompositeRule([StepClipping(10.0),
                                                          Scale(0.01)]))
     monitor = TrainingDataMonitoring([cost],
                                      prefix="train",
                                      after_every_epoch=True)
     main_loop = MainLoop(data_stream=stream, algorithm=algorithm,
-                         extensions=[monitor, 
-                                     FinishAfter(after_n_epochs=n_epochs), 
+                         extensions=[monitor,
+                                     FinishAfter(after_n_epochs=n_epochs),
                                      Printing()])
 
     main_loop.run()
@@ -103,17 +104,17 @@ def main(seq_u, seq_y, n_h, n_y, n_epochs):
         x.set_color(true_targets[i].get_color())
     ax2.set_title('solid: true output, dashed: model output')
 
-    ax1.annotate('Input data point', xy=(2, test_u[2, 0, 0]), 
+    ax1.annotate('Input data point', xy=(2, test_u[2, 0, 0]),
                  xytext=(2, test_u[2, 0, 0] + 1),
                  arrowprops=dict(facecolor='black', shrink=0.05))
 
-    ax2.annotate('Output data point (Same point but with 2 time_steps delay)', 
+    ax2.annotate('Output data point (Same point but with 2 time_steps delay)',
                  xy=(4, test_y[4, 0, 0]), xytext=(4, test_y[4, 0, 0] + 1),
                  arrowprops=dict(facecolor='black', shrink=0.05))
 
     # Save as a file
     plt.savefig('RNN_seq.png')
-    print 'Figure is saved as a .png file.'
+    print("Figure is saved as a .png file.")
 
     plt.show()
 
@@ -121,23 +122,21 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     n_examples = 20
     batch_size = 10
-    n_u = 2 # input vector size
-    n_h = 7 # hidden vector size
-    n_y = 2 # output vector size
-    time_steps = 15 # number of time-steps in time
-    n_seq = 10 # number of sequences for training
+    n_u = 2  # input vector size
+    n_h = 7  # hidden vector size
+    n_y = 2  # output vector size
+    time_steps = 15  # number of time-steps in time
+    n_seq = 10  # number of sequences for training
 
     np.random.seed(0)
-    
+
     # generating random sequences
     seq_u = np.random.randn(n_examples,  time_steps, batch_size, n_u)
     seq_y = np.zeros((n_examples,  time_steps, batch_size, n_y))
 
-    seq_y[:, 2:, :, 0] = seq_u[:, :-2, :, 0] # 2 time-step delay between input and output
-    seq_y[:, 4:, :, 1] = seq_u[:, :-4, :, 1] # 4 time-step delay
+    seq_y[:, 2:, :, 0] = seq_u[:, :-2, :, 0]  # 2 time-step delay
+    seq_y[:, 4:, :, 1] = seq_u[:, :-4, :, 1]  # 4 time-step delay
 
     seq_y += 0.01 * np.random.standard_normal(seq_y.shape)
 
     main(seq_u, seq_y, 8, 2, 1000)
-
-
