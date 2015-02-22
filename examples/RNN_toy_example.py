@@ -141,4 +141,3 @@ if __name__ == "__main__":
     seq_y += 0.01 * numpy.random.standard_normal(seq_y.shape)
 
     main(seq_u, seq_y, 8, 2, 1000)
-    
