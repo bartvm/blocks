@@ -10,10 +10,10 @@ Output_1_at_time_step[t] = Input_1_at_time_step[t-4]
 
 At the end of training I also plot these 4 signals.
 """
-import numpy as np
+import numpy
 import theano
-import theano.tensor as T
 import logging
+from theano import tensor
 from blocks.bricks import Linear, Tanh, Softmax
 from blocks.bricks.cost import SquaredError
 from blocks.filter import VariableFilter
@@ -29,20 +29,12 @@ from blocks.extensions.monitoring import TrainingDataMonitoring
 from blocks.main_loop import MainLoop
 from blocks.extensions import FinishAfter, Printing
 from blocks.bricks.recurrent import SimpleRecurrent
-import matplotlib.pyplot as plt
-
-
-class ToyDataset(Dataset):
-    def __init__(self, data):
-        self.data = data
-
-    def get_data(self, state=None, request=None):
-        return self.data[request]
+from matplotlib import pyplot
 
 
 def main(seq_u, seq_y, n_h, n_y, n_epochs):
     # Building Model
-    u = T.tensor3('input_sequence')
+    u = tensor.tensor3('input_sequence')
     input_to_state = Linear(name='input_to_state',
                             input_dim=seq_u.shape[-1],
                             output_dim=n_h)
@@ -59,7 +51,7 @@ def main(seq_u, seq_y, n_h, n_y, n_epochs):
     predict = theano.function(inputs=[u, ], outputs=y_hat)
 
     # Cost
-    y = T.tensor3('target_sequence')
+    y = tensor.tensor3('target_sequence')
     cost = SquaredError().apply(y, y_hat)
     cost.name = 'MSE'
 
@@ -97,21 +89,21 @@ def main(seq_u, seq_y, n_h, n_y, n_epochs):
     test_y_hat = predict(test_u)
 
     # We just plot one of the sequences
-    plt.close('all')
-    fig = plt.figure()
+    pyplot.close('all')
+    fig = pyplot.figure()
 
     # Graph 1
-    ax1 = plt.subplot(211)
-    plt.plot(test_u[:, 0, :])
-    plt.grid()
+    ax1 = pyplot.subplot(211)
+    pyplot.plot(test_u[:, 0, :])
+    pyplot.grid()
     ax1.set_title('Input sequence')
 
     # Graph 2
-    ax2 = plt.subplot(212)
-    true_targets = plt.plot(test_y[:, 0, :])
+    ax2 = pyplot.subplot(212)
+    true_targets = pyplot.plot(test_y[:, 0, :])
 
-    guessed_targets = plt.plot(test_y_hat[:, 0, :], linestyle='--')
-    plt.grid()
+    guessed_targets = pyplot.plot(test_y_hat[:, 0, :], linestyle='--')
+    pyplot.grid()
     for i, x in enumerate(guessed_targets):
         x.set_color(true_targets[i].get_color())
     ax2.set_title('solid: true output, dashed: model output')
@@ -125,10 +117,10 @@ def main(seq_u, seq_y, n_h, n_y, n_epochs):
                  arrowprops=dict(facecolor='black', shrink=0.05))
 
     # Save as a file
-    plt.savefig('RNN_seq.png')
+    pyplot.savefig('RNN_seq.png')
     print("Figure is saved as a .png file.")
 
-    plt.show()
+    pyplot.show()
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
@@ -140,15 +132,15 @@ if __name__ == "__main__":
     time_steps = 15  # number of time-steps in time
     n_seq = 10  # number of sequences for training
 
-    np.random.seed(0)
+    numpy.random.seed(0)
 
     # generating random sequences
-    seq_u = np.random.randn(n_examples,  time_steps, batch_size, n_u)
-    seq_y = np.zeros((n_examples,  time_steps, batch_size, n_y))
+    seq_u = numpy.random.randn(n_examples,  time_steps, batch_size, n_u)
+    seq_y = numpy.zeros((n_examples,  time_steps, batch_size, n_y))
 
     seq_y[:, 2:, :, 0] = seq_u[:, :-2, :, 0]  # 2 time-step delay
     seq_y[:, 4:, :, 1] = seq_u[:, :-4, :, 1]  # 4 time-step delay
 
-    seq_y += 0.01 * np.random.standard_normal(seq_y.shape)
+    seq_y += 0.01 * numpy.random.standard_normal(seq_y.shape)
 
     main(seq_u, seq_y, 8, 2, 1000)
