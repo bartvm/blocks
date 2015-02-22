@@ -1,3 +1,15 @@
+"""
+This is a simple example of Vanilla RNN applied on a toy example dataset.
+The task is a "simple memorization task". The network input has a shape of
+(15, 2) and the output is another sequence with a shape of (15, 2).
+Thus, we have 2 input signals and 2 output signals (each with a length of 15).
+Output signals are same as input signals but with 2 and 4 time-steps delay respectively.
+
+Output_0_at_time_step[t] = Input_0_at_time_step[t-2]
+Output_1_at_time_step[t] = Input_1_at_time_step[t-4]
+
+At the end of training I also plot these 4 signals.
+"""
 import numpy as np
 import theano
 import theano.tensor as T
