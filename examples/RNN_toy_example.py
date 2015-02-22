@@ -3,7 +3,8 @@ This is a simple example of Vanilla RNN applied on a toy example dataset.
 The task is a "simple memorization task". The network input has a shape of
 (15, 2) and the output is another sequence with a shape of (15, 2).
 Thus, we have 2 input signals and 2 output signals (each with a length of 15).
-Output signals are same as input signals but with 2 and 4 time-steps delay respectively.
+Output signals are same as input signals but with 2 and 4 time-steps
+delay respectively.
 
 Output_0_at_time_step[t] = Input_0_at_time_step[t-2]
 Output_1_at_time_step[t] = Input_1_at_time_step[t-4]
@@ -14,15 +15,11 @@ import numpy
 import theano
 import logging
 from theano import tensor
-from blocks.bricks import Linear, Tanh, Softmax
+from blocks.bricks import Linear, Tanh
 from blocks.bricks.cost import SquaredError
-from blocks.filter import VariableFilter
-from blocks.graph import ComputationGraph
-from blocks.bricks import WEIGHTS
 from blocks.initialization import IsotropicGaussian, Constant
-from blocks.datasets import Dataset, ContainerDataset
+from blocks.datasets import ContainerDataset
 from blocks.datasets.streams import DataStream
-from blocks.datasets.schemes import SequentialScheme
 from blocks.algorithms import (GradientDescent, Scale,
                                StepClipping, CompositeRule)
 from blocks.extensions.monitoring import TrainingDataMonitoring
@@ -90,7 +87,7 @@ def main(seq_u, seq_y, n_h, n_y, n_epochs):
 
     # We just plot one of the sequences
     pyplot.close('all')
-    fig = pyplot.figure()
+    pyplot.figure()
 
     # Graph 1
     ax1 = pyplot.subplot(211)
@@ -144,3 +141,4 @@ if __name__ == "__main__":
     seq_y += 0.01 * numpy.random.standard_normal(seq_y.shape)
 
     main(seq_u, seq_y, 8, 2, 1000)
+    
