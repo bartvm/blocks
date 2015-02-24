@@ -50,6 +50,14 @@ class DataStreamMonitoring(SimpleExtension, MonitoringExtension):
     variables : list of :class:`~tensor.TensorVariable`
         The variables to monitor. The variable names are used as record
         names in the logs.
+    updates : list of tuples or :class:`~collections.OrderedDict` or None
+        :class:`~tensor.TensorSharedVariable` updates to be performed
+        during evaluation. Be careful not to update any model parameters
+        as this is not intended to alter your model in any meaningfull
+        way. A typical use case of this option arises when the theano
+        function used for evaluation contains a call to
+        :function:`~theano.scan` which might have returned shared
+        variable updates.
     data_stream : instance of :class:`.DataStream`
         The data stream to monitor on. A data epoch is requested
         each time monitoring is done.
@@ -57,11 +65,11 @@ class DataStreamMonitoring(SimpleExtension, MonitoringExtension):
     """
     PREFIX_SEPARATOR = '_'
 
-    def __init__(self, variables, data_stream, **kwargs):
+    def __init__(self, variables, data_stream, updates=None, **kwargs):
         kwargs.setdefault("after_every_epoch", True)
         kwargs.setdefault("before_first_epoch", True)
         super(DataStreamMonitoring, self).__init__(**kwargs)
-        self._evaluator = DatasetEvaluator(variables)
+        self._evaluator = DatasetEvaluator(variables, updates)
         self.data_stream = data_stream
 
     def do(self, callback_name, *args):

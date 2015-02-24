@@ -196,7 +196,7 @@ a single epoch and to make sure that our progress is printed.
 
 >>> from blocks.main_loop import MainLoop
 >>> from blocks.extensions import FinishAfter, Printing
->>> main_loop = MainLoop(model=mlp, data_stream=data_stream, algorithm=algorithm,
+>>> main_loop = MainLoop(data_stream=data_stream, algorithm=algorithm,
 ...                      extensions=[monitor, FinishAfter(after_n_epochs=1), Printing()])
 >>> main_loop.run() # doctest: +SKIP
 <BLANKLINE>

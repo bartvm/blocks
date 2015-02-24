@@ -4,6 +4,7 @@ from numpy.testing import assert_allclose
 import theano
 from theano import tensor
 
+from blocks.bricks import Identity
 from blocks.bricks.attention import (
     SequenceContentAttention, AttentionRecurrent)
 from blocks.bricks.recurrent import SimpleRecurrent
@@ -64,7 +65,7 @@ def test_attention_recurrent():
     attended_dim = 10
     attended_length = 15
 
-    wrapped = SimpleRecurrent(dim)
+    wrapped = SimpleRecurrent(dim, Identity())
     attention = SequenceContentAttention(
         state_names=wrapped.apply.states,
         sequence_dim=attended_dim, match_dim=attended_dim)

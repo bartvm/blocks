@@ -34,7 +34,7 @@ setup(
     scripts=['bin/blocks-continue', 'bin/blocks-dump', 'bin/blocks-plot'],
     setup_requires=['numpy'],
     install_requires=['numpy', 'six', 'pyyaml', 'pandas', 'toolz',
-                      'theano', 'picklable-itertools'],
+                      'theano', 'picklable-itertools', 'progressbar2'],
     extras_require={
         'test': ['nose', 'nose2'],
         'plot': ['bokeh'],

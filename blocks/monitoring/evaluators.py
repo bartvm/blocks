@@ -161,10 +161,19 @@ class DatasetEvaluator(object):
         Each variable can be tagged with an :class:`AggregationScheme` that
         specifies how the value can be computed for a data set by
         aggregating minibatches.
+    updates : list of tuples or :class:`~collections.OrderedDict` or None
+        :class:`~tensor.TensorSharedVariable` updates to be performed
+        during evaluation. Be careful not to update any model parameters
+        as this is not intended to alter your model in any meaningfull
+        way. A typical use case of this option arises when the theano
+        function used for evaluation contains a call to
+        :function:`~theano.scan` which might have returned shared
+        variable updates.
 
     """
-    def __init__(self, variables):
+    def __init__(self, variables, updates=None):
         self.buffer_ = AggregationBuffer(variables)
+        self.updates = updates
         self._compile()
 
     def _compile(self):
@@ -178,9 +187,13 @@ class DatasetEvaluator(object):
 
         """
         if self.buffer_.accumulation_updates:
+            updates = OrderedDict()
+            updates.update(self.buffer_.accumulation_updates)
+            if self.updates:
+                updates.update(self.updates)
             self._accumulate_fun = theano.function(
                 self.buffer_.inputs, [],
-                updates=self.buffer_.accumulation_updates)
+                updates=updates)
         else:
             self._accumulate_fun = None
 

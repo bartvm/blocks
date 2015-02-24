@@ -3,7 +3,7 @@ import numpy
 import theano
 from theano import tensor
 
-from blocks.bricks import Tanh
+from blocks.bricks import Tanh, Identity
 from blocks.bricks.base import application
 from blocks.bricks.recurrent import SimpleRecurrent, GatedRecurrent
 from blocks.bricks.attention import (
@@ -135,7 +135,8 @@ def test_with_attention():
     batch_size = 4
     n_steps = 30
 
-    transition = TestTransition(dim=inp_dim, attended_dim=attended_dim)
+    transition = TestTransition(
+        dim=inp_dim, attended_dim=attended_dim, activation=Identity())
     attention = SequenceContentAttention(
         transition.apply.states, match_dim=inp_dim, name="attention")
     att_trans = AttentionRecurrent(

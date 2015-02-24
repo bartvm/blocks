@@ -1,10 +1,15 @@
 from __future__ import print_function
 
 import time
+import logging
+import progressbar
+
 from abc import ABCMeta, abstractmethod
 
 from six import add_metaclass
 from toolz import first
+
+logger = logging.getLogger()
 
 
 class TrainingExtension(object):
@@ -341,6 +346,95 @@ class Printing(SimpleExtension):
                 log.status.iterations_done))
             self._print_attributes(log.current_row)
         print()
+
+
+class ProgressBar(TrainingExtension):
+    """Display a progress bar during training.
+
+    This extension tries to infer the number of iterations per epoch
+    by querying the `num_batches`, `num_examples` and `batch_size`
+    attributes from the :class:`IterationScheme`. When this information is
+    not available it will display a simplified progress bar that does not
+    include the estimated time until the end of this epoch.
+
+    Notes
+    -----
+    This extension should be run before other extensions that print to
+    the screen at the end or at the beginning of the epoch (e.g. the
+    :class:`Printing` extension). Placing ProgressBar before these
+    extension will ensure you won't get intermingled output on your
+    terminal.
+
+    """
+    def __init__(self, **kwargs):
+        super(ProgressBar, self).__init__(**kwargs)
+        self.bar = None
+        self.iter_count = 0
+
+    def __getstate__(self):
+        # Ensure we won't pickle the actual progress bar.
+        # (It might contain unpicklable file handles)
+        state = dict(self.__dict__)
+        del state['bar']
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.bar = None
+
+    def get_iter_per_epoch(self):
+        """Try to infer the number of iterations per epoch."""
+        iter_scheme = self.main_loop.data_stream.iteration_scheme
+        if hasattr(iter_scheme, 'num_batches'):
+            return iter_scheme.num_batches
+        elif (hasattr(iter_scheme, 'num_examples') and
+                hasattr(iter_scheme, 'batch_size')):
+            return iter_scheme.num_examples // iter_scheme.batch_size
+        return None
+
+    def create_bar(self):
+        """Create a new progress bar.
+
+        Calls `self.get_iter_per_epoch()`, selects an appropriate
+        set of widgets and creates a ProgressBar.
+
+        """
+        iter_per_epoch = self.get_iter_per_epoch()
+        epochs_done = self.main_loop.log._status.epochs_done
+
+        if iter_per_epoch is None:
+            widgets = ["Epoch {}, step ".format(epochs_done),
+                       progressbar.Counter(), ' ',
+                       progressbar.BouncingBar(), ' ',
+                       progressbar.Timer()]
+            iter_per_epoch = progressbar.UnknownLength
+        else:
+            widgets = ["Epoch {}, step ".format(epochs_done),
+                       progressbar.Counter(),
+                       ' (', progressbar.Percentage(), ') ',
+                       progressbar.Bar(), ' ',
+                       progressbar.Timer(), ' ', progressbar.ETA()]
+
+        return progressbar.ProgressBar(widgets=widgets,
+                                       maxval=iter_per_epoch)
+
+    def before_epoch(self):
+        self.iter_count = 0
+
+    def after_epoch(self):
+        if self.bar is None:
+            return
+
+        self.bar.finish()
+        self.bar = None
+
+    def before_batch(self, batch):
+        if self.bar is None:
+            self.bar = self.create_bar()
+            self.bar.start()
+
+        self.iter_count += 1
+        self.bar.update(self.iter_count)
 
 
 class Timing(TrainingExtension):
