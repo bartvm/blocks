@@ -134,8 +134,9 @@ class Uniform(NdarrayInitialization):
 class Identity(NdarrayInitialization):
     """Initialize to the identity matrix.
 
-    Only works for 2D arrays. If the number of columns is not equal to the
-    number of rows, the array will be truncated or padded with zeros.
+    Only works for 1D and 2D variables. If the number of columns is not
+    equal to the number of rows, the array will be truncated or padded with
+    zeros. For 1D variables all elements but the first one will be zero.
 
     Parameters
     ----------
@@ -147,21 +148,40 @@ class Identity(NdarrayInitialization):
         self.mult = mult
 
     def generate(self, rng, shape):
-        if len(shape) != 2:
-            raise ValueError
-        rows, cols = shape
-        return self.mult * numpy.eye(rows, cols, dtype=theano.config.floatX)
+        if len(shape) == 1:
+            eye_matrix = numpy.eye(1, shape[0], dtype=theano.config.floatX)
+            return self.mult * eye_matrix[0]
+        elif len(shape) == 2:
+            rows, cols = shape
+            eye_matrix = numpy.eye(rows, cols, dtype=theano.config.floatX)
+            return self.mult * eye_matrix
+        else:
+            raise ValueError("Identity initialization only works for 1D and"        
+                             " 2D variables")
 
 
 class Orthogonal(NdarrayInitialization):
-    """Initialize a random orthogonal matrix.
+    """Initialize a random, approximately orthogonal matrix.
 
-    Only works for 2D arrays.
+    Only works for 1D and 2D variables.
 
+    When used to initialize a 1D parameter vector the elements will
+    be drawn i.i.d. from a normal distribution.
+
+    For 2D matrices we initialalize such that
+    :math:`M M^T \approx I` and :math:`M^T M \approx I` where
+    :math:`I` is an identity matrix of appropriate size.
+
+        
     """
     def generate(self, rng, shape):
-        if len(shape) != 2:
-            raise ValueError
+        if len(shape) not in (1, 2):
+            raise ValueError("Orthogonal initialization only works for 1D and"        
+                             " 2D variables")
+
+        if len(shape) == 1:
+            # Special case for 1D variables
+            return rng.randn(*shape).astype(theano.config.floatX)
 
         if shape[0] == shape[1]:
             # For square weight matrices we can simplify the logic
