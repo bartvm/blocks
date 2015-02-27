@@ -156,12 +156,12 @@ class Identity(NdarrayInitialization):
             eye_matrix = numpy.eye(rows, cols, dtype=theano.config.floatX)
             return self.mult * eye_matrix
         else:
-            raise ValueError("Identity initialization only works for 1D and"        
+            raise ValueError("Identity initialization only works for 1D and"
                              " 2D variables")
 
 
 class Orthogonal(NdarrayInitialization):
-    """Initialize a random, approximately orthogonal matrix.
+    r"""Initialize a random, approximately orthogonal matrix.
 
     Only works for 1D and 2D variables.
 
@@ -172,11 +172,10 @@ class Orthogonal(NdarrayInitialization):
     :math:`M M^T \approx I` and :math:`M^T M \approx I` where
     :math:`I` is an identity matrix of appropriate size.
 
-        
     """
     def generate(self, rng, shape):
         if len(shape) not in (1, 2):
-            raise ValueError("Orthogonal initialization only works for 1D and"        
+            raise ValueError("Orthogonal initialization only works for 1D and"
                              " 2D variables")
 
         if len(shape) == 1:

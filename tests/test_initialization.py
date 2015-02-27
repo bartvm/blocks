@@ -88,7 +88,7 @@ def test_sparse():
 
 def test_identity():
     rng = numpy.random.RandomState(1)
-    
+
     W = Identity().generate(rng, (4, 4))
     assert W.shape == (4, 4)
     assert numpy.count_nonzero(W) == 4
@@ -101,8 +101,12 @@ def test_identity():
     assert W.shape == (4, 8)
     assert numpy.count_nonzero(W) == 4
 
+    # 1D should work
     V = Identity().generate(rng, (4,))
-    assert_allclose(V, [1., 0, 0 ,0])
+    assert_allclose(V, [1., 0, 0, 0])
+
+    # 3D should throw exception
+    assert_raises(ValueError, lambda: Identity().generate(rng, [1, 2, 3]))
 
 
 def test_orthogonal():
@@ -140,5 +144,9 @@ def test_orthogonal():
     yield check_orthogonal, rng, (50, 51)
     yield check_orthogonal, rng, (51, 50)
 
+    # 1D should work
     V = Orthogonal().generate(rng, (4,))
     assert V.shape == (4,)
+
+    # 3D should throw exception
+    assert_raises(ValueError, lambda: Orthogonal().generate(rng, [1, 2, 3]))
