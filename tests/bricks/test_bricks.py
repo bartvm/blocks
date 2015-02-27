@@ -434,3 +434,17 @@ def test_application_call():
     assert auxiliary_variable.name == 'test_val'
     assert get_brick(auxiliary_variable) == brick
     assert get_application_call(Y).auxiliary_variables[0].name == 'test_val'
+
+
+def test_linear_nan_allocation():
+    x = tensor.matrix()
+
+    linear = Linear(input_dim=16, output_dim=8, weights_init=Constant(2),
+                    biases_init=Constant(1))
+    linear.apply(x)
+    w1 = numpy.nan * numpy.zeros((16, 8))
+    w2 = linear.params[0].get_value()
+    b1 = numpy.nan * numpy.zeros(8)
+    b2 = linear.params[1].get_value()
+    numpy.testing.assert_equal(w1, w2)
+    numpy.testing.assert_equal(b1, b2)

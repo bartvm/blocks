@@ -71,7 +71,41 @@ def unpack(arg, singleton=False):
 
 
 def shared_floatx_zeros(shape, **kwargs):
+    """Creates a shared variable array filled with zeros.
+
+    Parameters
+    ----------
+    shape : tuple
+        A tuple of integers representing the shape of the array.
+    \*\*kwargs :
+        Keyword arguments to pass to the :func:`shared_floatx` function.
+
+    Returns
+    -------
+    :class:'tensor.TensorSharedVariable'
+        A Theano shared variable filled with zeros.
+
+    """
     return shared_floatx(numpy.zeros(shape), **kwargs)
+
+
+def shared_floatx_nans(shape, **kwargs):
+    """Creates a shared variable array filled with nans.
+
+    Parameters
+    ----------
+    shape : tuple
+         A tuple of integers representing the shape of the array.
+    \*\*kwargs :
+        Keyword arguments to pass to the :func:`shared_floatx` function.
+
+    Returns
+    -------
+    :class:'tensor.TensorSharedVariable'
+        A Theano shared variable filled with nans.
+
+    """
+    return shared_floatx(numpy.nan * numpy.zeros(shape), **kwargs)
 
 
 def shared_floatx(value, name=None, borrow=False, dtype=None):

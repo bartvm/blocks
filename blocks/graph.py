@@ -293,10 +293,10 @@ class Annotation(object):
         --------
         >>> from blocks.bricks.base import application, Brick
         >>> from blocks.roles import COST
-        >>> from blocks.utils import shared_floatx_zeros
+        >>> from blocks.utils import shared_floatx_nans
         >>> class Foo(Brick):
         ...     def _allocate(self):
-        ...         W = shared_floatx_zeros((10, 10))
+        ...         W = shared_floatx_nans((10, 10))
         ...         self.add_auxiliary_variable(W.mean(), name='mean_W')
         ...     @application
         ...     def apply(self, x, application_call):
