@@ -346,13 +346,13 @@ class LSTM(BaseRecurrent, Initializable):
 
     def _allocate(self):
         self.W_state = shared_floatx_nans((self.dim, 4*self.dim),
-                                           name='W_state')
+                                          name='W_state')
         self.W_cell_to_in = shared_floatx_nans((self.dim,),
-                                                name='W_cell_to_in')
+                                               name='W_cell_to_in')
         self.W_cell_to_forget = shared_floatx_nans((self.dim,),
-                                                    name='W_cell_to_forget')
+                                                   name='W_cell_to_forget')
         self.W_cell_to_out = shared_floatx_nans((self.dim,),
-                                                 name='W_cell_to_out')
+                                                name='W_cell_to_out')
         self.biases = shared_floatx_nans((4*self.dim,), name='biases')
         add_role(self.W_state, WEIGHTS)
         add_role(self.W_cell_to_in, WEIGHTS)

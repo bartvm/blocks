@@ -71,13 +71,13 @@ def unpack(arg, singleton=False):
 
 
 def shared_floatx_zeros(shape, **kwargs):
-    """Creates a shared variable array filled with zeros.
+    r"""Creates a shared variable array filled with zeros.
 
     Parameters
     ----------
     shape : tuple
         A tuple of integers representing the shape of the array.
-    \*\*kwargs :
+    \*\*kwargs
         Keyword arguments to pass to the :func:`shared_floatx` function.
 
     Returns
@@ -90,13 +90,13 @@ def shared_floatx_zeros(shape, **kwargs):
 
 
 def shared_floatx_nans(shape, **kwargs):
-    """Creates a shared variable array filled with nans.
+    r"""Creates a shared variable array filled with nans.
 
     Parameters
     ----------
     shape : tuple
          A tuple of integers representing the shape of the array.
-    \*\*kwargs :
+    \*\*kwargs
         Keyword arguments to pass to the :func:`shared_floatx` function.
 
     Returns

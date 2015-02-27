@@ -53,7 +53,7 @@ class Convolutional(Initializable):
 
     def _allocate(self):
         W = shared_floatx_nans((self.num_filters, self.num_channels) +
-                                self.filter_size, name='W')
+                               self.filter_size, name='W')
         add_role(W, FILTERS)
         self.params.append(W)
         self.add_auxiliary_variable(W.norm(2), name='W_norm')
