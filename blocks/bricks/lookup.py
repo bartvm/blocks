@@ -1,7 +1,7 @@
 """Introduces Lookup brick."""
 from blocks.bricks import Initializable
 from blocks.bricks.base import application, lazy
-from blocks.utils import check_theano_variable, shared_floatx_zeros
+from blocks.utils import check_theano_variable, shared_floatx_nans
 
 
 class LookupTable(Initializable):
@@ -33,7 +33,7 @@ class LookupTable(Initializable):
         return self.params[0]
 
     def _allocate(self):
-        self.params.append(shared_floatx_zeros((self.length, self.dim),
+        self.params.append(shared_floatx_nans((self.length, self.dim),
                            name='W'))
 
     def _initialize(self):

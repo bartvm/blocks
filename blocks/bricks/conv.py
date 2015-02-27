@@ -4,7 +4,7 @@ from theano.tensor.signal.downsample import max_pool_2d, DownsampleFactorMax
 from blocks.bricks import Initializable, Feedforward, Sequence
 from blocks.bricks.base import application, Brick, lazy
 from blocks.roles import add_role, FILTERS, BIASES
-from blocks.utils import shared_floatx_zeros
+from blocks.utils import shared_floatx_nans
 
 
 class Convolutional(Initializable):
@@ -52,13 +52,13 @@ class Convolutional(Initializable):
         self.border_mode = border_mode
 
     def _allocate(self):
-        W = shared_floatx_zeros((self.num_filters, self.num_channels) +
+        W = shared_floatx_nans((self.num_filters, self.num_channels) +
                                 self.filter_size, name='W')
         add_role(W, FILTERS)
         self.params.append(W)
         self.add_auxiliary_variable(W.norm(2), name='W_norm')
         if self.use_bias:
-            b = shared_floatx_zeros(self.get_dim('output'), name='b')
+            b = shared_floatx_nans(self.get_dim('output'), name='b')
             add_role(b, BIASES)
             self.params.append(b)
             self.add_auxiliary_variable(b.norm(2), name='b_norm')

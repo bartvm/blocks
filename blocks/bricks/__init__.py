@@ -10,7 +10,7 @@ from toolz import interleave
 from blocks import config
 from blocks.bricks.base import application, _Brick, Brick, lazy
 from blocks.roles import add_role, WEIGHTS, BIASES
-from blocks.utils import pack, shared_floatx_zeros
+from blocks.utils import pack, shared_floatx_nans
 
 logger = logging.getLogger(__name__)
 
@@ -215,12 +215,12 @@ class Linear(Initializable, Feedforward):
         return self.params[1]
 
     def _allocate(self):
-        W = shared_floatx_zeros((self.input_dim, self.output_dim), name='W')
+        W = shared_floatx_nans((self.input_dim, self.output_dim), name='W')
         add_role(W, WEIGHTS)
         self.params.append(W)
         self.add_auxiliary_variable(W.norm(2), name='W_norm')
         if self.use_bias:
-            b = shared_floatx_zeros((self.output_dim,), name='b')
+            b = shared_floatx_nans((self.output_dim,), name='b')
             add_role(b, BIASES)
             self.params.append(b)
             self.add_auxiliary_variable(b.norm(2), name='b_norm')
