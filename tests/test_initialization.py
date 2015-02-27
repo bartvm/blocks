@@ -4,7 +4,7 @@ import theano
 from numpy.testing import assert_equal, assert_allclose, assert_raises
 
 from blocks.initialization import Constant, IsotropicGaussian, Sparse
-from blocks.initialization import Uniform, Orthogonal
+from blocks.initialization import Uniform, Identity, Orthogonal
 
 
 def test_constant():
@@ -86,6 +86,25 @@ def test_sparse():
     yield check_sparse, rng, 0.3, Constant(0.), Constant(1.), (10, 10), 70
 
 
+def test_identity():
+    rng = numpy.random.RandomState(1)
+    
+    W = Identity().generate(rng, (4, 4))
+    assert W.shape == (4, 4)
+    assert numpy.count_nonzero(W) == 4
+
+    W = Identity().generate(rng, (8, 4))
+    assert W.shape == (8, 4)
+    assert numpy.count_nonzero(W) == 4
+
+    W = Identity().generate(rng, (4, 8))
+    assert W.shape == (4, 8)
+    assert numpy.count_nonzero(W) == 4
+
+    V = Identity().generate(rng, (4,))
+    assert_allclose(V, [1., 0, 0 ,0])
+
+
 def test_orthogonal():
     rng = numpy.random.RandomState(1)
 
@@ -120,3 +139,6 @@ def test_orthogonal():
     yield check_orthogonal, rng, (50, 50)
     yield check_orthogonal, rng, (50, 51)
     yield check_orthogonal, rng, (51, 50)
+
+    V = Orthogonal().generate(rng, (4,))
+    assert V.shape == (4,)
