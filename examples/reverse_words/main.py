@@ -12,9 +12,9 @@ if __name__ == "__main__":
         "Case study of learning to reverse words from a natural text.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
-        "mode", choices=["train", "test"],
+        "mode", choices=["train", "test", "beam_search"],
         help="The mode to run. In the `train` mode a model is trained."
-             " In the `test` mode a trained model is used "
+             " In the `test` and `beam_search` modes a trained model is used "
              " to reverse words in the input text.")
     parser.add_argument(
         "save_path", default="chain",
