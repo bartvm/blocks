@@ -12,6 +12,11 @@ from toolz import first
 logger = logging.getLogger()
 
 
+def callback(func):
+    func._is_callback = True
+    return func
+
+
 class TrainingExtension(object):
     """The base class for training extensions.
 
@@ -63,22 +68,27 @@ class TrainingExtension(object):
         """
         getattr(self, callback_name)(*args)
 
+    @callback
     def on_resumption(self):
         """The callback invoked after training is resumed."""
         pass
 
+    @callback
     def on_error(self):
         """The callback invoked when an error occurs."""
         pass
 
+    @callback
     def before_training(self):
         """The callback invoked before training is started."""
         pass
 
+    @callback
     def before_epoch(self):
         """The callback invoked before starting an epoch."""
         pass
 
+    @callback
     def before_batch(self, batch):
         """The callback invoked before a batch is processed.
 
@@ -90,6 +100,7 @@ class TrainingExtension(object):
         """
         pass
 
+    @callback
     def after_batch(self, batch):
         """The callback invoked after a batch is processed.
 
@@ -101,14 +112,17 @@ class TrainingExtension(object):
         """
         pass
 
+    @callback
     def after_epoch(self):
         """The callback invoked after an epoch is finished."""
         pass
 
+    @callback
     def after_training(self):
         """The callback invoked after training is finished."""
         pass
 
+    @callback
     def on_interrupt(self):
         """The callback invoked when training is interrupted."""
         pass
