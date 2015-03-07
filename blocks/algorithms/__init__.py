@@ -218,7 +218,7 @@ class GradientDescent(DifferentiableCostMinimizer):
         for param in self.params:
             all_updates.append((param, param - self.steps[param]))
         all_updates += self.step_rule_updates
-        self._function = theano.function(self.inputs, [], updates=all_updates)
+        self._function = theano.function(self.inputs, [], updates=all_updates, allow_input_downcast=True)
         logger.info("The training algorithm is initialized")
 
     def process_batch(self, batch):
