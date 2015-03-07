@@ -14,6 +14,8 @@ from blocks.main_loop import MainLoop
 from blocks.extensions import FinishAfter, Printing
 from blocks.bricks.recurrent import SimpleRecurrent
 from blocks.graph import ComputationGraph
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot
 
 
