@@ -146,16 +146,16 @@ class MonitoredQuantity(object):
        pass
 
 
-class cross_entropy(MonitoredQuantity):
+class CrossEntropy(MonitoredQuantity):
     def __init__(self, **kwargs):
-        super(cross_entropy, self).__init__(**kwargs)
-        self.total_cross_entropy, self.examples_seen = 0, 0
+        super(CrossEntropy, self).__init__(**kwargs)
+        self.total_CrossEntropy, self.examples_seen = 0, 0
 
     def accumulate(self, target, predicted):
         import numpy
-        self.total_cross_entropy += -(target * numpy.log(predicted) +
+        self.total_CrossEntropy += -(target * numpy.log(predicted) +
             (1. - target) * numpy.log(1. - predicted)).sum()
         self.examples_seen += len(predicted)
 
     def readout(self):
-        return self.total_cross_entropy / self.examples_seen
+        return self.total_CrossEntropy / self.examples_seen
