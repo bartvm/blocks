@@ -142,19 +142,20 @@ class TrainingDataMonitoring(SimpleExtension, MonitoringExtension):
 
 
 class MonitoredQuantity(object):
-    def __init__(requires=None):
-       self.requires = requires
+    def __init__(self):
+       pass
 
 
-class CE(MonitoredQuantity):
-    def __init__(**kwargs):
-        super(CE, self).__init__(**kwargs)
-        self.total_CE, self.examples_seen = 0, 0
+class cross_entropy(MonitoredQuantity):
+    def __init__(self, **kwargs):
+        super(cross_entropy, self).__init__(**kwargs)
+        self.total_cross_entropy, self.examples_seen = 0, 0
 
     def accumulate(self, target, predicted):
         import numpy
-        self.total_CE += -(target * numpy.log(predicted + 1e-6) +
-            (1. - target) * numpy.log(1. - predicted + 1e-6)).sum()
+        self.total_cross_entropy += -(target * numpy.log(predicted) +
+            (1. - target) * numpy.log(1. - predicted)).sum()
+        self.examples_seen += len(predicted)
 
     def readout(self):
-        return self.total_CE / float(self.examples_seen)
+        return self.total_cross_entropy / self.examples_seen
