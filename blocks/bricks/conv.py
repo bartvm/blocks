@@ -335,8 +335,11 @@ class ConvolutionalSequence(Sequence, Initializable, Feedforward):
         num_channels = self.num_channels
         image_size = self.image_size
         for layer in self.layers:
-            layer.image_size = image_size
-            layer.num_channels = num_channels
+            if isinstance(layer, MaxPooling):
+                layer.input_dim = (num_channels,) + image_size
+            else:
+                layer.image_size = image_size
+                layer.num_channels = num_channels
             layer.batch_size = self.batch_size
 
             # Push input dimensions to children
@@ -344,10 +347,15 @@ class ConvolutionalSequence(Sequence, Initializable, Feedforward):
 
             # Retrieve output dimensions
             # and set it for next layer
-            if layer.image_size is not None:
-                output_shape = layer.get_dim('output')
-                image_size = output_shape[1:]
-            num_channels = layer.num_filters
+            if isinstance(layer, MaxPooling):
+                if layer.input_dim is not None:
+                    output_shape = layer.get_dim('output')
+                    image_size = output_shape[1:]
+            else:
+                if layer.image_size is not None:
+                    output_shape = layer.get_dim('output')
+                    image_size = output_shape[1:]
+                    num_channels = output_shape[0]
 
 
 class Flattener(Brick):
