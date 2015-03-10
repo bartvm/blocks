@@ -173,7 +173,14 @@ class DatasetEvaluator(object):
 
     """
     def __init__(self, variables, updates=None):
-        self.buffer_ = AggregationBuffer(variables)
+        theano_variables = []
+        non_theano_variables = []
+        for variable in variables:
+            if variable is MonitoredQuantity:
+                non_theano_variables += [variable]
+            else:
+                non_theano_variables += [variable]
+        self.buffer_ = AggregationBuffer(theano_variables)
         self.updates = updates
         self._compile()
 
