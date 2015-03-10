@@ -101,16 +101,19 @@ def test_integer_sequence_generator():
         seed=1234)
     generator.initialize()
 
+    # Test cost
     y = tensor.lmatrix('y')
     mask = tensor.matrix('mask')
     costs = generator.cost(y, mask)
     assert costs.ndim == 2
-    costs_val = theano.function([y, mask], [costs])(
+    costs_fun = theano.function([y, mask], [costs])
+    costs_val = costs_fun(
         rng.randint(readout_dim, size=(n_steps, batch_size)),
         numpy.ones((n_steps, batch_size), dtype=floatX))[0]
     assert costs_val.shape == (n_steps, batch_size)
     assert_allclose(costs_val.sum(), 482.827, rtol=1e-5)
 
+    # Test generate
     states, outputs, costs = generator.generate(
         iterate=True, batch_size=batch_size, n_steps=n_steps)
     cg = ComputationGraph(states + outputs + costs)
@@ -124,6 +127,12 @@ def test_integer_sequence_generator():
     assert_allclose(states_val.sum(), -17.91811, rtol=1e-5)
     assert_allclose(costs_val.sum(), 482.863, rtol=1e-5)
     assert outputs_val.sum() == 630
+
+    # Test masks agnostic results of cost
+    cost1 = costs_fun([[1], [2]], [[1], [1]])[0]
+    cost2 = costs_fun([[3, 1], [4, 2], [2, 0]],
+                      [[1, 1], [1, 1], [1, 0]])[0]
+    assert_allclose(cost1.sum(), cost2[:, 1].sum(), rtol=1e-5)
 
 
 class TestTransition(SimpleRecurrent):
@@ -205,7 +214,7 @@ def test_with_attention():
                              attended: attended_vals,
                              attended_mask: attended_mask_vals})
     assert costs_vals.shape == (inp_len, batch_size)
-    assert_allclose(costs_vals.sum(), 33.6583, rtol=1e-5)
+    assert_allclose(costs_vals.sum(), 13.5042, rtol=1e-5)
 
     # Test `generate` method
     results = (

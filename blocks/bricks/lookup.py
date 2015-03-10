@@ -40,7 +40,7 @@ class LookupTable(Initializable):
         self.weights_init.initialize(self.W, self.rng)
 
     @application
-    def lookup(self, indices):
+    def apply(self, indices):
         """Perform lookup.
 
         Parameters

@@ -7,7 +7,7 @@ from blocks import config
 from blocks.log import TrainingLog
 from blocks.utils import reraise_as, unpack, change_recursion_limit
 from blocks.algorithms import DifferentiableCostMinimizer
-from blocks.extensions import TrainingExtension
+from blocks.extensions import CallbackName
 
 logger = logging.getLogger(__name__)
 
@@ -234,17 +234,8 @@ class MainLoop(object):
         return True
 
     def _run_extensions(self, method_name, *args):
-        class Callback(str):
-            def __eq__(self, other):
-                callback_names = [key for key, value
-                                  in TrainingExtension.__dict__.items()
-                                  if getattr(value, '_is_callback', False)]
-                if other not in callback_names:
-                    raise TypeError(
-                            "{} is not a valid callback.".format(other))
-                return str(self) == other
         for extension in self.extensions:
-            extension.dispatch(Callback(method_name), *args)
+            extension.dispatch(CallbackName(method_name), *args)
 
     def _check_finish_training(self, level):
         """Checks whether the current training should be terminated.

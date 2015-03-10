@@ -47,7 +47,7 @@ def test_beam_search():
     search = BeamSearch(10, samples)
     results, mask, costs = search.search(
         {inputs: input_vals}, 0, 3 * length, as_arrays=True)
-    assert results.sum() == 1240
+    assert results.sum() == 3335
 
     true_costs = reverser.cost(
         input_vals, numpy.ones((length, beam_size), dtype=floatX),

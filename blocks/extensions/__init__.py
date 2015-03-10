@@ -128,6 +128,24 @@ class TrainingExtension(object):
         pass
 
 
+class CallbackName(str):
+    """A name of a TrainingExtension callback.
+
+    Raises
+    ------
+    :class:`TypeError` on comparison with a string which is not a name of
+    TrainingExtension callback.
+
+    """
+    def __eq__(self, other):
+        callback_names = [key for key, value
+                          in TrainingExtension.__dict__.items()
+                          if getattr(value, '_is_callback', False)]
+        if other not in callback_names:
+            raise TypeError("{} is not a valid callback.".format(other))
+        return str(self) == other
+
+
 class Predicate(object):
     def __init__(self, condition, num):
         self.condition = condition

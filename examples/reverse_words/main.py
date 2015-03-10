@@ -1,5 +1,12 @@
 #!/usr/bin/env python
-"""Learn to reverse the words in a text."""
+"""Learn to reverse the words in a text.
+
+In this demo a recurrent network equipped with an attention mechanism
+is learnt to reverse words in a text. The training data used
+is Google Billion Word corpus, which you have to download and put to
+the path indicated in your .fuelrc on your own.
+
+"""
 import logging
 import argparse
 from examples.reverse_words import main
@@ -9,7 +16,7 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s: %(name)s: %(levelname)s: %(message)s")
     parser = argparse.ArgumentParser(
-        "Case study of learning to reverse words from a natural text.",
+        "Case study of learning to reverse words in a text.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         "mode", choices=["train", "sample", "beam_search"],
@@ -22,7 +29,7 @@ if __name__ == "__main__":
              " is `train` OR path to an `.npz` files with learned"
              " parameters if the mode is `test`.")
     parser.add_argument(
-        "--num-batches", default=20000, type=int,
+        "--num-batches", default=10000, type=int,
         help="Train on this many batches.")
     args = parser.parse_args()
     main(**vars(args))

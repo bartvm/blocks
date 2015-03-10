@@ -9,6 +9,18 @@ hooked, try your hand at the :ref:`tutorials <tutorials>`.
 
 Blocks is developed in parallel with Fuel_, a dataset processing framework.
 
+.. warning::
+   Blocks is a new project which is still under development. As such, certain
+   (all) parts of the framework are subject to change.
+
+.. tip::
+
+   That said, if you are interested in using Blocks and run into any problems,
+   feel free to ask your question on the `mailing list`_. Also, don't hesitate
+   to file bug reports and feature requests by `making a GitHub issue`_.
+
+.. _mailing list: https://groups.google.com/forum/#!forum/blocks-users
+.. _making a GitHub issue: https://github.com/bartvm/blocks/issues/new
 .. _Fuel: https://github.com/bartvm/fuel
 
 .. _tutorials:
@@ -35,15 +47,6 @@ In-depth
    api/index.rst
    development/index.rst
 
-.. warning::
-   Blocks is a new project which is still under development. As such, certain
-   (all) parts of the framework are subject to change.
-
-   That said, if you are interested in using Blocks and run into any problems,
-   don't hesitate to file bug reports, feature requests, or simply ask for help,
-   by `making a GitHub issue`_.
-
-.. _making a GitHub issue: https://github.com/bartvm/blocks/issues/new
 
 .. _quickstart:
 

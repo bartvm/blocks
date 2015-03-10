@@ -107,7 +107,9 @@ class WordReverser(Initializable):
             state_names=transition.apply.states,
             attended_dim=2 * dimension, match_dim=dimension, name="attention")
         readout = LinearReadout(
-            readout_dim=alphabet_size, source_names=["states"],
+            readout_dim=alphabet_size,
+            source_names=[transition.apply.states[0],
+                          attention.take_glimpses.outputs[0]],
             emitter=SoftmaxEmitter(name="emitter"),
             feedback_brick=LookupFeedback(alphabet_size, dimension),
             name="readout")
@@ -127,7 +129,7 @@ class WordReverser(Initializable):
             targets, targets_mask,
             attended=self.encoder.apply(
                 **dict_union(
-                    self.fork.apply(self.lookup.lookup(chars), as_dict=True),
+                    self.fork.apply(self.lookup.apply(chars), as_dict=True),
                     mask=chars_mask)),
             attended_mask=chars_mask)
 
@@ -136,7 +138,7 @@ class WordReverser(Initializable):
         return self.generator.generate(
             n_steps=3 * chars.shape[0], batch_size=chars.shape[1],
             attended=self.encoder.apply(
-                **dict_union(self.fork.apply(self.lookup.lookup(chars),
+                **dict_union(self.fork.apply(self.lookup.apply(chars),
                              as_dict=True))),
             attended_mask=tensor.ones(chars.shape))
 
@@ -152,18 +154,13 @@ def main(mode, save_path, num_batches, data_path=None):
             dataset = TextFile(data_path, **dataset_options)
         else:
             dataset = OneBillionWord("training", [99], **dataset_options)
-        data_stream = Mapping(
-            mapping=_transpose,
-            data_stream=Padding(
-                Batch(
-                    iteration_scheme=ConstantScheme(10),
-                    data_stream=Mapping(
-                        mapping=reverse_words,
-                        add_sources=("targets",),
-                        data_stream=Filter(
-                            predicate=_filter_long,
-                            data_stream=dataset
-                            .get_example_stream())))))
+        data_stream = dataset.get_example_stream()
+        data_stream = Filter(data_stream, _filter_long)
+        data_stream = Mapping(data_stream, reverse_words,
+                              add_sources=("targets",))
+        data_stream = Batch(data_stream, iteration_scheme=ConstantScheme(10))
+        data_stream = Padding(data_stream)
+        data_stream = Mapping(data_stream, _transpose)
 
         # Initialization settings
         reverser.weights_init = IsotropicGaussian(0.1)
@@ -197,30 +194,28 @@ def main(mode, save_path, num_batches, data_path=None):
         for brick in model.get_top_bricks():
             brick.initialize()
 
-        # Fetch variables useful for debugging
-        max_length = named_copy(chars.shape[0], "max_length")
-        cost_per_character = named_copy(
-            aggregation.mean(batch_cost, batch_size * max_length),
-            "character_log_likelihood")
-        cg = ComputationGraph(cost)
-        r = reverser
-        (energies,) = VariableFilter(
-            application=r.generator.readout.readout,
-            name="output")(cg.variables)
-        min_energy = named_copy(energies.min(), "min_energy")
-        max_energy = named_copy(energies.max(), "max_energy")
-        (activations,) = VariableFilter(
-            application=r.generator.transition.apply,
-            name="states")(cg.variables)
-        mean_activation = named_copy(abs(activations).mean(),
-                                     "mean_activation")
-
         # Define the training algorithm.
+        cg = ComputationGraph(cost)
         algorithm = GradientDescent(
             cost=cost, params=cg.parameters,
             step_rule=CompositeRule([StepClipping(10.0), Scale(0.01)]))
 
-        # More variables for debugging
+        # Fetch variables useful for debugging
+        generator = reverser.generator
+        (energies,) = VariableFilter(
+            application=generator.readout.readout,
+            name="output")(cg.variables)
+        (activations,) = VariableFilter(
+            application=generator.transition.apply,
+            name=generator.transition.apply.states[0])(cg.variables)
+        max_length = named_copy(chars.shape[0], "max_length")
+        cost_per_character = named_copy(
+            aggregation.mean(batch_cost, batch_size * max_length),
+            "character_log_likelihood")
+        min_energy = named_copy(energies.min(), "min_energy")
+        max_energy = named_copy(energies.max(), "max_energy")
+        mean_activation = named_copy(abs(activations).mean(),
+                                     "mean_activation")
         observables = [
             cost, min_energy, max_energy, mean_activation,
             batch_size, max_length, cost_per_character,
@@ -243,11 +238,15 @@ def main(mode, save_path, num_batches, data_path=None):
                 TrainingDataMonitoring(observables, after_every_batch=True),
                 average_monitoring,
                 FinishAfter(after_n_batches=num_batches)
+                # This shows a way to handle NaN emerging during
+                # training: simply finish it.
                 .add_condition("after_batch", _is_nan),
                 Plot(os.path.basename(save_path),
                      [[average_monitoring.record_name(cost)],
                       [average_monitoring.record_name(cost_per_character)]],
                      every_n_batches=10),
+                # Saving the model and the log separately is convenient,
+                # because loading the whole pickle takes quite some time.
                 SerializeMainLoop(save_path, every_n_batches=500,
                                   save_separately=["model", "log"]),
                 Printing(every_n_batches=1)])

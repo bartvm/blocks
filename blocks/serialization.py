@@ -1,4 +1,9 @@
 import os
+from pickle import HIGHEST_PROTOCOL
+try:
+    from pickle import DEFAULT_PROTOCOL
+except ImportError:
+    DEFAULT_PROTOCOL = HIGHEST_PROTOCOL
 import shutil
 import tempfile
 
@@ -36,6 +41,7 @@ functions are available in the global namespace."""
 
 def pickle_dump(*args, **kwargs):
     """A wrapper around pickle's dump that provides informative errors."""
+    kwargs.setdefault('protocol', DEFAULT_PROTOCOL)
     try:
         cPickle.dump(*args, **kwargs)
     except Exception as e:

@@ -315,7 +315,7 @@ class Maxout(Brick):
         return output
 
 
-class LinearMaxout(Initializable):
+class LinearMaxout(Initializable, Feedforward):
     """Maxout pooling following a linear transformation.
 
     This code combines the :class:`Linear` brick with a :class:`Maxout`
@@ -335,24 +335,30 @@ class LinearMaxout(Initializable):
     -----
     See :class:`Initializable` for initialization parameters.
 
-    .. todo:: Name of :attr:`linear_transformation` shouldn't be hardcoded.
-
     """
     @lazy
     def __init__(self, input_dim, output_dim, num_pieces, **kwargs):
         super(LinearMaxout, self).__init__(**kwargs)
+        self.linear = Linear()
+        self.maxout = Maxout()
+        self.children = [self.linear,
+                         self.maxout]
+
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.num_pieces = num_pieces
 
-        self.linear_transformation = Linear(
-            name=self.name + '_linear_to_maxout', input_dim=input_dim,
-            output_dim=output_dim * num_pieces, weights_init=self.weights_init,
-            biases_init=self.biases_init, use_bias=self.use_bias)
-        self.maxout_transformation = Maxout(name=self.name + '_maxout',
-                                            num_pieces=num_pieces)
-        self.children = [self.linear_transformation,
-                         self.maxout_transformation]
+    @property
+    def input_dim(self):
+        return self.linear.input_dim
+
+    @input_dim.setter
+    def input_dim(self, value):
+        self.linear.input_dim = value
+
+    def _push_allocation_config(self):
+        self.linear.output_dim = self.output_dim * self.num_pieces
+        self.maxout.num_pieces = self.num_pieces
 
     @application(inputs=['input_'], outputs=['output'])
     def apply(self, input_):
@@ -369,8 +375,8 @@ class LinearMaxout(Initializable):
             The transformed input
 
         """
-        pre_activation = self.linear_transformation.apply(input_)
-        output = self.maxout_transformation.apply(pre_activation)
+        pre_activation = self.linear.apply(input_)
+        output = self.maxout.apply(pre_activation)
         return output
 
 
@@ -455,7 +461,8 @@ class Softmax(Activation):
             axis represents one distribution. In the vector case, each
             element represents the position of the '1' in a one hot-vector.
         x : :class:`~tensor.TensorVariable`
-            Each slice along axis represents one distribution.
+            Each slice along axis represents energies of a distribution,
+            that is pre-softmax values.
 
         Returns
         -------
@@ -485,7 +492,8 @@ class Sequence(Brick):
 
     Parameters
     ----------
-    application_methods : list of :class:`.BoundApplication` to apply
+    application_methods : list
+        List of :class:`.BoundApplication` to apply
 
     """
     def __init__(self, application_methods, **kwargs):
@@ -511,6 +519,33 @@ class Sequence(Brick):
     @apply.property('outputs')
     def apply_outputs(self):
         return self.application_methods[-1].outputs
+
+
+class FeedforwardSequence(Sequence, Feedforward):
+    """A sequence where the first and last bricks are feedforward.
+
+    Parameters
+    ----------
+    application_methods : list
+        List of :class:`.BoundApplication` to apply. The first and last
+        application method should belong to a :class:`Feedforward` brick.
+
+    """
+    @property
+    def input_dim(self):
+        return self.children[0].input_dim
+
+    @input_dim.setter
+    def input_dim(self, value):
+        self.children[0].input_dim = value
+
+    @property
+    def output_dim(self):
+        return self.children[-1].output_dim
+
+    @output_dim.setter
+    def output_dim(self, value):
+        self.children[-1].output_dim = value
 
 
 class MLP(Sequence, Initializable, Feedforward):

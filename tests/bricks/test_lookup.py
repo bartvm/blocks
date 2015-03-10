@@ -16,7 +16,7 @@ def test_lookup_table():
     lt.W.set_value(numpy.arange(15).reshape(5, 3).astype(floatX))
 
     x = tensor.lmatrix("x")
-    y = lt.lookup(x)
+    y = lt.apply(x)
     f = theano.function([x], [y])
 
     x_val = [[1, 2], [0, 3]]

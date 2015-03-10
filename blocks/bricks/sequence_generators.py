@@ -177,11 +177,12 @@ class BaseSequenceGenerator(Initializable):
         readouts = self.readout.readout(
             feedback=feedback, **dict_union(states, glimpses, contexts))
         costs = self.readout.cost(readouts, outputs)
+        if mask is not None:
+            costs *= mask
 
-        for name, variable in glimpses.items():
+        for name, variable in list(glimpses.items()) + list(states.items()):
             application_call.add_auxiliary_variable(
                 variable.copy(), name=name)
-
         return costs
 
     @recurrent
@@ -512,7 +513,7 @@ class LookupFeedback(AbstractFeedback, Initializable):
     @application
     def feedback(self, outputs):
         assert self.output_dim == 0
-        return self.lookup.lookup(outputs)
+        return self.lookup.apply(outputs)
 
     def get_dim(self, name):
         if name == 'feedback':
