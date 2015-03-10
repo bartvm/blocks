@@ -9,6 +9,7 @@ from blocks.utils import dict_subset
 from blocks.monitoring.aggregation import _DataIndependent, Mean, TakeLast
 from blocks.graph import ComputationGraph
 from blocks.utils import reraise_as
+from blocks.extensions.monitoring import MonitoredQuantity
 
 logger = logging.getLogger()
 
@@ -176,7 +177,7 @@ class DatasetEvaluator(object):
         theano_variables = []
         non_theano_variables = []
         for variable in variables:
-            if variable is MonitoredQuantity:
+            if isinstance(variable, MonitoredQuantity):
                 non_theano_variables += [variable]
             else:
                 non_theano_variables += [variable]

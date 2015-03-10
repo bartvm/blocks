@@ -4,6 +4,8 @@ import logging
 from blocks.extensions import SimpleExtension, TrainingExtension
 from blocks.algorithms import DifferentiableCostMinimizer
 from blocks.monitoring.evaluators import AggregationBuffer, DatasetEvaluator
+from abc import abstractmethod, ABCMeta
+import six
 
 PREFIX_SEPARATOR = '_'
 logger = logging.getLogger()
@@ -141,8 +143,9 @@ class TrainingDataMonitoring(SimpleExtension, MonitoringExtension):
             self._buffer.initialize_aggregators()
 
 
+@six.add_metaclass(ABCMeta)
 class MonitoredQuantity(object):
-    def __init__(self):
+    def __init__(self, requires=None):
         pass
 
     @abstractmethod
