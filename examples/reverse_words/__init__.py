@@ -32,7 +32,7 @@ from blocks.monitoring import aggregation
 from blocks.extensions import FinishAfter, Printing, Timing
 from blocks.extensions.saveload import SerializeMainLoop
 from blocks.extensions.monitoring import TrainingDataMonitoring
-from blocks.extensions.plot import Plot
+from blocks.extensions.plot import PlotManager, Plotter
 from blocks.main_loop import MainLoop
 from blocks.filter import VariableFilter
 from blocks.utils import named_copy, dict_union
@@ -241,10 +241,12 @@ def main(mode, save_path, num_batches, data_path=None):
                 # This shows a way to handle NaN emerging during
                 # training: simply finish it.
                 .add_condition("after_batch", _is_nan),
-                Plot(os.path.basename(save_path),
-                     [[average_monitoring.record_name(cost)],
-                      [average_monitoring.record_name(cost_per_character)]],
-                     every_n_batches=10),
+                PlotManager(os.path.basename(save_path),
+                            Plotter(
+                            [[average_monitoring.record_name(cost)],
+                             [average_monitoring.record_name(
+                                 cost_per_character)]]),
+                            every_n_batches=10),
                 # Saving the model and the log separately is convenient,
                 # because loading the whole pickle takes quite some time.
                 SerializeMainLoop(save_path, every_n_batches=500,

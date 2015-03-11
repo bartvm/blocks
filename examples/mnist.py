@@ -20,7 +20,9 @@ from blocks.extensions import FinishAfter, Timing, Printing
 from blocks.extensions.saveload import SerializeMainLoop
 from blocks.extensions.monitoring import (DataStreamMonitoring,
                                           TrainingDataMonitoring)
-from blocks.extensions.plot import Plot
+from blocks.extensions.plot import PlotManager, Plotter, DisplayImage
+from blocks.extensions.display import (IndexableImageDatasetDisplay,
+                                       WeightDisplay)
 from blocks.main_loop import MainLoop
 
 
@@ -66,12 +68,33 @@ def main(save_to, num_epochs):
                         prefix="train",
                         after_every_epoch=True),
                     SerializeMainLoop(save_to),
-                    Plot(
+                    PlotManager(
                         'MNIST example',
-                        channels=[
-                            ['test_final_cost',
-                             'test_misclassificationrate_apply_error_rate'],
-                            ['train_total_gradient_norm']]),
+                        [Plotter(
+                            channels=[
+                                ['test_final_cost',
+                                 'test_misclassification'
+                                 'rate_apply_error_rate'],
+                                ['train_total_gradient_norm']],
+                            titles=['Costs', 'Gradient norm']),
+                         DisplayImage([
+                             IndexableImageDatasetDisplay(
+                                 dataset=mnist_train,
+                                 image_shape=(28, 28, 1),
+                                 axes=(0, 1, 'c'),
+                                 shift=-0.5,
+                                 rescale=2.
+                             ),
+                             WeightDisplay(
+                                 weights=W1,
+                                 transpose=(1, 0),
+                                 image_shape=(28, 28, 1),
+                                 axes=(0, 1, 'c'),
+                                 shift=-0.5,
+                                 rescale=2.
+                             )
+                         ], ['Training examples', 'Weights'])
+                         ]),
                     Printing()])
     main_loop.run()
 

@@ -3,20 +3,20 @@ import signal
 import time
 from subprocess import Popen, PIPE
 
+import numpy
 try:
     from bokeh.plotting import (curdoc, cursession, figure, output_server,
                                 push, show)
     BOKEH_AVAILABLE = True
 except ImportError:
     BOKEH_AVAILABLE = False
-
 from blocks.extensions import SimpleExtension
 
 logger = logging.getLogger(__name__)
 
 
-class Plot(SimpleExtension):
-    """Live plotting of monitoring channels.
+class PlotManager(SimpleExtension):
+    """Live plotting.
 
     In most cases it is preferable to start the Bokeh plotting server
     manually, so that your plots are stored permanently.
@@ -58,42 +58,130 @@ class Plot(SimpleExtension):
         it down you will lose your plots. If you want to store your plots,
         start the server manually using the ``bokeh-server`` command. Also
         see the warning above.
-    server_url : str, optional
-        Url of the bokeh-server. Ex: when starting the bokeh-server with
-        ``bokeh-server --ip 0.0.0.0`` at ``alice``, server_url should be
-        ``http://alice:5006``.
+
+    """
+    def __init__(self, document, plotters, open_browser=False,
+                 start_server=False, **kwargs):
+        if not BOKEH_AVAILABLE:
+            raise ImportError
+        self.plotters = plotters
+        self.start_server = start_server
+        self.document = document
+        self._startserver()
+
+        for plotter in self.plotters:
+            plotter.manager = self
+            plotter.initialize()
+        if open_browser:
+            show()
+
+        kwargs.setdefault('after_every_epoch', True)
+        kwargs.setdefault("before_first_epoch", True)
+        super(PlotManager, self).__init__(**kwargs)
+
+    def do(self, which_callback, *args):
+        for plotter in self.plotters:
+            plotter.call()
+
+        push()
+
+    def _startserver(self):
+        if self.start_server:
+            def preexec_fn():
+                """Prevents the server from dying on training interrupt."""
+                signal.signal(signal.SIGINT, signal.SIG_IGN)
+            # Only memory works with subprocess, need to wait for it to start
+            logger.info('Starting plotting server on localhost:5006')
+            self.sub = Popen('bokeh-server --ip 0.0.0.0 '
+                             '--backend memory'.split(),
+                             stdout=PIPE, stderr=PIPE, preexec_fn=preexec_fn)
+            time.sleep(2)
+            logger.info('Plotting server PID: {}'.format(self.sub.pid))
+        else:
+            self.sub = None
+        output_server(self.document)
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state['sub'] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._startserver()
+        curdoc().add(*self.p)
+
+
+class BasePlotter(object):
+    """Base class for plotter."""
+    @property
+    def manager(self):
+        return self._manager
+
+    @manager.setter
+    def manager(self, manager):
+        self._manager = manager
+
+    def initialize(self):
+        """Initialize the plots state."""
+        pass
+
+    def call(self):
+        """Update the plots"""
+        pass
+
+    def set_titles(self, titles, matching_list):
+        if isinstance(titles, str):
+            self.titles = [titles] * len(matching_list)
+        else:
+            if not isinstance(titles, list):
+                raise ValueError('titles argument must be a '
+                                 'list of strings or a string.')
+            if len(titles) == 1:
+                self.titles = titles * len(matching_list)
+            elif len(titles) != len(matching_list):
+                raise ValueError('titles must have same size as '
+                                 'the number of figures.')
+            else:
+                self.titles = titles
+
+
+class Plotter(BasePlotter):
+    """Plotting of monitoring channels.
+
+    channels : list of lists of strings
+        The names of the monitor channels that you want to plot. The
+        channels in a single sublist will be plotted together in a single
+        figure, so use e.g. ``[['test_cost', 'train_cost'],
+        ['weight_norms']]`` to plot a single figure with the training and
+        test cost, and a second figure for the weight norms.
+    titles : list of strings or string
+        The name of the associated plots. If t
 
     """
     # Tableau 10 colors
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
               '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
-    def __init__(self, document, channels, open_browser=False,
-                 start_server=False, server_url='default', **kwargs):
-        if not BOKEH_AVAILABLE:
-            raise ImportError
-        self.plots = {}
-        self.start_server = start_server
-        self.document = document
-        self.server_url = server_url
-        self._startserver()
+    def __init__(self, channels, titles=''):
+        self.channels = channels
+        self.set_titles(titles, channels)
 
-        # Create figures for each group of channels
+        super(Plotter, self).__init__()
+
+    def initialize(self):
+        channels = self.channels
+        titles = self.titles
+        self.plots = {}
         self.p = []
         self.p_indices = {}
-        for i, channel_set in enumerate(channels):
-            self.p.append(figure(title='{} #{}'.format(document, i + 1)))
+        for i, (channel_set, title) in enumerate(zip(channels, titles)):
+            self.p.append(figure(title=title))
             for channel in channel_set:
                 self.p_indices[channel] = i
-        if open_browser:
-            show()
 
-        kwargs.setdefault('after_every_epoch', True)
-        kwargs.setdefault("before_first_epoch", True)
-        super(Plot, self).__init__(**kwargs)
-
-    def do(self, which_callback, *args):
-        log = self.main_loop.log
+    def call(self):
+        log = self.manager.main_loop.log
         iteration = log.status.iterations_done
         i = 0
         for key, value in log.current_row:
@@ -112,30 +200,64 @@ class Plot(SimpleExtension):
                     self.plots[key].data['y'].append(value)
 
                     cursession().store_objects(self.plots[key])
-        push()
 
-    def _startserver(self):
-        if self.start_server:
-            def preexec_fn():
-                """Prevents the server from dying on training interrupt."""
-                signal.signal(signal.SIGINT, signal.SIG_IGN)
-            # Only memory works with subprocess, need to wait for it to start
-            logger.info('Starting plotting server on localhost:5006')
-            self.sub = Popen('bokeh-server --ip 0.0.0.0 '
-                             '--backend memory'.split(),
-                             stdout=PIPE, stderr=PIPE, preexec_fn=preexec_fn)
-            time.sleep(2)
-            logger.info('Plotting server PID: {}'.format(self.sub.pid))
-        else:
-            self.sub = None
-        output_server(self.document, url=self.server_url)
 
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        state['sub'] = None
-        return state
+class DisplayImage(BasePlotter):
+    """Show images.
 
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        self._startserver()
-        curdoc().add(*self.p)
+    Parameters
+    ----------
+    image_getters : list of callable objects
+        A list of function without argument returning images to display.
+        The returned images must be in (N, M, 3), (N, M, 1) or (N, M) and
+        must be between 0 and 255.
+    """
+
+    def __init__(self, image_getters, titles=''):
+        self.image_getters = image_getters
+        self.set_titles(titles, image_getters)
+
+        super(DisplayImage, self).__init__()
+
+    def initialize(self):
+        self.figs = []
+        i = 0
+        for image_getter, title in zip(self.image_getters, self.titles):
+            self.figs.append(figure(title=title,
+                                    x_range=[0, 1],
+                                    y_range=[0, 1]))
+            i += 1
+
+    def call(self):
+        for fig, image_getter in zip(self.figs, self.image_getters):
+            rgba_image = format_image_to_rgba(image_getter()).copy()
+            img_h = rgba_image.shape[0]
+            img_w = rgba_image.shape[1]
+            fig.renderers = []
+
+            fig.image_rgba(image=[rgba_image],
+                           x=[0], y=[0],
+                           dw=[min(img_w * 1. / img_h, 1)],
+                           dh=[min(img_h * 1. / img_w, 1)])
+
+
+def format_image_to_rgba(image_0255):
+    image_0255_clipped = numpy.clip(image_0255, 0, 255)
+    int_image = numpy.round(
+        image_0255_clipped
+    ).astype(dtype=numpy.uint8)
+
+    rgba_image = numpy.zeros(int_image.shape[:2], dtype=numpy.uint32)
+    image_view = rgba_image.view(
+        dtype=numpy.uint8
+    ).reshape(int_image.shape[:2] + (4, ))
+    image_view[:, :, 3] = 255
+
+    if int_image.ndim == 2:
+        image_view[:, :, :3] = int_image[:, :, None]
+    elif int_image.ndim == 3:
+        image_view[:, :, :3] = int_image
+    else:
+        image_view = int_image
+
+    return rgba_image
