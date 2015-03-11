@@ -3,8 +3,13 @@ from theano.tensor.signal.downsample import max_pool_2d, DownsampleFactorMax
 
 from blocks.bricks import Initializable, Feedforward, Sequence
 from blocks.bricks.base import application, Brick, lazy
+<<<<<<< HEAD
 from blocks.roles import add_role, FILTERS, BIASES
 from blocks.utils import shared_floatx_nans
+=======
+from blocks.roles import add_role, FILTERS, BIAS
+from blocks.utils import shared_floatx_zeros
+>>>>>>> Change BIASES to BIAS
 
 
 class Convolutional(Initializable):
@@ -59,7 +64,7 @@ class Convolutional(Initializable):
         self.add_auxiliary_variable(W.norm(2), name='W_norm')
         if self.use_bias:
             b = shared_floatx_nans(self.get_dim('output'), name='b')
-            add_role(b, BIASES)
+            add_role(b, BIAS)
             self.params.append(b)
             self.add_auxiliary_variable(b.norm(2), name='b_norm')
 

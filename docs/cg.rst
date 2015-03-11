@@ -72,7 +72,7 @@ created them.
    There are a variety of different roles that you can filter by. You might have
    noted already that there is a hierarchy to many of them: Filtering by
    :const:`~blocks.roles.PARAMETER` will also return variables of the child
-   roles :const:`~blocks.roles.WEIGHT` and :const:`~blocks.roles.BIASES`.
+   roles :const:`~blocks.roles.WEIGHT` and :const:`~blocks.roles.BIAS`.
 
 We can also see what auxiliary variables our bricks have created. These might be
 of interest to monitor during training, for example.
