@@ -151,3 +151,16 @@ class TakeLast(AggregationScheme):
                               (self.storage, tensor.zeros_like(self.storage))],
                           accumulation_updates=[(self.storage, self.variable)],
                           readout_variable=self.storage)
+
+@add_metaclass(ABCMeta)
+class MonitoredQuantity(object):
+    def __init__(self, requires=None):
+        pass
+
+    @abstractmethod
+    def accumulate(self, target, predicted):
+        pass
+
+    @abstractmethod
+    def readout(self):
+        pass

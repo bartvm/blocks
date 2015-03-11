@@ -6,10 +6,10 @@ import theano
 from theano import tensor
 
 from blocks.utils import dict_subset
-from blocks.monitoring.aggregation import _DataIndependent, Mean, TakeLast
+from blocks.monitoring.aggregation import (_DataIndependent, Mean,
+                                           TakeLast, MonitoredQuantity)
 from blocks.graph import ComputationGraph
 from blocks.utils import reraise_as
-from blocks.extensions.monitoring import MonitoredQuantity
 
 logger = logging.getLogger()
 
