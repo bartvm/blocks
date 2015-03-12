@@ -154,8 +154,9 @@ class TakeLast(AggregationScheme):
 
 @add_metaclass(ABCMeta)
 class MonitoredQuantity(object):
-    def __init__(self, requires=None):
+    def __init__(self, requires=None, name=None):
         self.requires = requires
+        self.name = name
         pass
 
     @abstractmethod

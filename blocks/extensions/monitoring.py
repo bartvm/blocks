@@ -145,14 +145,12 @@ class TrainingDataMonitoring(SimpleExtension, MonitoringExtension):
 class CrossEntropy(MonitoredQuantity):
     def __init__(self, **kwargs):
         super(CrossEntropy, self).__init__(**kwargs)
-        self.name = "non_thenao_cross_entropy"
         self.total_cross_entropy, self.examples_seen = 0.0, 0
 
     def accumulate(self, target, predicted):
         import numpy
         self.total_cross_entropy += -(target * numpy.log(predicted)).sum()
-        #self.total_cross_entropy += 1.1
-        self.examples_seen += len(predicted)
+        self.examples_seen += 1
 
     def readout(self):
         return self.total_cross_entropy / self.examples_seen

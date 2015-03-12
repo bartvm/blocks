@@ -13,7 +13,6 @@ from blocks.utils import reraise_as
 
 logger = logging.getLogger()
 
-
 class NonTheanoVariablesBuffer(object):
 
     def __init__(self, variables):
@@ -21,19 +20,23 @@ class NonTheanoVariablesBuffer(object):
         requires = []
         for variable in variables:
             requires += variable.requires
-        self.requires = requires
+        self.requires = list(set(requires))
 
         self.variable_names = [v.name for v in self.variables]
-        if len(self.variable_names) < len(self.variables):
-            raise ValueError("variables should have different names")
         self._computation_graph = ComputationGraph(self.requires)
         self.inputs = self._computation_graph.inputs
         self.input_names = [v.name for v in self.inputs]
 
-
     def get_aggregated_values(self):
         ret_vals = [v.readout() for v in self.variables]
         return dict(zip(self.variable_names, ret_vals))
+
+    def accumulate_variables(self, numerical_values):
+        for variable in self.variables:
+            variable.accumulate(*[numerical_values[self.requires.index(
+                                                       requirement)]
+                                      for requirement in variable.requires]) 
+
 
 
 class AggregationBuffer(object):
@@ -74,8 +77,6 @@ class AggregationBuffer(object):
         self.use_take_last = use_take_last
 
         self.variable_names = [v.name for v in self.variables]
-        if len(self.variable_names) < len(self.variables):
-            raise ValueError("variables should have different names")
         self._computation_graph = ComputationGraph(self.variables)
         self.inputs = self._computation_graph.inputs
         self.input_names = [v.name for v in self.inputs]
@@ -205,8 +206,11 @@ class DatasetEvaluator(object):
                 theano_variables += [variable]
         self.theano_variables = theano_variables
         self.non_theano_variables = non_theano_variables
-        self.buffer_ = AggregationBuffer(theano_variables)
-        self.buffer2_ = NonTheanoVariablesBuffer(non_theano_variables)
+        variable_names = [v.name for v in theano_variables + non_theano_variables]
+        if len(variable_names) < len(theano_variables + non_theano_variables):
+            raise ValueError("variables should have different names")
+        self.theano_buffer_ = AggregationBuffer(theano_variables)
+        self.non_theano_buffer_ = NonTheanoVariablesBuffer(non_theano_variables)
         self.updates = updates
         self._compile()
 
@@ -220,52 +224,51 @@ class DatasetEvaluator(object):
             be out-sourced to `ComputationGraph` to deal with it.
 
         """
-        if self.buffer_.accumulation_updates:
+        inputs = []
+        outputs = []
+        updates = None
+        if self.theano_buffer_.accumulation_updates:
             updates = OrderedDict()
-            updates.update(self.buffer_.accumulation_updates)
+            updates.update(self.theano_buffer_.accumulation_updates)
             if self.updates:
                 updates.update(self.updates)
-            self._accumulate_fun = theano.function(
-                self.buffer_.inputs, [],
-                updates=updates)
+            # append?
+            inputs += self.theano_buffer_.inputs
+
+        if self.non_theano_buffer_.variables != []:
+            inputs += self.non_theano_buffer_.inputs
+            outputs = self.non_theano_buffer_.requires
+
+        if inputs != []:
+            unique_inputs = list(set(inputs))
+            self._accumulate_fun = theano.function(unique_inputs,
+                                                   outputs,
+                                                   updates=updates)
         else:
             self._accumulate_fun = None
 
-        self._accumulate_fun2 = theano.function(
-            self.buffer2_.inputs, self.buffer2_.requires)
-
-
     def initialize_aggregators(self):
-        self.buffer_.initialize_aggregators()
+        self.theano_buffer_.initialize_aggregators()
 
     def process_batch(self, batch):
         try:
-            batch = dict_subset(batch, self.buffer_.input_names)
+            input_names = self.theano_buffer_.input_names + \
+                              self.non_theano_buffer_.input_names
+            batch = dict_subset(batch, input_names)
         except KeyError:
             reraise_as(
                 "Not all data sources required for monitoring were"
                 " provided. The list of required data sources:"
-                " {}.".format(self.buffer_.input_names))
+                " {}.".format(input_names))
         if self._accumulate_fun is not None:
-            self._accumulate_fun(**batch)
-
-        try:
-            batch = dict_subset(batch, self.buffer2_.input_names)
-        except KeyError:
-            reraise_as(
-                "Not all data sources required for monitoring were"
-                " provided. The list of required data sources:"
-                " {}.".format(self.buffer2_.input_names))
-        if self._accumulate_fun2 is not None:
-            self.non_theano_variables[-1].accumulate(self._accumulate_fun2(**batch)[0], self._accumulate_fun2(**batch)[1])
-            
+            numerical_values = self._accumulate_fun(**batch)
+            self.non_theano_buffer_.accumulate_variables(numerical_values)
 
     def get_aggregated_values(self):
-        a = self.buffer_.get_aggregated_values()
-        b = self.buffer2_.get_aggregated_values()
-        c = a.copy()
-        b.update(c)
-        return b
+        values = self.theano_buffer_.get_aggregated_values()
+        non_theano_values = self.non_theano_buffer_.get_aggregated_values()
+        values.update(non_theano_values)
+        return values
 
     def evaluate(self, data_stream):
         """Compute the variables over a data stream.
@@ -282,16 +285,7 @@ class DatasetEvaluator(object):
 
         """
         self.initialize_aggregators()
-
         if self._accumulate_fun is not None:
-            for batch in data_stream.get_epoch_iterator(as_dict=True):
-                self.process_batch(batch)
-        else:
-            logger.debug(
-                'Only data independent variables were given,'
-                'will not iterate the over data!')
-
-        if self._accumulate_fun2 is not None:
             for batch in data_stream.get_epoch_iterator(as_dict=True):
                 self.process_batch(batch)
         else:
