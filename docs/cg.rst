@@ -44,11 +44,11 @@ We will find that there are many variables in this graph.
     [TensorConstant{0}, b, W_norm, b_norm, features, TensorConstant{1.0}, ...]
 
 To apply weight decay, we only need the weights matrices. These have been tagged
-with the :const:`~blocks.roles.WEIGHTS` role. So let's create a filter that finds these for us.
+with the :const:`~blocks.roles.WEIGHT` role. So let's create a filter that finds these for us.
 
     >>> from blocks.filter import VariableFilter
-    >>> from blocks.roles import WEIGHTS
-    >>> print(VariableFilter(roles=[WEIGHTS])(cg.variables))
+    >>> from blocks.roles import WEIGHT
+    >>> print(VariableFilter(roles=[WEIGHT])(cg.variables))
     [W, W, W]
 
 Note that the variables in :attr:`cg.variables
@@ -72,7 +72,7 @@ created them.
    There are a variety of different roles that you can filter by. You might have
    noted already that there is a hierarchy to many of them: Filtering by
    :const:`~blocks.roles.PARAMETER` will also return variables of the child
-   roles :const:`~blocks.roles.WEIGHTS` and :const:`~blocks.roles.BIASES`.
+   roles :const:`~blocks.roles.WEIGHT` and :const:`~blocks.roles.BIAS`.
 
 We can also see what auxiliary variables our bricks have created. These might be
 of interest to monitor during training, for example.

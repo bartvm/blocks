@@ -9,9 +9,9 @@ def test_role_serialization():
              blocks.roles.COST,
              blocks.roles.PARAMETER,
              blocks.roles.AUXILIARY,
-             blocks.roles.WEIGHTS,
-             blocks.roles.BIASES,
-             blocks.roles.FILTERS]
+             blocks.roles.WEIGHT,
+             blocks.roles.BIAS,
+             blocks.roles.FILTER]
 
     for role in roles:
         deserialized = cPickle.loads(cPickle.dumps(role))
