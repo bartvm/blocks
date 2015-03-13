@@ -13,6 +13,7 @@ from blocks.utils import reraise_as
 
 logger = logging.getLogger()
 
+
 class NonTheanoVariablesBuffer(object):
 
     def __init__(self, variables):
@@ -33,10 +34,9 @@ class NonTheanoVariablesBuffer(object):
 
     def accumulate_variables(self, numerical_values):
         for variable in self.variables:
-            variable.accumulate(*[numerical_values[self.requires.index(
-                                                       requirement)]
-                                      for requirement in variable.requires]) 
-
+            variable.accumulate(
+                *[numerical_values[self.requires.index(requirement)]
+                    for requirement in variable.requires])
 
 
 class AggregationBuffer(object):
@@ -208,8 +208,9 @@ class DatasetEvaluator(object):
                 theano_variables.append(variable)
         self.theano_variables = theano_variables
         self.non_theano_variables = non_theano_variables
-        variable_names = [v.name for v in theano_variables + non_theano_variables]
-        if len(set(variable_names)) < len(theano_variables + non_theano_variables):
+        all_variables = theano_variables + non_theano_variables
+        variable_names = [v.name for v in all_variables]
+        if len(set(variable_names)) < len(all_variables):
             raise ValueError("variables should have different names")
         self.theano_buffer = AggregationBuffer(theano_variables)
         self.non_theano_buffer = NonTheanoVariablesBuffer(non_theano_variables)
@@ -252,7 +253,7 @@ class DatasetEvaluator(object):
     def process_batch(self, batch):
         try:
             input_names = self.theano_buffer.input_names + \
-                              self.non_theano_buffer.input_names
+                self.non_theano_buffer.input_names
             batch = dict_subset(batch, input_names)
         except KeyError:
             reraise_as(

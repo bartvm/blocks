@@ -1,11 +1,8 @@
 import numpy
 import theano
 from fuel.datasets import IterableDataset
-from numpy.testing import assert_raises
 
-from blocks.graph import ComputationGraph
 from blocks.monitoring.evaluators import DatasetEvaluator
-from tests.monitoring.test_aggregation import TestBrick
 from blocks.monitoring.aggregation import MonitoredQuantity
 from blocks.bricks.cost import CategoricalCrossEntropy
 
@@ -35,9 +32,11 @@ def test_dataset_evaluators():
     data_stream = IterableDataset(dict(X=data[0],
                                        Y=data[1])).get_example_stream()
 
-    validator = DatasetEvaluator([CrossEntropy(requires=[X, Y],
-        name="non_thenao_cross_entropy"), 
+    validator = DatasetEvaluator([
+        CrossEntropy(requires=[X, Y],
+                     name="non_thenao_cross_entropy"),
         CategoricalCrossEntropy().apply(X, Y), ])
     values = validator.evaluate(data_stream)
-    numpy.testing.assert_allclose(values['non_thenao_cross_entropy'],
+    numpy.testing.assert_allclose(
+        values['non_thenao_cross_entropy'],
         values['categoricalcrossentropy_apply_cost'])

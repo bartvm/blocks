@@ -152,6 +152,7 @@ class TakeLast(AggregationScheme):
                           accumulation_updates=[(self.storage, self.variable)],
                           readout_variable=self.storage)
 
+
 @add_metaclass(ABCMeta)
 class MonitoredQuantity(object):
     def __init__(self, requires=None, name=None):
