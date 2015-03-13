@@ -77,6 +77,8 @@ class AggregationBuffer(object):
         self.use_take_last = use_take_last
 
         self.variable_names = [v.name for v in self.variables]
+        if len(self.variable_names) < len(self.variables):
+            raise ValueError("variables should have different names")
         self._computation_graph = ComputationGraph(self.variables)
         self.inputs = self._computation_graph.inputs
         self.input_names = [v.name for v in self.inputs]
@@ -201,16 +203,16 @@ class DatasetEvaluator(object):
         non_theano_variables = []
         for variable in variables:
             if isinstance(variable, MonitoredQuantity):
-                non_theano_variables += [variable]
+                non_theano_variables.append(variable)
             else:
-                theano_variables += [variable]
+                theano_variables.append(variable)
         self.theano_variables = theano_variables
         self.non_theano_variables = non_theano_variables
         variable_names = [v.name for v in theano_variables + non_theano_variables]
-        if len(variable_names) < len(theano_variables + non_theano_variables):
+        if len(set(variable_names)) < len(theano_variables + non_theano_variables):
             raise ValueError("variables should have different names")
-        self.theano_buffer_ = AggregationBuffer(theano_variables)
-        self.non_theano_buffer_ = NonTheanoVariablesBuffer(non_theano_variables)
+        self.theano_buffer = AggregationBuffer(theano_variables)
+        self.non_theano_buffer = NonTheanoVariablesBuffer(non_theano_variables)
         self.updates = updates
         self._compile()
 
@@ -227,17 +229,14 @@ class DatasetEvaluator(object):
         inputs = []
         outputs = []
         updates = None
-        if self.theano_buffer_.accumulation_updates:
+        if self.theano_buffer.accumulation_updates:
             updates = OrderedDict()
-            updates.update(self.theano_buffer_.accumulation_updates)
+            updates.update(self.theano_buffer.accumulation_updates)
             if self.updates:
                 updates.update(self.updates)
-            # append?
-            inputs += self.theano_buffer_.inputs
-
-        if self.non_theano_buffer_.variables != []:
-            inputs += self.non_theano_buffer_.inputs
-            outputs = self.non_theano_buffer_.requires
+            inputs += self.theano_buffer.inputs
+        inputs += self.non_theano_buffer.inputs
+        outputs = self.non_theano_buffer.requires
 
         if inputs != []:
             unique_inputs = list(set(inputs))
@@ -248,12 +247,12 @@ class DatasetEvaluator(object):
             self._accumulate_fun = None
 
     def initialize_aggregators(self):
-        self.theano_buffer_.initialize_aggregators()
+        self.theano_buffer.initialize_aggregators()
 
     def process_batch(self, batch):
         try:
-            input_names = self.theano_buffer_.input_names + \
-                              self.non_theano_buffer_.input_names
+            input_names = self.theano_buffer.input_names + \
+                              self.non_theano_buffer.input_names
             batch = dict_subset(batch, input_names)
         except KeyError:
             reraise_as(
@@ -262,11 +261,11 @@ class DatasetEvaluator(object):
                 " {}.".format(input_names))
         if self._accumulate_fun is not None:
             numerical_values = self._accumulate_fun(**batch)
-            self.non_theano_buffer_.accumulate_variables(numerical_values)
+            self.non_theano_buffer.accumulate_variables(numerical_values)
 
     def get_aggregated_values(self):
-        values = self.theano_buffer_.get_aggregated_values()
-        non_theano_values = self.non_theano_buffer_.get_aggregated_values()
+        values = self.theano_buffer.get_aggregated_values()
+        non_theano_values = self.non_theano_buffer.get_aggregated_values()
         values.update(non_theano_values)
         return values
 
