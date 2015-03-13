@@ -4,7 +4,6 @@ import logging
 from blocks.extensions import SimpleExtension, TrainingExtension
 from blocks.algorithms import DifferentiableCostMinimizer
 from blocks.monitoring.evaluators import AggregationBuffer, DatasetEvaluator
-from blocks.monitoring.aggregation import MonitoredQuantity
 
 PREFIX_SEPARATOR = '_'
 logger = logging.getLogger()
@@ -140,17 +139,3 @@ class TrainingDataMonitoring(SimpleExtension, MonitoringExtension):
             self.add_records(self.main_loop.log,
                              self._buffer.get_aggregated_values().items())
             self._buffer.initialize_aggregators()
-
-
-class CrossEntropy(MonitoredQuantity):
-    def __init__(self, **kwargs):
-        super(CrossEntropy, self).__init__(**kwargs)
-        self.total_cross_entropy, self.examples_seen = 0.0, 0
-
-    def accumulate(self, target, predicted):
-        import numpy
-        self.total_cross_entropy += -(target * numpy.log(predicted)).sum()
-        self.examples_seen += 1
-
-    def readout(self):
-        return self.total_cross_entropy / self.examples_seen
