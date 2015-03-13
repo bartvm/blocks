@@ -102,11 +102,11 @@ the parameters by adding a :math:`L2`-regularization term (also known as
 To get the weights from our model, we will use Blocks' annotation features (read
 more about them in the :doc:`cg` tutorial).
 
->>> from blocks.bricks import WEIGHTS
+>>> from blocks.bricks import WEIGHT
 >>> from blocks.graph import ComputationGraph
 >>> from blocks.filter import VariableFilter
 >>> cg = ComputationGraph(cost)
->>> W1, W2 = VariableFilter(roles=[WEIGHTS])(cg.variables)
+>>> W1, W2 = VariableFilter(roles=[WEIGHT])(cg.variables)
 >>> cost = cost + 0.005 * (W1 ** 2).sum() + 0.005 * (W2 ** 2).sum()
 >>> cost.name = 'cost_with_regularization'
 
