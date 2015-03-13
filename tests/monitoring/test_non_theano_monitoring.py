@@ -20,8 +20,9 @@ class CrossEntropy(MonitoredQuantity):
         self.examples_seen += 1
 
     def readout(self):
+        res = self.total_cross_entropy / self.examples_seen
         self.total_cross_entropy, self.examples_seen = 0.0, 0
-        return self.total_cross_entropy / self.examples_seen
+        return res
 
 
 def test_dataset_evaluators():
