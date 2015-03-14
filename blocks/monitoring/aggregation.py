@@ -161,6 +161,10 @@ class MonitoredQuantity(object):
         pass
 
     @abstractmethod
+    def initialize(self):
+        pass
+
+    @abstractmethod
     def accumulate(self, target, predicted):
         pass
 

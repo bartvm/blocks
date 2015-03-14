@@ -12,6 +12,8 @@ floatX = theano.config.floatX
 class CrossEntropy(MonitoredQuantity):
     def __init__(self, **kwargs):
         super(CrossEntropy, self).__init__(**kwargs)
+
+    def initialize(self):
         self.total_cross_entropy, self.examples_seen = 0.0, 0
 
     def accumulate(self, target, predicted):
@@ -21,7 +23,6 @@ class CrossEntropy(MonitoredQuantity):
 
     def readout(self):
         res = self.total_cross_entropy / self.examples_seen
-        self.total_cross_entropy, self.examples_seen = 0.0, 0
         return res
 
 
