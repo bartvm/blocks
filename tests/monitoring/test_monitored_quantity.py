@@ -37,9 +37,9 @@ def test_dataset_evaluators():
 
     validator = DatasetEvaluator([
         CrossEntropy(requires=[X, Y],
-                     name="non_thenao_cross_entropy"),
+                     name="monitored_cross_entropy"),
         CategoricalCrossEntropy().apply(X, Y), ])
     values = validator.evaluate(data_stream)
     numpy.testing.assert_allclose(
-        values['non_thenao_cross_entropy'],
+        values['monitored_cross_entropy'],
         values['categoricalcrossentropy_apply_cost'])

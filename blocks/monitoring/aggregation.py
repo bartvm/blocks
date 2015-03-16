@@ -155,7 +155,7 @@ class TakeLast(AggregationScheme):
 
 @add_metaclass(ABCMeta)
 class MonitoredQuantity(object):
-    """The base class for non-Theano monitored quantities.
+    """The base class for monitored-quantities.
 
     To calculate quantities which are not Theano variables.
     The calculations are done in an iterative procedure for

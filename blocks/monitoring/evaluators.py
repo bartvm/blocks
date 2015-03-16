@@ -14,10 +14,10 @@ from blocks.utils import reraise_as
 logger = logging.getLogger()
 
 
-class NonTheanoVariablesBuffer(object):
-    """Intermediate results of aggregating values of non-Theano variables.
+class MonitoredQuantityBuffer(object):
+    """Intermediate results of aggregating values of monitored-quantity.
 
-    Accumulate results for a list of non-Theano variables for every
+    Accumulate results for a list of monitored-quantity for every
     single batch. Provides initialization and readout routines to
     initialize each variable and capture its accumulated results.
 
@@ -31,9 +31,9 @@ class NonTheanoVariablesBuffer(object):
     Attributes
     ----------
     requires : list of :class:`~tensor.TensorVariable`
-        Needed to calculate non-Theano variables.
+        Needed to calculate monitored-quantity.
     variable_names : list of str
-        The name of non-Theano variables.
+        The name of monitored-quantity.
     inputs : list of :class:`~tensor.TensorVariable`
         The list of inputs needed for variables in `requires`.
     input_names : list of str
@@ -69,7 +69,7 @@ class NonTheanoVariablesBuffer(object):
             return dict(zip(self.variable_names, ret_vals))
 
     def accumulate_variables(self, numerical_values):
-        """Accumulate the results for every batch."""
+        """Accumulate the results for every batch"""
         if not self._initialized:
             raise Exception("To readout you must first initialize, then"
                             "process batches!")
@@ -205,7 +205,7 @@ class AggregationBuffer(object):
 
 
 class DatasetEvaluator(object):
-    """A DatasetEvaluator evaluates many Theano and non_Theano variables.
+    """A DatasetEvaluator evaluates many Theano varialbes and monitored-quantities.
 
     The DatasetEvaluator provides a do-it-all method, :meth:`evaluate`,
     which computes values of ``variables`` on a dataset.
@@ -242,20 +242,21 @@ class DatasetEvaluator(object):
     """
     def __init__(self, variables, updates=None):
         theano_variables = []
-        non_theano_variables = []
+        monitored_quantities = []
         for variable in variables:
             if isinstance(variable, MonitoredQuantity):
-                non_theano_variables.append(variable)
+                monitored_quantities.append(variable)
             else:
                 theano_variables.append(variable)
         self.theano_variables = theano_variables
-        self.non_theano_variables = non_theano_variables
-        all_variables = theano_variables + non_theano_variables
+        self.monitored_quantities = monitored_quantities
+        all_variables = theano_variables + monitored_quantities
         variable_names = [v.name for v in all_variables]
         if len(set(variable_names)) < len(all_variables):
             raise ValueError("variables should have different names")
         self.theano_buffer = AggregationBuffer(theano_variables)
-        self.non_theano_buffer = NonTheanoVariablesBuffer(non_theano_variables)
+        self.monitored_quantities_buffer = MonitoredQuantityBuffer(
+            monitored_quantities)
         self.updates = updates
         self._compile()
 
@@ -278,8 +279,8 @@ class DatasetEvaluator(object):
             if self.updates:
                 updates.update(self.updates)
             inputs += self.theano_buffer.inputs
-        inputs += self.non_theano_buffer.inputs
-        outputs = self.non_theano_buffer.requires
+        inputs += self.monitored_quantities_buffer.inputs
+        outputs = self.monitored_quantities_buffer.requires
 
         if inputs != []:
             unique_inputs = list(set(inputs))
@@ -291,12 +292,12 @@ class DatasetEvaluator(object):
 
     def initialize_aggregators(self):
         self.theano_buffer.initialize_aggregators()
-        self.non_theano_buffer.initialize()
+        self.monitored_quantities_buffer.initialize()
 
     def process_batch(self, batch):
         try:
             input_names = self.theano_buffer.input_names + \
-                self.non_theano_buffer.input_names
+                self.monitored_quantities_buffer.input_names
             batch = dict_subset(batch, input_names)
         except KeyError:
             reraise_as(
@@ -305,12 +306,14 @@ class DatasetEvaluator(object):
                 " {}.".format(input_names))
         if self._accumulate_fun is not None:
             numerical_values = self._accumulate_fun(**batch)
-            self.non_theano_buffer.accumulate_variables(numerical_values)
+            self.monitored_quantities_buffer.accumulate_variables(
+                numerical_values)
 
     def get_aggregated_values(self):
         values = self.theano_buffer.get_aggregated_values()
-        non_theano_values = self.non_theano_buffer.get_aggregated_values()
-        values.update(non_theano_values)
+        monitored_quantities_values = self.monitored_quantities_buffer.\
+            get_aggregated_values()
+        values.update(monitored_quantities_values)
         return values
 
     def evaluate(self, data_stream):

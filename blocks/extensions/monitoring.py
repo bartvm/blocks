@@ -41,7 +41,7 @@ class MonitoringExtension(TrainingExtension):
 
 
 class DataStreamMonitoring(SimpleExtension, MonitoringExtension):
-    """Monitors values of Theano and non-Theano variables on a data stream.
+    """Monitors Theano variables and monitored-quantities on a data stream.
 
     By default monitoring is done before the first and after every epoch.
 
