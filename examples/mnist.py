@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 from theano import tensor
 
 from blocks.algorithms import GradientDescent, Scale
-from blocks.bricks import MLP, Tanh, Softmax, WEIGHTS
+from blocks.bricks import MLP, Tanh, Softmax, WEIGHT
 from blocks.bricks.cost import CategoricalCrossEntropy, MisclassificationRate
 from blocks.initialization import IsotropicGaussian, Constant
 from fuel.streams import DataStream
@@ -36,7 +36,7 @@ def main(save_to, num_epochs):
     error_rate = MisclassificationRate().apply(y.flatten(), probs)
 
     cg = ComputationGraph([cost])
-    W1, W2 = VariableFilter(roles=[WEIGHTS])(cg.variables)
+    W1, W2 = VariableFilter(roles=[WEIGHT])(cg.variables)
     cost = cost + .00005 * (W1 ** 2).sum() + .00005 * (W2 ** 2).sum()
     cost.name = 'final_cost'
 
