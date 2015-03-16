@@ -1,7 +1,7 @@
 from inspect import isclass
 import re
 
-from blocks.bricks.base import ApplicationCall, Brick
+from blocks.bricks.base import ApplicationCall, BoundApplication, Brick
 from blocks.roles import has_roles
 
 
@@ -96,17 +96,16 @@ class VariableFilter(object):
 
     """
     def __init__(self, roles=None, bricks=None, each_role=False, name=None,
-                 name_re=None, applications=None, one=True):
+                 name_regex=None, applications=None):
         self.roles = roles
-        if not isinstance(bricks, list):
+        if isinstance(bricks, Brick):
             self.bricks = [bricks]
         else:
             self.bricks = bricks
         self.each_role = each_role
         self.name = name
-        self.name_re = name_re
-        self.one = one
-        if not isinstance(applications, list):
+        self.name_regex = name_regex
+        if isinstance(applications, BoundApplication):
             self.applications = [applications]
         else:
             self.applications = applications
@@ -141,16 +140,13 @@ class VariableFilter(object):
             variables = [var for var in variables
                          if hasattr(var.tag, 'name') and
                          self.name == var.tag.name]
-        if self.name_re:
+        if self.name_regex:
             variables = [var for var in variables
                          if hasattr(var.tag, 'name') and
-                         re.match(self.name, var.tag.name)]
+                         re.match(self.name_regex, var.tag.name)]
         if self.applications:
             variables = [var for var in variables
                          if get_application_call(var) and
                          get_application_call(var).application in
                          self.applications]
-        if self.one:
-            if len(variables) > 1:
-                raise ValueError("Variable Filter only return one variable")
-            return variables
+        return variables
