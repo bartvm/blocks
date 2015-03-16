@@ -155,6 +155,21 @@ class TakeLast(AggregationScheme):
 
 @add_metaclass(ABCMeta)
 class MonitoredQuantity(object):
+    """The base class for non-Theano monitored quantities.
+
+    To calculate quantities which are not Theano variables.
+    The calculations are done in an iterative procedure for
+    every single batch. For every batch, values are accumalted.
+    Finally readout method is provided to get the resulting values.
+
+    Attributes
+    ----------
+    requires : list
+        List of Theano variables needed to calculate this quantity.
+    name : str
+        The name of monitored quantity which appears in the log.
+
+    """
     def __init__(self, requires=None, name=None):
         self.requires = requires
         self.name = name
@@ -162,12 +177,15 @@ class MonitoredQuantity(object):
 
     @abstractmethod
     def initialize(self):
+        """Initialize parameters for this monitored quantity."""
         pass
 
     @abstractmethod
-    def accumulate(self, target, predicted):
+    def accumulate(self):
+        """Accumulate resulting values for every batch."""
         pass
 
     @abstractmethod
     def readout(self):
+        """Readout the accumulated values to capture the final result."""
         pass

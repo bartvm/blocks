@@ -15,7 +15,31 @@ logger = logging.getLogger()
 
 
 class NonTheanoVariablesBuffer(object):
+    """Intermediate results of aggregating values of non-Theano variables.
 
+    Accumulate results for a list of non-Theano variables for every
+    single batch. Provides initialization and readout routines to
+    initialize each variable and capture its accumulated results.
+
+
+    Parameters
+    ----------
+    variables : list of :class:`MonitoredQuantity`
+        The variable names are used as record names in the logs. Hence, all
+        the variable names must be different.
+
+    Attributes
+    ----------
+    requires : list of :class:`~tensor.TensorVariable`
+        Needed to calculate non-Theano variables.
+    variable_names : list of str
+        The name of non-Theano variables.
+    inputs : list of :class:`~tensor.TensorVariable`
+        The list of inputs needed for variables in `requires`.
+    input_names : list of str
+        The name of the inputs needed for variables in `requires`.
+
+    """
     def __init__(self, variables):
         self.variables = variables
         requires = []
@@ -30,11 +54,13 @@ class NonTheanoVariablesBuffer(object):
         self.input_names = [v.name for v in self.inputs]
 
     def initialize(self):
+        """Initialize the variables."""
         self._initialized = True
         for variable in self.variables:
             variable.initialize()
 
     def get_aggregated_values(self):
+        """Readout the accumulated values."""
         if not self._initialized:
             raise Exception("To readout you must first initialize, then"
                             "process batches!")
@@ -43,6 +69,7 @@ class NonTheanoVariablesBuffer(object):
             return dict(zip(self.variable_names, ret_vals))
 
     def accumulate_variables(self, numerical_values):
+        """Accumulate the results for every batch"""
         if not self._initialized:
             raise Exception("To readout you must first initialize, then"
                             "process batches!")
@@ -80,7 +107,7 @@ class AggregationBuffer(object):
     readout_variables : dict
         A dictionary of record names to :class:`~tensor.TensorVariable`
         representing the aggregated values.
-    input : list of :class:`~tensor.TensorVariable`
+    inputs : list of :class:`~tensor.TensorVariable`
         The list of inputs needed for accumulation.
     input_names : list of str
         The name of the inputs needed for accumulation.
@@ -178,7 +205,7 @@ class AggregationBuffer(object):
 
 
 class DatasetEvaluator(object):
-    """A DatasetEvaluator evaluates many Theano variables on a dataset.
+    """A DatasetEvaluator evaluates many Theano and non_Theano variables.
 
     The DatasetEvaluator provides a do-it-all method, :meth:`evaluate`,
     which computes values of ``variables`` on a dataset.
@@ -195,7 +222,8 @@ class DatasetEvaluator(object):
 
     Parameters
     ----------
-    variables : list of :class:`~tensor.TensorVariable`
+    variables : list of :class:`~tensor.TensorVariable` and
+        :class:`MonitoredQuantity`
         The variable names are used as record names in the logs. Hence, all
         the names must be different.
 
@@ -204,12 +232,12 @@ class DatasetEvaluator(object):
         aggregating minibatches.
     updates : list of tuples or :class:`~collections.OrderedDict` or None
         :class:`~tensor.TensorSharedVariable` updates to be performed
-        during evaluation. Be careful not to update any model parameters
-        as this is not intended to alter your model in any meaningfull
-        way. A typical use case of this option arises when the theano
-        function used for evaluation contains a call to
-        :function:`~theano.scan` which might have returned shared
-        variable updates.
+        during evaluation. This parameter is only for Theano variables.
+        Be careful not to update any model parameters as this is not
+        intended to alter your model in any meaningfullway. A typical
+        use case of this option arises when the theano function used
+        for evaluation contains a call to:function:`~theano.scan` which
+        might have returned shared variable updates.
 
     """
     def __init__(self, variables, updates=None):
