@@ -22,21 +22,35 @@ class NonTheanoVariablesBuffer(object):
         for variable in variables:
             requires += variable.requires
         self.requires = list(set(requires))
+        self._initialized = False
 
         self.variable_names = [v.name for v in self.variables]
         self._computation_graph = ComputationGraph(self.requires)
         self.inputs = self._computation_graph.inputs
         self.input_names = [v.name for v in self.inputs]
 
+    def initialize(self):
+        self._initialized = True
+        for variable in self.variables:
+            variable.initialize()
+
     def get_aggregated_values(self):
-        ret_vals = [v.readout() for v in self.variables]
-        return dict(zip(self.variable_names, ret_vals))
+        if not self._initialized:
+            raise Exception("To readout you must first initialize, then"
+                            "process batches!")
+        else:
+            ret_vals = [v.readout() for v in self.variables]
+            return dict(zip(self.variable_names, ret_vals))
 
     def accumulate_variables(self, numerical_values):
-        for variable in self.variables:
-            variable.accumulate(
-                *[numerical_values[self.requires.index(requirement)]
-                    for requirement in variable.requires])
+        if not self._initialized:
+            raise Exception("To readout you must first initialize, then"
+                            "process batches!")
+        else:
+            for variable in self.variables:
+                variable.accumulate(
+                    *[numerical_values[self.requires.index(requirement)]
+                        for requirement in variable.requires])
 
 
 class AggregationBuffer(object):
@@ -249,6 +263,7 @@ class DatasetEvaluator(object):
 
     def initialize_aggregators(self):
         self.theano_buffer.initialize_aggregators()
+        self.non_theano_buffer.initialize()
 
     def process_batch(self, batch):
         try:
