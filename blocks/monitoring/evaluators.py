@@ -69,7 +69,7 @@ class NonTheanoVariablesBuffer(object):
             return dict(zip(self.variable_names, ret_vals))
 
     def accumulate_variables(self, numerical_values):
-        """Accumulate the results for every batch"""
+        """Accumulate the results for every batch."""
         if not self._initialized:
             raise Exception("To readout you must first initialize, then"
                             "process batches!")
