@@ -44,7 +44,8 @@ class VariableFilter(object):
     ----------
     roles : list of :class:`.VariableRole` instances, optional
         Matches any variable which has one of the roles given.
-    bricks : list of :class:`.Brick` classes or instances, optional
+    bricks : list of :class:`.Brick` classes or instances, optionnal
+        or instance of :class:`.Brick` classes or instances
         Matches any variable whose brick is either one of the given
         bricks, or whose brick is of given classes.
     each_role : bool, optional
@@ -55,6 +56,7 @@ class VariableFilter(object):
         A regular expression for the variable name. The Blocks name (i.e.
         `x.tag.name`) is used.
     application : :class:`.Application` instance
+        or list of :class:`.Application` instance
         Matches a variable that was produced by the application given.
 
     Notes
@@ -87,13 +89,20 @@ class VariableFilter(object):
     [b]
 
     """
-    def __init__(self, roles=None, bricks=None, each_role=False, name=None,
-                 application=None):
+    def __init__(self, roles=None, bricks=None, each_role=False, name=None, name_re=None,
+                 application=None, one=True):
         self.roles = roles
-        self.bricks = bricks
+        if not isinstance(bricks, list):
+            self.bricks = [bricks]
+        else:
+            self.bricks = bricks
         self.each_role = each_role
         self.name = name
-        self.application = application
+        self.name_re = name_re
+        if not isinstance(application, list):
+            self.application = [application]
+        else:
+            self.application = application
 
     def __call__(self, variables):
         """Filter the given variables.
@@ -124,10 +133,17 @@ class VariableFilter(object):
         if self.name:
             variables = [var for var in variables
                          if hasattr(var.tag, 'name') and
+                         self.name == var.tag.name]
+        if self.name_re:
+            variables = [var for var in variables
+                         if hasattr(var.tag, 'name') and
                          re.match(self.name, var.tag.name)]
         if self.application:
             variables = [var for var in variables
                          if get_application_call(var) and
-                         get_application_call(var).application ==
+                         get_application_call(var).application in
                          self.application]
-        return variables
+        if one:
+            if len(variables)>1:
+                raise ValueError("eee")
+            return variables
