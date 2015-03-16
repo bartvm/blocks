@@ -349,7 +349,7 @@ class Annotation(object):
         roles : list of :class:`.VariableRole` instances, optional
             The roles of this variable. The :const:`.AUXILIARY`
             role will automatically be added. Other options are
-            :const:`.COST`, :const:`.WEIGHTS`, etc.
+            :const:`.COST`, :const:`.WEIGHT`, etc.
         name : str, optional
             Name to give to the variable. If the variable already has a
             name it will be overwritten.

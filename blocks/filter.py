@@ -73,7 +73,7 @@ class VariableFilter(object):
 
     Examples
     --------
-    >>> from blocks.bricks import MLP, Linear, Sigmoid, Identity, BIASES
+    >>> from blocks.bricks import MLP, Linear, Sigmoid, Identity, BIAS
     >>> mlp = MLP(activations=[Identity(), Sigmoid()], dims=[20, 10, 20])
     >>> from theano import tensor
     >>> x = tensor.matrix()
@@ -81,7 +81,7 @@ class VariableFilter(object):
     >>> from blocks.graph import ComputationGraph
     >>> cg = ComputationGraph(y_hat)
     >>> from blocks.filter import VariableFilter
-    >>> var_filter = VariableFilter(roles=[BIASES],
+    >>> var_filter = VariableFilter(roles=[BIAS],
     ...                             bricks=[mlp.linear_transformations[0]])
     >>> var_filter(cg.variables)
     [b]

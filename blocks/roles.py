@@ -9,26 +9,26 @@ def add_role(var, role):
 
     Notes
     -----
-    Some roles are subroles of others (e.g. :const:`WEIGHTS` is a subrole
+    Some roles are subroles of others (e.g. :const:`WEIGHT` is a subrole
     of :const:`PARAMETER`). This function will not add a role if a more
     specific role has already been added. If you need to replace a role
-    with a parent role (e.g. replace :const:`WEIGHTS` with
+    with a parent role (e.g. replace :const:`WEIGHT` with
     :const:`PARAMETER`) you must do so manually.
 
     Examples
     --------
     >>> from theano import tensor
     >>> W = tensor.matrix()
-    >>> from blocks.roles import PARAMETER, WEIGHTS
+    >>> from blocks.roles import PARAMETER, WEIGHT
     >>> add_role(W, PARAMETER)
     >>> print(*W.tag.roles)
     PARAMETER
-    >>> add_role(W, WEIGHTS)
+    >>> add_role(W, WEIGHT)
     >>> print(*W.tag.roles)
-    WEIGHTS
+    WEIGHT
     >>> add_role(W, PARAMETER)
     >>> print(*W.tag.roles)
-    WEIGHTS
+    WEIGHT
 
     """
     roles = getattr(var.tag, 'roles', [])
@@ -107,21 +107,21 @@ class WeightsRole(ParameterRole):
     pass
 
 #: The weight matrices of linear transformations
-WEIGHTS = WeightsRole()
+WEIGHT = WeightsRole()
 
 
 class BiasesRole(ParameterRole):
     pass
 
 #: Biases of linear transformations
-BIASES = BiasesRole()
+BIAS = BiasesRole()
 
 
 class FiltersRole(WeightsRole):
     pass
 
 #: The filters (kernels) of a convolution operation
-FILTERS = FiltersRole()
+FILTER = FiltersRole()
 
 
 class DropoutRole(VariableRole):

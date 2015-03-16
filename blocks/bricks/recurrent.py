@@ -11,7 +11,7 @@ from theano import tensor, Variable
 from blocks.bricks import Initializable, Sigmoid, Tanh
 from blocks.bricks.base import Application, application, Brick, lazy
 from blocks.initialization import NdarrayInitialization
-from blocks.roles import add_role, WEIGHTS, BIASES
+from blocks.roles import add_role, WEIGHT, BIAS
 from blocks.utils import (pack, shared_floatx_nans, dict_union, dict_subset,
                           is_shared_variable)
 
@@ -364,11 +364,11 @@ class LSTM(BaseRecurrent, Initializable):
         self.W_cell_to_out = shared_floatx_nans((self.dim,),
                                                 name='W_cell_to_out')
         self.biases = shared_floatx_nans((4*self.dim,), name='biases')
-        add_role(self.W_state, WEIGHTS)
-        add_role(self.W_cell_to_in, WEIGHTS)
-        add_role(self.W_cell_to_forget, WEIGHTS)
-        add_role(self.W_cell_to_out, WEIGHTS)
-        add_role(self.biases, BIASES)
+        add_role(self.W_state, WEIGHT)
+        add_role(self.W_cell_to_in, WEIGHT)
+        add_role(self.W_cell_to_forget, WEIGHT)
+        add_role(self.W_cell_to_out, WEIGHT)
+        add_role(self.biases, BIAS)
 
         self.params = [self.W_state, self.W_cell_to_in, self.W_cell_to_forget,
                        self.W_cell_to_out, self.biases]
