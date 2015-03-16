@@ -89,8 +89,8 @@ class VariableFilter(object):
     [b]
 
     """
-    def __init__(self, roles=None, bricks=None, each_role=False, name=None, name_re=None,
-                 application=None, one=True):
+    def __init__(self, roles=None, bricks=None, each_role=False, name=None,
+                 name_re=None, application=None, one=True):
         self.roles = roles
         if not isinstance(bricks, list):
             self.bricks = [bricks]
@@ -99,6 +99,7 @@ class VariableFilter(object):
         self.each_role = each_role
         self.name = name
         self.name_re = name_re
+        self.one = one
         if not isinstance(application, list):
             self.application = [application]
         else:
@@ -143,7 +144,7 @@ class VariableFilter(object):
                          if get_application_call(var) and
                          get_application_call(var).application in
                          self.application]
-        if one:
-            if len(variables)>1:
-                raise ValueError("eee")
+        if self.one:
+            if len(variables) > 1:
+                raise ValueError("Variable Filter only return one variable")
             return variables
