@@ -43,11 +43,24 @@ def test_variable_filter():
     brick_filter = VariableFilter(roles=[BIAS], bricks=[brick1])
     assert brick1_bias == brick_filter(cg.variables)
 
+    # Testing filtering by brick instance
+    brick_filter = VariableFilter(roles=[BIAS], bricks=brick1)
+    assert brick1_bias == brick_filter(cg.variables)
+
     # Testing filtering by name
     name_filter = VariableFilter(name='W_norm')
     assert [cg.variables[2]] == name_filter(cg.variables)
 
+    # Testing filtering by name regex
+    name_filter = VariableFilter(name_re='W_no?m')
+    assert [cg.variables[2]] == name_filter(cg.variables)
+
     # Testing filtering by application
     appli_filter = VariableFilter(application=brick1.apply)
+    variables = [cg.variables[1], cg.variables[8]]
+    assert variables == appli_filter(cg.variables)
+
+    # Testing filtering by applications
+    appli_filter = VariableFilter(application=[brick1.apply])
     variables = [cg.variables[1], cg.variables[8]]
     assert variables == appli_filter(cg.variables)
