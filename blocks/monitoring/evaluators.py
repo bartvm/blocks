@@ -19,45 +19,42 @@ class MonitoredQuantityBuffer(object):
 
     Accumulate results for a list of monitored-quantity for every
     single batch. Provides initialization and readout routines to
-    initialize each variable and capture its accumulated results.
+    initialize each quantity and capture its accumulated results.
 
 
     Parameters
     ----------
-    variables : list of :class:`MonitoredQuantity`
-        The variable names are used as record names in the logs. Hence, all
-        the variable names must be different.
+    quantities : list of :class:`MonitoredQuantity`
+        The quantity names are used as record names in the logs. Hence, all
+        the quantity names must be different.
 
     Attributes
     ----------
     requires : list of :class:`~tensor.TensorVariable`
-        Needed to calculate monitored-quantity.
-    variable_names : list of str
-        The name of monitored-quantity.
+        Needed to calculate monitored-quantities.
+    quantity_names : list of str
+        Names of quantities.
     inputs : list of :class:`~tensor.TensorVariable`
         The list of inputs needed for variables in `requires`.
-    input_names : list of str
-        The name of the inputs needed for variables in `requires`.
 
     """
-    def __init__(self, variables):
-        self.variables = variables
+    def __init__(self, quantities):
+        self.quantities = quantities
         requires = []
-        for variable in variables:
-            requires += variable.requires
+        for quantity in quantities:
+            requires += quantity.requires
         self.requires = list(set(requires))
         self._initialized = False
 
-        self.variable_names = [v.name for v in self.variables]
+        self.quantity_names = [q.name for q in self.quantities]
         self._computation_graph = ComputationGraph(self.requires)
         self.inputs = self._computation_graph.inputs
-        self.input_names = [v.name for v in self.inputs]
 
     def initialize(self):
-        """Initialize the variables."""
+        """Initialize the quantities."""
         self._initialized = True
-        for variable in self.variables:
-            variable.initialize()
+        for quantity in self.quantities:
+            quantity.initialize()
 
     def get_aggregated_values(self):
         """Readout the accumulated values."""
@@ -65,19 +62,19 @@ class MonitoredQuantityBuffer(object):
             raise Exception("To readout you must first initialize, then"
                             "process batches!")
         else:
-            ret_vals = [v.readout() for v in self.variables]
-            return dict(zip(self.variable_names, ret_vals))
+            ret_vals = [q.readout() for q in self.quantities]
+            return dict(zip(self.quantity_names, ret_vals))
 
-    def accumulate_variables(self, numerical_values):
+    def accumulate_quantities(self, numerical_values):
         """Accumulate the results for every batch"""
         if not self._initialized:
             raise Exception("To readout you must first initialize, then"
                             "process batches!")
         else:
-            for variable in self.variables:
-                variable.accumulate(
+            for quantity in self.quantities:
+                quantity.accumulate(
                     *[numerical_values[self.requires.index(requirement)]
-                        for requirement in variable.requires])
+                        for requirement in quantity.requires])
 
 
 class AggregationBuffer(object):
@@ -109,8 +106,6 @@ class AggregationBuffer(object):
         representing the aggregated values.
     inputs : list of :class:`~tensor.TensorVariable`
         The list of inputs needed for accumulation.
-    input_names : list of str
-        The name of the inputs needed for accumulation.
 
     """
     def __init__(self, variables, use_take_last=False):
@@ -122,7 +117,6 @@ class AggregationBuffer(object):
             raise ValueError("variables should have different names")
         self._computation_graph = ComputationGraph(self.variables)
         self.inputs = self._computation_graph.inputs
-        self.input_names = [v.name for v in self.inputs]
 
         self._initialized = False
         self._create_aggregators()
@@ -205,7 +199,7 @@ class AggregationBuffer(object):
 
 
 class DatasetEvaluator(object):
-    """A DatasetEvaluator evaluates many Theano varialbes and monitored-quantities.
+    """A DatasetEvaluator evaluates many Theano variables or other quantities.
 
     The DatasetEvaluator provides a do-it-all method, :meth:`evaluate`,
     which computes values of ``variables`` on a dataset.
@@ -250,9 +244,8 @@ class DatasetEvaluator(object):
                 theano_variables.append(variable)
         self.theano_variables = theano_variables
         self.monitored_quantities = monitored_quantities
-        all_variables = theano_variables + monitored_quantities
-        variable_names = [v.name for v in all_variables]
-        if len(set(variable_names)) < len(all_variables):
+        variable_names = [v.name for v in variables]
+        if len(set(variable_names)) < len(variables):
             raise ValueError("variables should have different names")
         self.theano_buffer = AggregationBuffer(theano_variables)
         self.monitored_quantities_buffer = MonitoredQuantityBuffer(
@@ -283,8 +276,8 @@ class DatasetEvaluator(object):
         outputs = self.monitored_quantities_buffer.requires
 
         if inputs != []:
-            unique_inputs = list(set(inputs))
-            self._accumulate_fun = theano.function(unique_inputs,
+            self.unique_inputs = list(set(inputs))
+            self._accumulate_fun = theano.function(self.unique_inputs,
                                                    outputs,
                                                    updates=updates)
         else:
@@ -296,8 +289,7 @@ class DatasetEvaluator(object):
 
     def process_batch(self, batch):
         try:
-            input_names = self.theano_buffer.input_names + \
-                self.monitored_quantities_buffer.input_names
+            input_names = [v.name for v in self.unique_inputs]
             batch = dict_subset(batch, input_names)
         except KeyError:
             reraise_as(
@@ -311,9 +303,8 @@ class DatasetEvaluator(object):
 
     def get_aggregated_values(self):
         values = self.theano_buffer.get_aggregated_values()
-        monitored_quantities_values = self.monitored_quantities_buffer.\
-            get_aggregated_values()
-        values.update(monitored_quantities_values)
+        values.update(
+            self.monitored_quantities_buffer.get_aggregated_values())
         return values
 
     def evaluate(self, data_stream):

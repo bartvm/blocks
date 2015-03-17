@@ -37,9 +37,12 @@ def test_dataset_evaluators():
 
     validator = DatasetEvaluator([
         CrossEntropy(requires=[X, Y],
-                     name="monitored_cross_entropy"),
+                     name="monitored_cross_entropy0"),
+        # to test two same quantities and make sure that state will be reset
+        CrossEntropy(requires=[X, Y],
+                     name="monitored_cross_entropy1"),
         CategoricalCrossEntropy().apply(X, Y), ])
     values = validator.evaluate(data_stream)
     numpy.testing.assert_allclose(
-        values['monitored_cross_entropy'],
+        values['monitored_cross_entropy1'],
         values['categoricalcrossentropy_apply_cost'])

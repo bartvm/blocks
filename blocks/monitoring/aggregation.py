@@ -157,10 +157,16 @@ class TakeLast(AggregationScheme):
 class MonitoredQuantity(object):
     """The base class for monitored-quantities.
 
-    To calculate quantities which are not Theano variables.
-    The calculations are done in an iterative procedure for
-    every single batch. For every batch, values are accumalted.
-    Finally readout method is provided to get the resulting values.
+    To monitor a non-Theano quanity in Blocks you have to implement this
+    interface for it. The initialize method initializes accumulators and
+    the parameters needed to compute this quantity, accumulate method
+    accumulates results for every batch, and finallly readout is called
+    to get the accumulated resutls.
+
+    See Also
+    ------------
+       :class:`~blocks.monitoring.evaluators.DatasetEvaluator`,
+       :class:`~blocks.extensions.DataStreamMonitoring`
 
     Attributes
     ----------
@@ -173,19 +179,18 @@ class MonitoredQuantity(object):
     def __init__(self, requires=None, name=None):
         self.requires = requires
         self.name = name
-        pass
 
     @abstractmethod
     def initialize(self):
-        """Initialize parameters for this monitored quantity."""
+        """Initialize accumulators for this monitored quantity."""
         pass
 
     @abstractmethod
     def accumulate(self):
-        """Accumulate resulting values for every batch."""
+        """Accumulate results for every batch."""
         pass
 
     @abstractmethod
     def readout(self):
-        """Readout the accumulated values to capture the final result."""
+        """Readout the accumulated results to capture the final result."""
         pass
