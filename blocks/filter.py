@@ -44,7 +44,7 @@ class VariableFilter(object):
     ----------
     roles : list of :class:`.VariableRole` instances, optional
         Matches any variable which has one of the roles given.
-    bricks : list of :class:`.Brick` classes or instances, optionnal
+    bricks : list of :class:`.Brick` classes or instances, optional
         or instance of :class:`.Brick` classes or instances
         Matches any variable whose brick is either one of the given
         bricks, or whose brick is of given classes.
@@ -55,7 +55,7 @@ class VariableFilter(object):
     name : str, optional
         A regular expression for the variable name. The Blocks name (i.e.
         `x.tag.name`) is used.
-    application : :class:`.Application` instance
+    applications : :class:`.Application` instance
         or list of :class:`.Application` instance
         Matches a variable that was produced by the application given.
 
@@ -101,9 +101,9 @@ class VariableFilter(object):
         self.name_re = name_re
         self.one = one
         if not isinstance(application, list):
-            self.application = [application]
+            self.applications = [application]
         else:
-            self.application = application
+            self.applications = application
 
     def __call__(self, variables):
         """Filter the given variables.
@@ -139,11 +139,11 @@ class VariableFilter(object):
             variables = [var for var in variables
                          if hasattr(var.tag, 'name') and
                          re.match(self.name, var.tag.name)]
-        if self.application:
+        if self.applications:
             variables = [var for var in variables
                          if get_application_call(var) and
                          get_application_call(var).application in
-                         self.application]
+                         self.applications]
         if self.one:
             if len(variables) > 1:
                 raise ValueError("Variable Filter only return one variable")
