@@ -4,9 +4,47 @@ Building with bricks
 Blocks is a framework that is supposed to make it easier to build complicated
 neural network models on top of Theano_. In order to do so, we introduce the
 concept of "bricks", which you might have already come across in :ref:`the
-introduction tutorial <model_building>`. Bricks are *parametrized Theano
-operations*. As such, they take Theano variables as inputs, and provide Theano
-variables as outputs.
+introduction tutorial <model_building>`. 
+
+.. _bricks:
+Bricks life-cycle
+-----------------
+
+Blocks uses "bricks" to build models. Bricks are **parametrized Theano 
+operations**. A brick is usually defined by a set of *attributes* and a set of
+*parameters*, the former specifying the attributes that define the Block
+(e.g., the number of input and output units), the latter representing the
+parameters of the brick object that will vary during learning (e.g., the
+weights and the biases).
+
+The life-cycle of a brick is as follows:
+
+1. **Configuration:** set (part of) the *attributes* of the brick. Can take
+   place when the brick object is created, by setting the arguments of the
+   constructor, or later, by setting the attributes of the brick object. No
+   Theano variable is created in this phase.
+
+2. **Allocation:** (optional) allocate the Theano shared variables for the
+   *parameters* of the Brick. When :meth:`.Brick.allocate` is called, the
+   required Theano variables are allocated and initialized by default to ``NaN``.
+
+3. **Application:** instantiate a part of the Theano computational graph,
+   linking the inputs and the outputs of the brick through its *parameters*
+   and according to the *attributes*. Cannot be performed (i.e., results in an
+   error) if the Brick object is not fully configured.
+
+4. **Initialization:** set the **numerical values** of the Theano variables
+   that store the *parameters* of the Brick. The user-provided value will
+   replace the default initialization value.
+
+.. note::
+   If the Theano variables of the brick object have not been allocated when 
+      :meth:`~.Application.apply` is called, Blocks will quietly call 
+         :meth:`.Brick.allocate`.
+
+Example
+^^^^^^^
+Bricks take Theano variables as inputs, and provide Theano variables as outputs. 
 
     >>> import theano
     >>> from theano import tensor
@@ -42,7 +80,7 @@ of a brick we refer to this as *allocation*.
     >>> linear.params[1].get_value() # doctest: +SKIP
     array([ nan,  nan,  nan,  nan,  nan])
 
-By default, all our parameters are set to nan. To initialize them, simply
+By default, all our parameters are set to ``NaN``. To initialize them, simply
 call the :meth:`.Brick.initialize` method. This is the last step in the
 brick lifecycle: *initialization*.
 

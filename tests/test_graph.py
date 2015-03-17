@@ -31,6 +31,7 @@ def test_computation_graph():
     x = tensor.matrix('x')
     y = tensor.matrix('y')
     z = x + y
+    z.name = 'z'
     a = z.copy()
     a.name = 'a'
     b = z.copy()

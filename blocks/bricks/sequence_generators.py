@@ -4,9 +4,9 @@ from abc import ABCMeta, abstractmethod
 from six import add_metaclass
 from theano import tensor
 
-from blocks.bricks import Initializable, Identity, MLP, Random
+from blocks.bricks import Initializable, Random, Bias
 from blocks.bricks.base import application, Brick, lazy
-from blocks.bricks.parallel import Fork, Distribute
+from blocks.bricks.parallel import Fork, Distribute, Merge
 from blocks.bricks.lookup import LookupTable
 from blocks.bricks.recurrent import recurrent
 from blocks.bricks.attention import (
@@ -94,36 +94,43 @@ class BaseSequenceGenerator(Initializable):
 
     """
     @lazy
-    def __init__(self, readout, transition, fork=None, **kwargs):
+    def __init__(self, readout, transition, fork, **kwargs):
         super(BaseSequenceGenerator, self).__init__(**kwargs)
         self.readout = readout
         self.transition = transition
         self.fork = fork
 
-        self.state_names = transition.compute_states.outputs
-        self.context_names = transition.apply.contexts
-        self.glimpse_names = transition.take_glimpses.outputs
         self.children = [self.readout, self.fork, self.transition]
+
+    @property
+    def _state_names(self):
+        return self.transition.compute_states.outputs
+
+    @property
+    def _context_names(self):
+        return self.transition.apply.contexts
+
+    @property
+    def _glimpse_names(self):
+        return self.transition.take_glimpses.outputs
 
     def _push_allocation_config(self):
         # Configure readout. That involves `get_dim` requests
         # to the transition. To make sure that it answers
         # correctly we should finish its configuration first.
         self.transition.push_allocation_config()
-        state_dims = self.transition.get_dims(self.state_names)
-        context_dims = self.transition.get_dims(self.context_names)
-        self.glimpse_dims = self.transition.get_dims(self.glimpse_names)
-        self.readout.source_dims = dict_union(
-            state_dims, context_dims, self.glimpse_dims,
-            feedback=self.readout.get_dim('feedback'))
+        transition_sources = (self._state_names + self._context_names +
+                              self._glimpse_names)
+        self.readout.source_dims = [self.transition.get_dim(name)
+                                    if name in transition_sources
+                                    else self.readout.get_dim(name)
+                                    for name in self.readout.source_names]
 
         # Configure fork. For similar reasons as outlined above,
         # first push `readout` configuration.
         self.readout.push_allocation_config()
-        feedback_names = self.readout.feedback.outputs
-        if not len(feedback_names) == 1:
-            raise ValueError
-        self.fork.input_dim = self.readout.get_dim(feedback_names[0])
+        feedback_name, = self.readout.feedback.outputs
+        self.fork.input_dim = self.readout.get_dim(feedback_name)
         self.fork.output_dims = self.transition.get_dims(
             self.fork.apply.outputs)
 
@@ -149,11 +156,10 @@ class BaseSequenceGenerator(Initializable):
         batch_size = outputs.shape[1]
 
         # Prepare input for the iterative part
-        states = dict_subset(kwargs, self.state_names, must_have=False)
-        contexts = dict_subset(kwargs, self.context_names)
+        states = dict_subset(kwargs, self._state_names, must_have=False)
+        contexts = dict_subset(kwargs, self._context_names)
         feedback = self.readout.feedback(outputs)
-        inputs = (self.fork.apply(feedback, as_dict=True)
-                  if self.fork else {'feedback': feedback})
+        inputs = self.fork.apply(feedback, as_dict=True)
 
         # Run the recurrent network
         results = self.transition.apply(
@@ -165,8 +171,8 @@ class BaseSequenceGenerator(Initializable):
         # are discarded because they are not used for prediction.
         # Remember, glimpses are computed _before_ output stage, states are
         # computed after.
-        states = {name: results[name][:-1] for name in self.state_names}
-        glimpses = {name: results[name][1:] for name in self.glimpse_names}
+        states = {name: results[name][:-1] for name in self._state_names}
+        glimpses = {name: results[name][1:] for name in self._glimpse_names}
 
         # Compute the cost
         feedback = tensor.roll(feedback, 1, 0)
@@ -200,9 +206,9 @@ class BaseSequenceGenerator(Initializable):
             as keyword arguments.
 
         """
-        states = dict_subset(kwargs, self.state_names)
-        contexts = dict_subset(kwargs, self.context_names)
-        glimpses = dict_subset(kwargs, self.glimpse_names)
+        states = dict_subset(kwargs, self._state_names)
+        contexts = dict_subset(kwargs, self._context_names)
+        glimpses = dict_subset(kwargs, self._glimpse_names)
 
         next_glimpses = self.transition.take_glimpses(
             as_dict=True, **dict_union(states, glimpses, contexts))
@@ -226,15 +232,16 @@ class BaseSequenceGenerator(Initializable):
 
     @generate.property('states')
     def generate_states(self):
-        return self.state_names + ['outputs'] + self.glimpse_names
+        return self._state_names + ['outputs'] + self._glimpse_names
 
     @generate.property('outputs')
     def generate_outputs(self):
-        return (self.state_names + ['outputs'] +
-                self.glimpse_names + ['costs'])
+        return (self._state_names + ['outputs'] +
+                self._glimpse_names + ['costs'])
 
     def get_dim(self, name):
-        if name in self.state_names + self.context_names + self.glimpse_names:
+        if name in (self._state_names + self._context_names +
+                    self._glimpse_names):
             return self.transition.get_dim(name)
         elif name == 'outputs':
             return self.readout.get_dim(name)
@@ -244,7 +251,7 @@ class BaseSequenceGenerator(Initializable):
     def initial_state(self, name, batch_size, *args, **kwargs):
         if name == 'outputs':
             return self.readout.initial_outputs(batch_size)
-        elif name in self.state_names + self.glimpse_names:
+        elif name in self._state_names + self._glimpse_names:
             return self.transition.initial_state(name, batch_size,
                                                  *args, **kwargs)
         else:
@@ -290,38 +297,81 @@ class AbstractReadout(AbstractEmitter, AbstractFeedback):
         pass
 
 
-@add_metaclass(ABCMeta)
-class Readout(AbstractReadout):
+class Readout(AbstractReadout, Initializable):
     """Readout brick with separated emitting and feedback parts.
 
     Parameters
     ----------
+    source_names : list
+        A list of the source names (outputs) that are needed for the
+        readout part e.g. ``['states']`` or ``['states', 'glimpses']``.
     readout_dim : int
         The dimension of the readout.
     emitter : an instance of :class:`AbstractEmitter`
         The emitter component.
     feedback_brick : an instance of :class:`AbstractFeedback`
         The feedback component.
+    merge : :class:`.Brick`, optional
+        A brick that takes the sources given in `source_names` as an input
+        and combines them into a single output. If given, `merge_prototype`
+        cannot be given.
+    merge_prototype : :class:`.FeedForward`, optional
+        If `merge` isn't given, the transformation given by
+        `merge_prototype` is applied to each input before being summed. By
+        default a :class:`.Linear` transformation without biases is used.
+        If given, `merge` cannot be given.
+    post_merge : :class:`.Feedforward`, optional
+        This transformation is applied to the merged inputs. By default
+        :class:`.Bias` is used.
+    merged_dim : int, optional
+        The input dimension of `post_merge` i.e. the output dimension of
+        `merge` (or `merge_prototype`). If not give, it is assumed to be
+        the same as `readout_dim` (i.e. `post_merge` is assumed to not
+        change dimensions).
 
     """
     @lazy
-    def __init__(self, readout_dim=None, emitter=None, feedback_brick=None,
-                 **kwargs):
+    def __init__(self, source_names, readout_dim, emitter=None,
+                 feedback_brick=None, merge=None, merge_prototype=None,
+                 post_merge=None, merged_dim=None, **kwargs):
         super(Readout, self).__init__(**kwargs)
+        self.source_names = source_names
         self.readout_dim = readout_dim
 
         if not emitter:
             emitter = TrivialEmitter(readout_dim)
         if not feedback_brick:
             feedback_brick = TrivialFeedback(readout_dim)
+        if not merge:
+            merge = Merge(input_names=source_names, prototype=merge_prototype)
+        if not post_merge:
+            post_merge = Bias(dim=readout_dim)
+        if not merged_dim:
+            merged_dim = readout_dim
         self.emitter = emitter
         self.feedback_brick = feedback_brick
+        self.merge = merge
+        self.post_merge = post_merge
+        self.merged_dim = merged_dim
 
-        self.children = [self.emitter, self.feedback_brick]
+        self.children = [self.emitter, self.feedback_brick,
+                         self.merge, self.post_merge]
 
     def _push_allocation_config(self):
         self.emitter.readout_dim = self.get_dim('readouts')
         self.feedback_brick.output_dim = self.get_dim('outputs')
+        self.merge.input_names = self.source_names
+        self.merge.input_dims = self.source_dims
+        self.merge.output_dim = self.merged_dim
+        self.post_merge.input_dim = self.merged_dim
+        self.post_merge.output_dim = self.readout_dim
+
+    @application
+    def readout(self, **kwargs):
+        merged = self.merge.apply(**{name: kwargs[name]
+                                     for name in self.merge.input_names})
+        merged = self.post_merge.apply(merged)
+        return merged
 
     @application
     def emit(self, readouts):
@@ -347,47 +397,6 @@ class Readout(AbstractReadout):
         elif name == 'readouts':
             return self.readout_dim
         return super(Readout, self).get_dim(name)
-
-
-class LinearReadout(Readout, Initializable):
-    """Readout computed as sum of linear projections.
-
-    Parameters
-    ----------
-    readout_dim : int
-        The dimension of the readout.
-    source_names : list of strs
-        The names of information sources.
-
-    Notes
-    -----
-    See :class:`.Initializable` for initialization parameters.
-
-    """
-    @lazy
-    def __init__(self, readout_dim, source_names, **kwargs):
-        super(LinearReadout, self).__init__(readout_dim, **kwargs)
-        self.readout_dim = readout_dim
-        self.source_names = source_names
-
-        self.projectors = [MLP(name="project_{}".format(name),
-                               activations=[Identity()])
-                           for name in self.source_names]
-        self.children.extend(self.projectors)
-
-    def _push_allocation_config(self):
-        super(LinearReadout, self)._push_allocation_config()
-        for name, projector in zip(self.source_names, self.projectors):
-            projector.input_dim = self.source_dims[name]
-            projector.output_dim = self.readout_dim
-
-    @application
-    def readout(self, **kwargs):
-        projections = [projector.apply(kwargs[name]) for name, projector in
-                       zip(self.source_names, self.projectors)]
-        if len(projections) == 1:
-            return projections[0]
-        return sum(projections[1:], projections[0])
 
 
 class TrivialEmitter(AbstractEmitter):

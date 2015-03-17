@@ -2,11 +2,12 @@ import tempfile
 
 import numpy
 import theano
+from picklable_itertools.extras import equizip
 
-from examples.sqrt import main as sqrt_example
 from blocks.dump import (
     load_parameter_values, save_parameter_values,
     MainLoopDumpManager)
+from examples.sqrt import main as sqrt_example
 from tests import silence_printing
 
 floatX = theano.config.floatX
@@ -19,7 +20,7 @@ def test_save_load_parameter_values():
     loaded_values = sorted(list(load_parameter_values(filename).items()),
                            key=lambda tuple_: tuple_[0])
     assert len(loaded_values) == len(param_values)
-    for old, new in zip(param_values, loaded_values):
+    for old, new in equizip(param_values, loaded_values):
         assert old[0] == new[0]
         assert numpy.all(old[1] == new[1])
 

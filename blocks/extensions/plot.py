@@ -10,6 +10,8 @@ try:
 except ImportError:
     BOKEH_AVAILABLE = False
 
+
+from blocks import config
 from blocks.extensions import SimpleExtension
 
 logger = logging.getLogger(__name__)
@@ -61,7 +63,9 @@ class Plot(SimpleExtension):
     server_url : str, optional
         Url of the bokeh-server. Ex: when starting the bokeh-server with
         ``bokeh-server --ip 0.0.0.0`` at ``alice``, server_url should be
-        ``http://alice:5006``.
+        ``http://alice:5006``. When not specified the default configured
+        by ``bokeh_server`` in ``.blocksrc`` will be used. Defaults to
+        ``http://localhost:5006/``.
 
     """
     # Tableau 10 colors
@@ -69,9 +73,13 @@ class Plot(SimpleExtension):
               '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
     def __init__(self, document, channels, open_browser=False,
-                 start_server=False, server_url='default', **kwargs):
+                 start_server=False, server_url=None, **kwargs):
         if not BOKEH_AVAILABLE:
             raise ImportError
+
+        if server_url is None:
+            server_url = config.bokeh_server
+
         self.plots = {}
         self.start_server = start_server
         self.document = document

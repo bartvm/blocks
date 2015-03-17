@@ -9,6 +9,8 @@ from six import StringIO
 
 import blocks
 from blocks import config
+from blocks.main_loop import MainLoop
+from fuel.datasets import IterableDataset
 
 
 def silence_printing(test):
@@ -71,3 +73,28 @@ def skip_if_not_available(modules=None, datasets=None, configurations=None):
     for configuration in configurations:
         if not hasattr(config, configuration):
             raise SkipTest
+
+
+class MockAlgorithm(object):
+    """An algorithm that only saves data.
+
+    Also checks that the initialization routine is only called once.
+
+    """
+    def __init__(self):
+        self._initialized = False
+
+    def initialize(self):
+        assert not self._initialized
+        self._initialized = True
+
+    def process_batch(self, batch):
+        self.batch = batch
+
+
+class MockMainLoop(MainLoop):
+
+    def __init__(self, **kwargs):
+        stream = IterableDataset(range(10)).get_example_stream()
+        super(MockMainLoop, self).__init__(
+            data_stream=stream, algorithm=MockAlgorithm(), **kwargs)

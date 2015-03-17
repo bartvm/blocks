@@ -9,7 +9,7 @@ from blocks.bricks.base import application
 from blocks.bricks.recurrent import SimpleRecurrent, GatedRecurrent
 from blocks.bricks.attention import SequenceContentAttention
 from blocks.bricks.sequence_generators import (
-    SequenceGenerator, LinearReadout, TrivialEmitter,
+    SequenceGenerator, Readout, TrivialEmitter,
     SoftmaxEmitter, LookupFeedback)
 from blocks.graph import ComputationGraph
 from blocks.initialization import Orthogonal, IsotropicGaussian, Constant
@@ -40,8 +40,8 @@ def test_sequence_generator():
     transition = SimpleRecurrent(activation=Tanh(), dim=dim,
                                  weights_init=Orthogonal())
     generator = SequenceGenerator(
-        LinearReadout(readout_dim=output_dim, source_names=["states"],
-                      emitter=TestEmitter()),
+        Readout(readout_dim=output_dim, source_names=["states"],
+                emitter=TestEmitter()),
         transition,
         weights_init=IsotropicGaussian(0.1), biases_init=Constant(0.0),
         seed=1234)
@@ -92,10 +92,10 @@ def test_integer_sequence_generator():
     transition = GatedRecurrent(activation=Tanh(), dim=dim,
                                 weights_init=Orthogonal())
     generator = SequenceGenerator(
-        LinearReadout(readout_dim=readout_dim, source_names=["states"],
-                      emitter=SoftmaxEmitter(theano_seed=1234),
-                      feedback_brick=LookupFeedback(readout_dim,
-                                                    feedback_dim)),
+        Readout(readout_dim=readout_dim, source_names=["states"],
+                emitter=SoftmaxEmitter(theano_seed=1234),
+                feedback_brick=LookupFeedback(readout_dim,
+                                              feedback_dim)),
         transition,
         weights_init=IsotropicGaussian(0.1), biases_init=Constant(0),
         seed=1234)
@@ -191,7 +191,7 @@ def test_with_attention():
     attention = SequenceContentAttention(
         state_names=transition.apply.states, match_dim=inp_dim)
     generator = SequenceGenerator(
-        LinearReadout(
+        Readout(
             readout_dim=inp_dim,
             source_names=[transition.apply.states[0],
                           attention.take_glimpses.outputs[0]],

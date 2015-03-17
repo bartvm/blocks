@@ -1,7 +1,7 @@
 """Generic transformations with multiple inputs and/or outputs."""
 import copy
 
-from theano import tensor
+from picklable_itertools.extras import equizip
 
 from blocks.bricks import Initializable, Linear
 from blocks.bricks.base import lazy, application
@@ -19,8 +19,7 @@ class Parallel(Initializable):
     >>> from blocks.initialization import Constant
     >>> x, y = tensor.matrix('x'), tensor.matrix('y')
     >>> parallel = Parallel(
-    ...     input_names=['x', 'y'],
-    ...     input_dims=dict(x=2, y=3), output_dims=dict(x=4, y=5),
+    ...     input_names=['x', 'y'], input_dims=[2, 3], output_dims=[4, 5],
     ...     weights_init=Constant(2))
     >>> parallel.initialize()
     >>> new_x, new_y = parallel.apply(x=x, y=y)
@@ -31,14 +30,12 @@ class Parallel(Initializable):
 
     Parameters
     ----------
-    input_names : list of str
+    input_names : list
         The input names.
-    input_dims : dict
-        The dictionary of input dimensions, keys are input names, values
-        are dimensions.
-    output_dims : dict
-        The dictionary of output dimensions, keys are input names, values
-        are dimensions of transformed inputs.
+    input_dims : list
+        List of input dimensions, given in the same order as `input_names`.
+    output_dims : list
+        List of output dimensions.
     prototype : :class:`~blocks.bricks.Feedforward`
         A transformation prototype. A copy will be created for every
         input.  If ``None``, a linear transformation without bias is used.
@@ -47,12 +44,12 @@ class Parallel(Initializable):
 
     Attributes
     ----------
-    input_names : list of str
+    input_names : list
         The input names.
-    input_dims : dict
-        Dictionary of input dimensions.
-    output_dims : dict
-        Dictionary of output dimensions.
+    input_dims : list
+        Input dimensions.
+    output_dims : list
+        Output dimensions.
 
     Notes
     -----
@@ -73,24 +70,23 @@ class Parallel(Initializable):
         self.output_dims = output_dims
         self.prototype = prototype
 
-        self.transforms = []
+        self.children = []
         for name in input_names:
-            self.transforms.append(copy.deepcopy(self.prototype))
-            self.transforms[-1].name = (
-                "{}_{}".format(child_prefix, name))
-        self.children = self.transforms
+            self.children.append(copy.deepcopy(self.prototype))
+            self.children[-1].name = "{}_{}".format(child_prefix, name)
 
     def _push_allocation_config(self):
-        for name, transform in zip(self.input_names, self.transforms):
-            transform.input_dim = self.input_dims[name]
-            transform.output_dim = self.output_dims[name]
+        for input_dim, output_dim, child in \
+                equizip(self.input_dims, self.output_dims, self.children):
+            child.input_dim = input_dim
+            child.output_dim = output_dim
 
     @application
     def apply(self, *args, **kwargs):
         args = args + tuple(kwargs[name] for name in
                             self.input_names[len(args):])
-        return [transform.apply(arg) for arg, transform
-                in zip(args, self.transforms)]
+        return [child.apply(arg)
+                for arg, child in equizip(args, self.children)]
 
     @apply.property('inputs')
     def apply_inputs(self):
@@ -116,7 +112,7 @@ class Fork(Parallel):
     >>> from blocks.initialization import Constant
     >>> x = tensor.matrix('x')
     >>> fork = Fork(output_names=['y', 'z'],
-    ...             input_dim=2, output_dims=dict(y=3, z=4),
+    ...             input_dim=2, output_dims=[3, 4],
     ...             weights_init=Constant(2))
     >>> fork.initialize()
     >>> y, z = fork.apply(x)
@@ -136,9 +132,9 @@ class Fork(Parallel):
     ----------
     input_dim : int
         The input dimension.
-    output_dims : dict
-        Dictionary of output dimensions, keys are input names, values are
-        dimensions of transformed inputs.
+    output_dims : list
+        The output dimensions as a list of integers, corresponding to
+        `output_names`.
 
     Notes
     -----
@@ -154,7 +150,7 @@ class Fork(Parallel):
                                    child_prefix="fork", **kwargs)
 
     def _push_allocation_config(self):
-        self.input_dims = {name: self.input_dim for name in self.output_names}
+        self.input_dims = [self.input_dim for name in self.output_names]
         super(Fork, self)._push_allocation_config()
 
     @application(inputs=['input_'])
@@ -188,7 +184,7 @@ class Distribute(Fork):
     >>> y = tensor.matrix('y')
     >>> z = tensor.matrix('z')
     >>> distribute = Distribute(target_names=['x', 'y'], source_name='z',
-    ...                         target_dims=dict(x=2, y=3), source_dim=3,
+    ...                         target_dims=[2, 3], source_dim=3,
     ...                         weights_init=Constant(2))
     >>> distribute.initialize()
     >>> new_x, new_y = distribute.apply(x=x, y=y, z=z)
@@ -199,17 +195,16 @@ class Distribute(Fork):
 
     Parameters
     ----------
-    target_names : list of str
+    target_names : list
         The names of the targets.
     source_name : str
         The name of the source.
 
     Attributes
     ----------
-    target_dims : dict
-        The dictionary of target inputs dimensions, keys are input names,
-        values are dimensions.
-    source_dim : dict
+    target_dims : list
+        A list of target dimensions, corresponding to `target_names`.
+    source_dim : int
         The dimension of the source input.
 
     Notes
@@ -269,9 +264,9 @@ class Distribute(Fork):
 class Merge(Parallel):
     """Merges several variables by applying a transformation and summing.
 
-    input_names : list of str
+    input_names : list
         The input names.
-    input_dims : dict
+    input_dims : list
         The dictionary of input dimensions, keys are input names, values
         are dimensions.
     output_dim : int
@@ -282,14 +277,21 @@ class Merge(Parallel):
     child_prefix : str, optional
         A prefix for children names. By default "transform" is used.
 
+    .. warning::
+
+       Note that if you want to have a bias you can pass a :class:`.Linear`
+       brick as a `prototype`, but this will result in several redundant
+       biases. It is a better idea to use ``merge.children[0].use_bias =
+       True``.
+
     Attributes
     ----------
-    input_names : list of str
+    input_names : list
         The input names.
-    input_dims : dict
-        Dictionary of input dimensions.
+    input_dims : list
+        List of input dimensions corresponding to `input_names`.
     output_dim : int
-        Dictionary of output dimensions.
+        The output dimension.
 
     Examples
     --------
@@ -297,7 +299,7 @@ class Merge(Parallel):
     >>> from blocks.initialization import Constant
     >>> a = tensor.matrix('a')
     >>> b = tensor.matrix('b')
-    >>> merge = Merge(input_names=['a', 'b'], input_dims={'a': 3, 'b': 4},
+    >>> merge = Merge(input_names=['a', 'b'], input_dims=[3, 4],
     ...               output_dim=2, weights_init=Constant(1.))
     >>> merge.initialize()
     >>> c = merge.apply(a=a, b=b)
@@ -307,22 +309,19 @@ class Merge(Parallel):
     """
     @lazy
     def __init__(self, input_names, input_dims, output_dim, **kwargs):
+        self.output_dim = output_dim
         super(Merge, self).__init__(
             input_names, input_dims,
-            {input_name: output_dim for input_name in input_names}, **kwargs
+            [output_dim for input_name in input_names], **kwargs
         )
 
     def apply(self, *args, **kwargs):
         outputs = super(Merge, self).apply(*args, **kwargs)
         outputs = pack(outputs)
-        return tensor.sum(outputs, axis=0)
+        # Sum is often faster than tensor.sum(outputs, axis=0) for a
+        # small number of outputs
+        return sum(outputs)
 
-    @property
-    def output_dim(self):
-        return self._output_dim
-
-    @output_dim.setter
-    def output_dim(self, value):
-        self._output_dim = value
-        self.output_dims = {input_name: value
-                            for input_name in self.input_names}
+    def _push_allocation_config(self):
+        self.output_dims = [self.output_dim for input_name in self.input_names]
+        super(Merge, self)._push_allocation_config()

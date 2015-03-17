@@ -91,17 +91,17 @@ class AbstractAttention(Brick):
 
     Parameters
     ----------
-    state_names : list of str
+    state_names : list
         The names of the network states.
-    state_dims : dict
-        The {name: int} dictionary of state dimensions.
+    state_dims : list
+        The state dimensions corresponding to `state_names`.
     attended_dim : int
         The dimension of the attended.
 
     Attributes
     ----------
-    state_names : list of str
-    state_dims : dict
+    state_names : list
+    state_dims : list
     attended_dim : int
 
     """
@@ -325,8 +325,8 @@ class SequenceContentAttention(GenericSequenceAttention, Initializable):
 
     def _push_allocation_config(self):
         self.state_transformers.input_dims = self.state_dims
-        self.state_transformers.output_dims = {name: self.match_dim
-                                               for name in self.state_names}
+        self.state_transformers.output_dims = [self.match_dim
+                                               for name in self.state_names]
         self.attended_transformer.input_dim = self.attended_dim
         self.attended_transformer.output_dim = self.match_dim
         self.energy_computer.input_dim = self.match_dim
@@ -567,12 +567,12 @@ class AttentionRecurrent(AbstractAttentionRecurrent, Initializable):
         self.children = [self.transition, self.attention, self.distribute]
 
     def _push_allocation_config(self):
-        self.attention.state_dims = self.transition.get_dims(self._state_names)
+        self.attention.state_dims = self.transition.get_dims(
+            self.attention.state_names)
         self.attention.attended_dim = self.get_dim(self.attended_name)
         self.distribute.source_dim = self.attention.get_dim(
             self.distribute.source_name)
-        self.distribute.target_dims = dict_subset(
-            self.transition.get_dims(self._sequence_names),
+        self.distribute.target_dims = self.transition.get_dims(
             self.distribute.target_names)
 
     @application

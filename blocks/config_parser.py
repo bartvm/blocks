@@ -40,6 +40,12 @@ The following configurations are supported:
    is pickling or unpickling a complex structure with lots of objects, such
    as a big Theano computation graph.
 
+.. option:: bokeh_server
+
+   The default URL to use when contacting a Bokeh server for live plotting.
+   This setting is used by the :class:`~blocks.extensions.plot.Plot`. The
+   default is ``http://localhost:5006/``.
+
 .. _YAML: http://yaml.org/
 .. _environment variables:
    https://en.wikipedia.org/wiki/Environment_variable
@@ -136,5 +142,6 @@ config = Configuration()
 # Define configuration options
 config.add_config('default_seed', type_=int, default=1)
 config.add_config('recursion_limit', type_=int, default=10000)
+config.add_config('bokeh_server', type_=str, default='http://localhost:5006/')
 
 config.load_yaml()

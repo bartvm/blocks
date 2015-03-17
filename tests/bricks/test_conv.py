@@ -1,7 +1,7 @@
 import numpy
 
 import theano
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 from theano import tensor
 from theano import function
 
@@ -68,6 +68,7 @@ def test_convolutional_layer():
     conv = ConvolutionalLayer(activation, filter_size, num_filters,
                               (pooling_size, pooling_size),
                               num_channels, image_size=(17, 13),
+                              batch_size=batch_size,
                               weights_init=Constant(1.),
                               biases_init=Constant(5.))
     conv.initialize()
@@ -79,6 +80,9 @@ def test_convolutional_layer():
                        dtype=theano.config.floatX)
     assert_allclose(func(x_val), numpy.prod(filter_size) * num_channels *
                     numpy.ones((batch_size, num_filters, 5, 4)) + 5)
+
+    assert_equal(conv.convolution.batch_size, batch_size)
+    assert_equal(conv.pooling.batch_size, batch_size)
 
 
 def test_convolutional_sequence():

@@ -329,6 +329,33 @@ class SimpleExtension(TrainingExtension):
                     predicate(self.main_loop.log)):
                 self.do(callback_invoked, *(from_main_loop + tuple(arguments)))
 
+    @staticmethod
+    def parse_args(which_callback, args):
+        """Separates :meth:`do` arguments coming from different sources.
+
+        When a :meth:`do` method receives arguments from both the main
+        loop (e.g. a batch) and the user, it often has to separate them.
+        This method is the right tool to use.
+
+        Parameters
+        ----------
+        which_callback : str
+            The name of the callback.
+        args : iterable
+            The arguments.
+
+        Returns
+        -------
+        from_main_loop : tuple
+        from_user : tuple
+
+        """
+        args = tuple(args)
+        if (which_callback == 'after_batch' or
+                which_callback == 'before_batch'):
+            return (args[0],), args[1:]
+        return (), args
+
 
 class FinishAfter(SimpleExtension):
     """Finishes the training process when triggered."""

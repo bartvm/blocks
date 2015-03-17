@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 from theano import tensor
 
 from blocks.algorithms import GradientDescent, Scale
-from blocks.bricks import MLP, Tanh, Softmax, WEIGHTS
+from blocks.bricks import MLP, Tanh, Softmax, WEIGHT
 from blocks.bricks.cost import CategoricalCrossEntropy, MisclassificationRate
 from blocks.initialization import IsotropicGaussian, Constant
 from fuel.streams import DataStream
@@ -17,7 +17,7 @@ from blocks.graph import ComputationGraph
 from blocks.model import Model
 from blocks.monitoring import aggregation
 from blocks.extensions import FinishAfter, Timing, Printing
-from blocks.extensions.saveload import SerializeMainLoop
+from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.monitoring import (DataStreamMonitoring,
                                           TrainingDataMonitoring)
 from blocks.extensions.plot import Plot
@@ -36,7 +36,7 @@ def main(save_to, num_epochs):
     error_rate = MisclassificationRate().apply(y.flatten(), probs)
 
     cg = ComputationGraph([cost])
-    W1, W2 = VariableFilter(roles=[WEIGHTS])(cg.variables)
+    W1, W2 = VariableFilter(roles=[WEIGHT])(cg.variables)
     cost = cost + .00005 * (W1 ** 2).sum() + .00005 * (W2 ** 2).sum()
     cost.name = 'final_cost'
 
@@ -65,7 +65,7 @@ def main(save_to, num_epochs):
                          aggregation.mean(algorithm.total_gradient_norm)],
                         prefix="train",
                         after_every_epoch=True),
-                    SerializeMainLoop(save_to),
+                    Checkpoint(save_to),
                     Plot(
                         'MNIST example',
                         channels=[

@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import logging
 
+from picklable_itertools.extras import equizip
 import theano
 from theano import tensor
 
@@ -133,7 +134,7 @@ class AggregationBuffer(object):
             raise Exception("To readout you must first initialize, then"
                             "process batches!")
         ret_vals = self._readout_fun()
-        return dict(zip(self.variable_names, ret_vals))
+        return dict(equizip(self.variable_names, ret_vals))
 
 
 class DatasetEvaluator(object):

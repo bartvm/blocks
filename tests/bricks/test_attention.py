@@ -26,7 +26,7 @@ def test_sequence_content_attention():
     match_dim = 4
 
     attention = SequenceContentAttention(
-        state_names=["states"], state_dims={"states": state_dim},
+        state_names=["states"], state_dims=[state_dim],
         attended_dim=attended_dim, match_dim=match_dim,
         weights_init=IsotropicGaussian(0.5),
         biases_init=Constant(0))

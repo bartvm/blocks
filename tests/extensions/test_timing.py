@@ -1,17 +1,12 @@
 from blocks.extensions import Timing
-from blocks.log import TrainingLog
+from tests import MockMainLoop
 
 
 def test_timing():
-    class FakeMainLoop():
-
-        def __init__(self):
-            self.log = TrainingLog()
-
     # Build the main loop
     now = 0
     timing = Timing(lambda: now)
-    ml = FakeMainLoop()
+    ml = MockMainLoop()
     timing.main_loop = ml
 
     # Start training

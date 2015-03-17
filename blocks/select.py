@@ -2,6 +2,7 @@ import logging
 import re
 from collections import OrderedDict
 
+from picklable_itertools.extras import equizip
 import six
 
 from blocks.bricks.base import Brick
@@ -80,7 +81,7 @@ class Path(object):
             raise ValueError
 
         nodes = []
-        for separator, part in zip(separators, parts):
+        for separator, part in equizip(separators, parts):
             if separator == Path.separator:
                 nodes.append(Path.BrickName(part))
             elif Path.param_separator == Path.param_separator:

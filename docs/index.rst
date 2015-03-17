@@ -92,12 +92,13 @@ Load your training data using Fuel.
 >>> mnist_test = MNIST("test")
 >>> test_stream = DataStream(
 ...     dataset=mnist_test,
-...     iteration_scheme=SequentialScheme(mnist_train.num_examples, 1024))
+...     iteration_scheme=SequentialScheme(mnist_test.num_examples, 1024))
 
 And train!
 
+>>> from blocks.model import Model
 >>> main_loop = MainLoop(
-...     model=mlp, data_stream=train_stream,
+...     model=Model(cost), data_stream=train_stream,
 ...     algorithm=GradientDescent(
 ...         cost=cost, params=ComputationGraph(cost).parameters,
 ...         step_rule=Scale(learning_rate=0.1)),
@@ -107,7 +108,9 @@ And train!
 ...                     data_stream=test_stream,
 ...                     prefix="test"),
 ...                 Printing()])
->>> main_loop.run() # doctest: +SKIP
+>>> main_loop.run() # doctest: +ELLIPSIS
+<BLANKLINE>
+...
 
 Features
 --------

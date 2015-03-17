@@ -3,6 +3,7 @@ import logging
 import itertools
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
+from picklable_itertools.extras import equizip
 
 import theano
 from six import add_metaclass
@@ -193,8 +194,8 @@ class GradientDescent(DifferentiableCostMinimizer):
         if not self.gradients:
             logger.info("Taking the cost gradient")
             self.gradients = dict(
-                zip(self.params, tensor.grad(self.cost, self.params,
-                                             known_grads=known_grads)))
+                equizip(self.params, tensor.grad(self.cost, self.params,
+                                                 known_grads=known_grads)))
             logger.info("The cost gradient computation graph is built")
         else:
             if known_grads:
@@ -289,9 +290,9 @@ class StepRule(object):
         """
         parameter_wise = [self.compute_step(param, previous_steps[param])
                           for param in previous_steps]
-        (steps, updates) = zip(*parameter_wise)
+        steps, updates = equizip(*parameter_wise)
         steps = OrderedDict((param, step) for param, step
-                            in zip(previous_steps.keys(), steps))
+                            in equizip(previous_steps.keys(), steps))
         updates = list(itertools.chain(*updates))
         return steps, updates
 

@@ -8,6 +8,7 @@ import operator
 
 import theano
 from six.moves import input
+from picklable_itertools.extras import equizip
 from theano import tensor
 
 from blocks.bricks import Tanh, Initializable
@@ -17,7 +18,7 @@ from blocks.bricks.recurrent import SimpleRecurrent, Bidirectional
 from blocks.bricks.attention import SequenceContentAttention
 from blocks.bricks.parallel import Fork
 from blocks.bricks.sequence_generators import (
-    SequenceGenerator, LinearReadout, SoftmaxEmitter, LookupFeedback)
+    SequenceGenerator, Readout, SoftmaxEmitter, LookupFeedback)
 from blocks.config_parser import config
 from blocks.graph import ComputationGraph
 from fuel.transformers import Mapping, Batch, Padding, Filter
@@ -30,7 +31,7 @@ from blocks.initialization import Orthogonal, IsotropicGaussian, Constant
 from blocks.model import Model
 from blocks.monitoring import aggregation
 from blocks.extensions import FinishAfter, Printing, Timing
-from blocks.extensions.saveload import SerializeMainLoop
+from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.monitoring import TrainingDataMonitoring
 from blocks.extensions.plot import Plot
 from blocks.main_loop import MainLoop
@@ -98,7 +99,7 @@ class WordReverser(Initializable):
         fork = Fork([name for name in encoder.prototype.apply.sequences
                     if name != 'mask'])
         fork.input_dim = dimension
-        fork.output_dims = {name: dimension for name in fork.input_names}
+        fork.output_dims = [dimension for name in fork.input_names]
         lookup = LookupTable(alphabet_size, dimension)
         transition = SimpleRecurrent(
             activation=Tanh(),
@@ -106,7 +107,7 @@ class WordReverser(Initializable):
         attention = SequenceContentAttention(
             state_names=transition.apply.states,
             attended_dim=2 * dimension, match_dim=dimension, name="attention")
-        readout = LinearReadout(
+        readout = Readout(
             readout_dim=alphabet_size,
             source_names=[transition.apply.states[0],
                           attention.take_glimpses.outputs[0]],
@@ -247,8 +248,8 @@ def main(mode, save_path, num_batches, data_path=None):
                      every_n_batches=10),
                 # Saving the model and the log separately is convenient,
                 # because loading the whole pickle takes quite some time.
-                SerializeMainLoop(save_path, every_n_batches=500,
-                                  save_separately=["model", "log"]),
+                Checkpoint(save_path, every_n_batches=500,
+                           save_separately=["model", "log"]),
                 Printing(every_n_batches=1)])
         main_loop.run()
     elif mode == "sample" or mode == "beam_search":
@@ -318,7 +319,7 @@ def main(mode, save_path, num_batches, data_path=None):
                 numpy.repeat(numpy.array(encoded_input)[:, None],
                              batch_size, axis=1))
             messages = []
-            for sample, cost in zip(samples, costs):
+            for sample, cost in equizip(samples, costs):
                 message = "({})".format(cost)
                 message += "".join(code2char[code] for code in sample)
                 if sample == target:

@@ -3,7 +3,7 @@ from theano.tensor.signal.downsample import max_pool_2d, DownsampleFactorMax
 
 from blocks.bricks import Initializable, Feedforward, Sequence
 from blocks.bricks.base import application, Brick, lazy
-from blocks.roles import add_role, FILTERS, BIASES
+from blocks.roles import add_role, FILTER, BIAS
 from blocks.utils import shared_floatx_nans
 
 
@@ -54,12 +54,12 @@ class Convolutional(Initializable):
     def _allocate(self):
         W = shared_floatx_nans((self.num_filters, self.num_channels) +
                                self.filter_size, name='W')
-        add_role(W, FILTERS)
+        add_role(W, FILTER)
         self.params.append(W)
         self.add_auxiliary_variable(W.norm(2), name='W_norm')
         if self.use_bias:
             b = shared_floatx_nans(self.get_dim('output'), name='b')
-            add_role(b, BIASES)
+            add_role(b, BIAS)
             self.params.append(b)
             self.add_auxiliary_variable(b.norm(2), name='b_norm')
 
@@ -185,7 +185,9 @@ class ConvolutionalActivation(Sequence, Initializable):
         The application method to apply after convolution (i.e.
         the nonlinear activation function)
 
-    See :class:`Convolutional` for explanation of other parameters.
+    See Also
+    --------
+    :class:`Convolutional` for the other parameters.
 
     """
     @lazy
@@ -229,8 +231,10 @@ class ConvolutionalLayer(Sequence, Initializable):
         The application method to apply in the detector stage (i.e. the
         nonlinearity before pooling. Needed for ``__init__``.
 
-    See :class:`Convolutional` and :class:`MaxPooling` for explanations of
-    other parameters.
+    See Also
+    --------
+    :class:`Convolutional` and :class:`MaxPooling` for the other
+    parameters.
 
     Notes
     -----
@@ -256,12 +260,13 @@ class ConvolutionalLayer(Sequence, Initializable):
         self.pooling_size = pooling_size
         self.conv_step = conv_step
         self.pooling_step = pooling_step
+        self.batch_size = batch_size
         self.border_mode = border_mode
         self.image_size = image_size
 
     def _push_allocation_config(self):
         for attr in ['filter_size', 'num_filters', 'num_channels',
-                     'border_mode', 'image_size']:
+                     'batch_size', 'border_mode', 'image_size']:
             setattr(self.convolution, attr, getattr(self, attr))
         self.convolution.step = self.conv_step
         self.convolution._push_allocation_config()
@@ -272,6 +277,7 @@ class ConvolutionalLayer(Sequence, Initializable):
         self.pooling.input_dim = pooling_input_dim
         self.pooling.pooling_size = self.pooling_size
         self.pooling.step = self.pooling_step
+        self.pooling.batch_size = self.batch_size
 
     def get_dim(self, name):
         if name == 'input_':

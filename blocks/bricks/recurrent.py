@@ -4,13 +4,14 @@ import inspect
 import logging
 from functools import wraps
 
+from picklable_itertools.extras import equizip
 import theano
 from theano import tensor, Variable
 
 from blocks.bricks import Initializable, Sigmoid, Tanh
 from blocks.bricks.base import Application, application, Brick, lazy
 from blocks.initialization import NdarrayInitialization
-from blocks.roles import add_role, WEIGHTS, BIASES
+from blocks.roles import add_role, WEIGHT, BIAS
 from blocks.utils import (pack, shared_floatx_nans, dict_union, dict_subset,
                           is_shared_variable)
 
@@ -185,7 +186,7 @@ def recurrent(*args, **kwargs):
                 args = list(args)
                 arg_names = (list(sequences_given) + list(states_given) +
                              list(contexts_given))
-                kwargs = dict(zip(arg_names, args))
+                kwargs = dict(equizip(arg_names, args))
                 kwargs.update(rest_kwargs)
                 outputs = getattr(brick, application_function.__name__)(
                     iterate=False, **kwargs)
@@ -363,11 +364,11 @@ class LSTM(BaseRecurrent, Initializable):
         self.W_cell_to_out = shared_floatx_nans((self.dim,),
                                                 name='W_cell_to_out')
         self.biases = shared_floatx_nans((4*self.dim,), name='biases')
-        add_role(self.W_state, WEIGHTS)
-        add_role(self.W_cell_to_in, WEIGHTS)
-        add_role(self.W_cell_to_forget, WEIGHTS)
-        add_role(self.W_cell_to_out, WEIGHTS)
-        add_role(self.biases, BIASES)
+        add_role(self.W_state, WEIGHT)
+        add_role(self.W_cell_to_in, WEIGHT)
+        add_role(self.W_cell_to_forget, WEIGHT)
+        add_role(self.W_cell_to_out, WEIGHT)
+        add_role(self.biases, BIAS)
 
         self.params = [self.W_state, self.W_cell_to_in, self.W_cell_to_forget,
                        self.W_cell_to_out, self.biases]
@@ -616,4 +617,4 @@ class Bidirectional(Initializable):
                     self.children[1].apply(reverse=True, as_list=True,
                                            *args, **kwargs)]
         return [tensor.concatenate([f, b], axis=2)
-                for f, b in zip(forward, backward)]
+                for f, b in equizip(forward, backward)]

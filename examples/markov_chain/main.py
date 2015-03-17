@@ -15,7 +15,7 @@ from theano import tensor
 from blocks.bricks import Tanh
 from blocks.bricks.recurrent import GatedRecurrent
 from blocks.bricks.sequence_generators import (
-    SequenceGenerator, LinearReadout, SoftmaxEmitter, LookupFeedback)
+    SequenceGenerator, Readout, SoftmaxEmitter, LookupFeedback)
 from blocks.graph import ComputationGraph
 from fuel.streams import DataStream
 from fuel.schemes import ConstantScheme
@@ -24,7 +24,7 @@ from blocks.initialization import Orthogonal, IsotropicGaussian, Constant
 from blocks.model import Model
 from blocks.monitoring import aggregation
 from blocks.extensions import FinishAfter, Printing
-from blocks.extensions.saveload import SerializeMainLoop
+from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.monitoring import TrainingDataMonitoring
 from blocks.main_loop import MainLoop
 from blocks.select import Selector
@@ -50,11 +50,11 @@ def main(mode, save_path, steps, num_batches):
         transition = GatedRecurrent(name="transition", activation=Tanh(),
                                     dim=dim)
         generator = SequenceGenerator(
-            LinearReadout(readout_dim=num_states, source_names=["states"],
-                          emitter=SoftmaxEmitter(name="emitter"),
-                          feedback_brick=LookupFeedback(
-                              num_states, feedback_dim, name='feedback'),
-                          name="readout"),
+            Readout(readout_dim=num_states, source_names=["states"],
+                    emitter=SoftmaxEmitter(name="emitter"),
+                    feedback_brick=LookupFeedback(
+                        num_states, feedback_dim, name='feedback'),
+                    name="readout"),
             transition,
             weights_init=IsotropicGaussian(0.01), biases_init=Constant(0),
             name="generator")
@@ -93,7 +93,7 @@ def main(mode, save_path, steps, num_batches):
                                                after_every_batch=True),
                         TrainingDataMonitoring([cost], prefix="average",
                                                every_n_batches=100),
-                        SerializeMainLoop(save_path, every_n_batches=500),
+                        Checkpoint(save_path, every_n_batches=500),
                         Printing(every_n_batches=100)])
         main_loop.run()
     elif mode == "sample":

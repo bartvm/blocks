@@ -6,10 +6,11 @@ from six import add_metaclass
 from theano import tensor
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from toolz import interleave
+from picklable_itertools.extras import equizip
 
 from blocks import config
 from blocks.bricks.base import application, _Brick, Brick, lazy
-from blocks.roles import add_role, WEIGHTS, BIASES
+from blocks.roles import add_role, WEIGHT, BIAS
 from blocks.utils import pack, shared_floatx_nans
 
 logger = logging.getLogger(__name__)
@@ -52,10 +53,9 @@ class Random(Brick):
         The default seed can be set through ``blocks.config``.
 
         """
-        if getattr(self, '_theano_rng', None) is not None:
-            return self._theano_rng
-        else:
-            return MRG_RandomStreams(self.theano_seed)
+        if not hasattr(self, '_theano_rng'):
+            self._theano_rng = MRG_RandomStreams(self.theano_seed)
+        return self._theano_rng
 
     @theano_rng.setter
     def theano_rng(self, theano_rng):
@@ -216,12 +216,12 @@ class Linear(Initializable, Feedforward):
 
     def _allocate(self):
         W = shared_floatx_nans((self.input_dim, self.output_dim), name='W')
-        add_role(W, WEIGHTS)
+        add_role(W, WEIGHT)
         self.params.append(W)
         self.add_auxiliary_variable(W.norm(2), name='W_norm')
         if self.use_bias:
             b = shared_floatx_nans((self.output_dim,), name='b')
-            add_role(b, BIASES)
+            add_role(b, BIAS)
             self.params.append(b)
             self.add_auxiliary_variable(b.norm(2), name='b_norm')
 
@@ -263,6 +263,54 @@ class Linear(Initializable, Feedforward):
         if name == 'output':
             return self.output_dim
         super(Linear, self).get_dim(name)
+
+
+class Bias(Feedforward, Initializable):
+    """Add a bias (i.e. sum with a vector)."""
+    @lazy
+    def __init__(self, dim, **kwargs):
+        super(Bias, self).__init__(**kwargs)
+        self.dim = dim
+
+    def _allocate(self):
+        b = shared_floatx_nans((self.output_dim,), name='b')
+        add_role(b, BIAS)
+        self.params.append(b)
+
+    def _initialize(self):
+        b, = self.params
+        self.biases_init.initialize(b, self.rng)
+
+    @application(inputs=['input_'], outputs=['output'])
+    def apply(self, input_):
+        """Apply the linear transformation.
+
+        Parameters
+        ----------
+        input_ : :class:`~tensor.TensorVariable`
+            The input on which to apply the transformation
+
+        Returns
+        -------
+        output : :class:`~tensor.TensorVariable`
+            The transformed input plus optional bias
+
+        """
+        b, = self.params
+        return input_ + b
+
+    def get_dim(self, name):
+        if name in ['input_', 'output']:
+            return self.dim
+        super(Linear, self).get_dim(name)
+
+    def _get_dim(self):
+        return self.dim
+
+    def _set_dim(self, value):
+        self.dim = value
+
+    input_dim = output_dim = property(_get_dim, _set_dim)
 
 
 class Maxout(Brick):
@@ -621,8 +669,9 @@ class MLP(Sequence, Initializable, Feedforward):
     def _push_allocation_config(self):
         if not len(self.dims) - 1 == len(self.linear_transformations):
             raise ValueError
-        for input_dim, output_dim, layer in zip(self.dims[:-1], self.dims[1:],
-                                                self.linear_transformations):
+        for input_dim, output_dim, layer in \
+                equizip(self.dims[:-1], self.dims[1:],
+                        self.linear_transformations):
             layer.input_dim = input_dim
             layer.output_dim = output_dim
             layer.use_bias = self.use_bias

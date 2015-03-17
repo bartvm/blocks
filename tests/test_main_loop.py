@@ -4,23 +4,7 @@ from six.moves import cPickle
 from blocks.main_loop import MainLoop
 from blocks.extensions import TrainingExtension, FinishAfter
 from blocks.utils import unpack
-
-
-class MockAlgorithm(object):
-    """An algorithm that only saves data.
-
-    Also checks that the initialization routine is only called once.
-
-    """
-    def __init__(self):
-        self._initialized = False
-
-    def initialize(self):
-        assert not self._initialized
-        self._initialized = True
-
-    def process_batch(self, batch):
-        self.batch = batch
+from tests import MockAlgorithm
 
 
 class WriteBatchExtension(TrainingExtension):

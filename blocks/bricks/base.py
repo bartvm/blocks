@@ -30,38 +30,64 @@ def create_unbound_method(func, cls):
 property_ = property
 
 
-class Parameters(MutableSequence):
-    """Behaves exactly like a list, but annotates the variables."""
-    def __init__(self, brick, params):
+@add_metaclass(ABCMeta)
+class BrickList(MutableSequence):
+    """Like a list, but performs operations on insert/delete."""
+    def __init__(self, brick, items):
         self.brick = brick
-        self._params = []
-        for param in params:
-            self.append(param)
+        self._items = []
+        for item in items:
+            self.append(item)
 
     def __repr__(self):
-        return repr(self._params)
+        return repr(self._items)
+
+    def __eq__(self, other):
+        return self._items == other
 
     def __getitem__(self, key):
-        return self._params[key]
+        return self._items[key]
 
-    def _annotate(self, value):
+    def _set(self, key, value):
+        pass
+
+    def _del(self, key):
+        pass
+
+    def __setitem__(self, key, value):
+        self._set(value)
+        self._items[key] = value
+
+    def __delitem__(self, key):
+        self._del(key)
+        del self._items[key]
+
+    def __len__(self):
+        return len(self._items)
+
+    def insert(self, key, value):
+        self._set(key, value)
+        self._items.insert(key, value)
+
+
+class Parameters(BrickList):
+    """Adds the PARAMETER role to parameters automatically."""
+    def _set(self, key, value):
         if isinstance(value, Variable):
             add_role(value, PARAMETER)
             add_annotation(value, self.brick)
 
-    def __setitem__(self, key, value):
-        self._annotate(value)
-        self._params[key] = value
 
-    def __delitem__(self, key):
-        del self._params[key]
+class Children(BrickList):
+    """Behaves exactly like a list, but annotates the variables."""
+    def _set(self, key, value):
+        if value is not None:
+            value.parents.append(self.brick)
 
-    def __len__(self):
-        return len(self._params)
-
-    def insert(self, index, value):
-        self._annotate(value)
-        self._params.insert(index, value)
+    def _del(self, key):
+        child = self._items[key]
+        if child is not None:
+            child.parents.remove(self.brick)
 
 
 class Application(object):
@@ -297,7 +323,9 @@ class Application(object):
         # Run the application method on the annotated variables
         if self.call_stack and brick is not self.call_stack[-1] and \
                 brick not in self.call_stack[-1].children:
-            raise ValueError
+            raise ValueError('Brick ' + str(self.call_stack[-1]) + ' tries '
+                             'to call brick ' + str(self.brick) + ' which '
+                             'is not in the list of its children.')
         self.call_stack.append(brick)
         try:
             outputs = self.application_function(brick, *args, **kwargs)
@@ -554,6 +582,7 @@ class Brick(Annotation):
         self.name = name
 
         self.children = []
+        self.parents = []
 
         self.allocated = False
         self.allocation_config_pushed = False
@@ -571,6 +600,14 @@ class Brick(Annotation):
     @params.setter
     def params(self, value):
         self._params = Parameters(self, value)
+
+    @property
+    def children(self):
+        return self._children
+
+    @children.setter
+    def children(self, value):
+        self._children = Children(self, value)
 
     def allocate(self):
         """Allocate shared variables for parameters.
@@ -744,20 +781,20 @@ class Brick(Annotation):
                          .format(name))
 
     def get_dims(self, names):
-        """Get dictionary of dimensions for a set of input/output variables.
+        """Get list of dimensions for a set of input/output variables.
 
         Parameters
         ----------
-        names : list of str
-            The dictionary of variable names.
+        names : list
+            The variable names.
 
         Returns
         -------
-        dims : dict
-            Dictionary of (variable name, variable dimension) pairs.
+        dims : list
+            The dimensions of the sources.
 
         """
-        return {name: self.get_dim(name) for name in names}
+        return [self.get_dim(name) for name in names]
 
 
 def lazy(func):
