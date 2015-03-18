@@ -62,7 +62,7 @@ class VariableFilter(object):
         or list of :class:`.Application` instance, optional
         Matches a variable that was produced by the application given.
     one : boolean, optional
-        If one=True, either return the found variable, 
+        If one=True, either return the found variable,
         or None, or raise an exception if several were found
 
     Notes
