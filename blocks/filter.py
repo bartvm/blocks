@@ -44,8 +44,8 @@ class VariableFilter(object):
     ----------
     roles : list of :class:`.VariableRole` instances, optional
         Matches any variable which has one of the roles given.
-    bricks : list of :class:`.Brick` classes or instances, optional
-        or instance of :class:`.Brick` classes or instances
+    bricks : list of :class:`.Brick` classes or instances,
+        or instance of :class:`.Brick` classes or instances, optional
         Matches any variable whose brick is either one of the given
         bricks, or whose brick is of given classes.
     each_role : bool, optional
@@ -53,11 +53,17 @@ class VariableFilter(object):
         ``False``, a variable matching any of the roles given will be
         returned. ``False`` by default.
     name : str, optional
+        The variable name. The Blocks name (i.e.
+        `x.tag.name`) is used.
+    name_re : str, optional
         A regular expression for the variable name. The Blocks name (i.e.
         `x.tag.name`) is used.
     applications : :class:`.Application` instance
-        or list of :class:`.Application` instance
+        or list of :class:`.Application` instance, optional
         Matches a variable that was produced by the application given.
+    one : boolean, optional
+        If one=True, either return the found variable, 
+        or None, or raise an exception if several were found
 
     Notes
     -----
@@ -90,7 +96,7 @@ class VariableFilter(object):
 
     """
     def __init__(self, roles=None, bricks=None, each_role=False, name=None,
-                 name_re=None, application=None, one=True):
+                 name_re=None, applications=None, one=True):
         self.roles = roles
         if not isinstance(bricks, list):
             self.bricks = [bricks]
@@ -100,10 +106,10 @@ class VariableFilter(object):
         self.name = name
         self.name_re = name_re
         self.one = one
-        if not isinstance(application, list):
-            self.applications = [application]
+        if not isinstance(applications, list):
+            self.applications = [applications]
         else:
-            self.applications = application
+            self.applications = applications
 
     def __call__(self, variables):
         """Filter the given variables.
