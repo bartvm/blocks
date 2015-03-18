@@ -46,6 +46,14 @@ class NdarrayInitialization(object):
             shape = var.get_value(borrow=True, return_internal_type=True).shape
         var.set_value(self.generate(rng, shape))
 
+    def __repr__(self):
+        """Printable representation of the object.
+
+        """
+        attribute_items = ['{}={}'.format(item[0], item[1])
+                           for item in self.__dict__.items()]
+        return "{}({})".format(type(self).__name__, ','.join(attribute_items))
+
 
 class Constant(NdarrayInitialization):
     """Initialize parameters to a constant.
