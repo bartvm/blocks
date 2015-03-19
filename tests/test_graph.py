@@ -8,7 +8,8 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams
 from blocks.bricks import MLP, Identity, Logistic
 from blocks.bricks.cost import SquaredError
 from blocks.filter import VariableFilter
-from blocks.graph import apply_noise, collect_parameters, ComputationGraph
+from blocks.graph import (apply_noise, apply_batch_normalization,
+                          collect_parameters, ComputationGraph)
 from blocks.initialization import Constant
 from blocks.roles import add_role, COLLECTED, PARAMETER, AUXILIARY
 from tests.bricks.test_bricks import TestBrick
@@ -172,3 +173,14 @@ def test_collect():
     assert numpy.all(W1.eval() == 1.)
     assert W2.eval().shape == (100, 784)
     assert numpy.all(W2.eval() == 2.)
+
+
+def test_apply_batch_normalization():
+    x = tensor.matrix()
+    y = 2 * x
+
+    cg = ComputationGraph([y])
+    cg_bn = apply_batch_normalization(cg, [x], [2], [-1])
+    assert_allclose(
+        cg_bn.outputs[0].eval({x: [[1, 2], [3, 4]]}),
+        [[-6, -6], [2, 2]])
