@@ -142,6 +142,13 @@ class DropoutRole(VariableRole):
 DROPOUT = DropoutRole()
 
 
+class BatchNormalizationRole(VariableRole):
+    pass
+
+#: Inputs with batch normalization applied
+BN = BatchNormalizationRole()
+
+
 class CollectedRole(VariableRole):
     pass
 
@@ -175,3 +182,4 @@ class AlgorithmBufferRole(AlgorithmStateRole):
 
 #: buffers accociated with algorithms
 ALGORITHM_BUFFER = AlgorithmBufferRole()
+
