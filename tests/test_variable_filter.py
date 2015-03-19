@@ -64,3 +64,4 @@ def test_variable_filter():
     appli_filter = VariableFilter(applications=[brick1.apply, brick2.apply])
     variables = [cg.variables[1], cg.variables[8]]
     assert variables == appli_filter(cg.variables)
+    assert_raises(ValueError, appli_filter, cg.variables)
