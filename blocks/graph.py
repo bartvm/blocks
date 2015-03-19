@@ -711,10 +711,10 @@ def apply_batch_normalization(computation_graph, variables, gammas,
     broadcasted_dims = [
         tuple(mapping[d] if d not in axis else 'x' for d in xrange(var.ndim))
         for mapping, var in zip(mappings, variables)]
-    gammas = [tensor.as_tensor_variable(gamma).dimshuffle(*broadcasted_dims)
-              for gamma in gammas]
-    betas = [tensor.as_tensor_variable(beta).dimshuffle(*broadcasted_dims)
-             for beta in betas]
+    gammas = [tensor.as_tensor_variable(gamma).dimshuffle(*dims)
+              for gamma, dims in zip(gammas, broadcasted_dims)]
+    betas = [tensor.as_tensor_variable(beta).dimshuffle(*dims)
+             for beta, dims in zip(betas, broadcasted_dims)]
 
     means = [var.mean(axis=axis, keepdims=True) for var in variables]
     variances = [var.var(axis=axis, keepdims=True) for var in variables]
