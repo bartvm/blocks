@@ -664,13 +664,9 @@ def apply_batch_normalization(computation_graph, variables, gammas,
 
     Examples
     --------
-    >>> import numpy
-    >>> import theano
-    >>> from theano import tensor, function
+    >>> from theano import function
     >>> from blocks.bricks import MLP, Identity
     >>> from blocks.filter import VariableFilter
-    >>> from blocks.graph import (
-    ...     ComputationGraph, apply_batch_normalization)
     >>> from blocks.initialization import Constant
     >>> from blocks.roles import INPUT
     >>> from blocks.utils import shared_floatx
@@ -691,8 +687,16 @@ def apply_batch_normalization(computation_graph, variables, gammas,
     >>> fprop = function(cg.inputs, cg.outputs[0])
     >>> bn_fprop = function(cg_bn.inputs, cg_bn.outputs[0])
     >>> linear.initialize()
-    >>> print fprop(numpy.ones((3, 2), dtype=theano.config.floatX))
-    >>> print bn_fprop(numpy.ones((3, 2), dtype=theano.config.floatX))
+    >>> print(fprop(numpy.ones((3, 2),
+    ...             dtype=theano.config.floatX))) # doctest:+ELLIPSIS
+    [[ 42.  42.]
+     [ 42.  42.]
+     [ 42.  42.]]...
+    >>> print(bn_fprop(numpy.ones((3, 2),
+    ...                dtype=theano.config.floatX))) # doctest:+ELLIPSIS
+    [[ 2.  2.]
+     [ 2.  2.]
+     [ 2.  2.]]...
 
     """
     epsilon = numpy.cast[theano.config.floatX](epsilon)
