@@ -6,7 +6,7 @@ from itertools import chain
 import numpy
 import theano
 from picklable_itertools.extras import equizip
-from theano import Variable
+from theano import Variable, tensor
 from theano.gof import graph
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.scan_module.scan_op import Scan
@@ -628,6 +628,43 @@ def apply_dropout(computation_graph, variables, drop_prob, rng=None,
                                   dtype=theano.config.floatX) /
                      (1 - drop_prob))
                     for var in variables]
+    for variable, replacement in replacements:
+        add_role(replacement, DROPOUT)
+        replacement.tag.replacement_of = variable
+
+    return computation_graph.replace(replacements)
+
+
+def apply_batch_normalization(computation_graph, variables, gammas,
+                              betas, axis=0, epsilon=1e-7):
+    """Returns a graph to variables in a computational graph.
+
+    Parameters
+    ----------
+    computation_graph : instance of :class:`ComputationGraph`
+        The computation graph.
+    variables : list of :class:`~tensor.TensorVariable`
+        Variables to be batch-normalized.
+    axis : int or iterable, optional
+        Batch axis, or batch axes. Defaults to 0.
+
+    Notes
+    -----
+    For more information, see [BN]_.
+
+    .. [BN] Sergey Ioffe and Christian Szegedy. *Batch Normalization:
+       Accelerating Deep Network Training by Reducing Internal Covariate
+       Shift*, arXiv:1502.03167.
+
+    """
+    epsilon = numpy.cast[theano.config.floatX](epsilon)
+
+    means = [var.mean(axis=axis, keepdims=True) for var in variables]
+    variances = [var.var(axis=axis, keepdims=True) for var in variables]
+    replacements = [
+        (var, gamma * (var - mu) / tensor.sqrt(sigma_sqr + epsilon) + beta)
+        for var, mu, sigma_sqr, gamma, beta in
+        zip(variables, means, variances, gammas, betas)]
     for variable, replacement in replacements:
         add_role(replacement, DROPOUT)
         replacement.tag.replacement_of = variable
