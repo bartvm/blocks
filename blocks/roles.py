@@ -181,4 +181,4 @@ class BatchNormalizationRole(VariableRole):
     pass
 
 #: Inputs with batch normalization applied
-BN = BatchNormalizationRole()
+BATCH_NORMALIZED = BatchNormalizationRole()
