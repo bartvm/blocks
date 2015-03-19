@@ -298,7 +298,7 @@ class DatasetEvaluator(object):
                 " {}.".format(input_names))
         if self._accumulate_fun is not None:
             numerical_values = self._accumulate_fun(**batch)
-            self.monitored_quantities_buffer.accumulate_variables(
+            self.monitored_quantities_buffer.accumulate_quantities(
                 numerical_values)
 
     def get_aggregated_values(self):
