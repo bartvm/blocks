@@ -180,7 +180,7 @@ def test_apply_batch_normalization():
     y = 2 * x
 
     cg = ComputationGraph([y])
-    cg_bn = apply_batch_normalization(cg, [x], [2], [-1])
+    cg_bn = apply_batch_normalization(cg, [x], [[2, 2]], [[-1, -1]])
     assert_allclose(
         cg_bn.outputs[0].eval({x: [[1, 2], [3, 4]]}),
         [[-6, -6], [2, 2]])
