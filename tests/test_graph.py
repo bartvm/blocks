@@ -180,7 +180,33 @@ def test_apply_batch_normalization():
     y = 2 * x
 
     cg = ComputationGraph([y])
-    cg_bn = apply_batch_normalization(cg, [x], [[2, 2]], [[-1, -1]])
+    cg_bn = apply_batch_normalization(
+        cg, [x], [numpy.array([2, 3]).astype(floatX)],
+        [numpy.array([-1, -2]).astype(floatX)])
     assert_allclose(
-        cg_bn.outputs[0].eval({x: [[1, 2], [3, 4]]}),
-        [[-6, -6], [2, 2]])
+        cg_bn.outputs[0].eval(
+            {x: numpy.arange(4).reshape((2, 2)).astype(floatX)}),
+        [[-6., -10.], [2., 2.]],
+        atol=1e-5)
+
+
+def test_apply_batch_normalization_conv():
+    x = tensor.tensor4()
+    y = 2 * x
+
+    cg = ComputationGraph([y])
+    cg_bn = apply_batch_normalization(
+        cg, [x], [numpy.array([2, 3]).astype(floatX)],
+        [numpy.array([-1, -2]).astype(floatX)], axis=[0, 2, 3])
+    assert_allclose(
+        cg_bn.outputs[0].eval(
+            {x: numpy.arange(16).reshape((2, 2, 2, 2)).astype(floatX)}),
+        [[[[-7.29697754,  -6.33389071],
+           [ -5.37080389, -4.40771706]],
+          [[-11.9454663, -10.50083607],
+           [ -9.05620583, -7.61157559]]],
+         [[[  0.40771706,  1.37080389],
+           [  2.33389071,  3.29697754]],
+          [[ -0.38842441,  1.05620583],
+           [  2.50083607,  3.9454663 ]]]],
+        atol=1e-5)

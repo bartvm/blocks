@@ -2,6 +2,7 @@
 import logging
 from collections import OrderedDict
 from itertools import chain
+from six.moves import xrange
 
 import numpy
 import theano
@@ -700,6 +701,20 @@ def apply_batch_normalization(computation_graph, variables, gammas,
 
     """
     epsilon = numpy.cast[theano.config.floatX](epsilon)
+
+    # Broadcast gamma and beta properly
+    axis = axis if isinstance(axis, (list, tuple)) else (axis,)
+    mappings = [
+        dict([(d, i) for i, d in
+              enumerate(a for a in xrange(var.ndim) if a not in axis)])
+        for var in variables]
+    broadcasted_dims = [
+        tuple(mapping[d] if d not in axis else 'x' for d in xrange(var.ndim))
+        for mapping, var in zip(mappings, variables)]
+    gammas = [tensor.as_tensor_variable(gamma).dimshuffle(*broadcasted_dims)
+              for gamma in gammas]
+    betas = [tensor.as_tensor_variable(beta).dimshuffle(*broadcasted_dims)
+             for beta in betas]
 
     means = [var.mean(axis=axis, keepdims=True) for var in variables]
     variances = [var.var(axis=axis, keepdims=True) for var in variables]
