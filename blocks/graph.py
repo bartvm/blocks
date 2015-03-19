@@ -645,8 +645,14 @@ def apply_batch_normalization(computation_graph, variables, gammas,
         The computation graph.
     variables : list of :class:`~tensor.TensorVariable`
         Variables to be batch-normalized.
+    gammas : list of :class:`~tensor.TensorVariable`
+        Scale coefficients for the normalized variables.
+    betas : list of :class:`~tensor.TensorVariable`
+        Shift coefficients for the normalized variables.
     axis : int or iterable, optional
         Batch axis, or batch axes. Defaults to 0.
+    epsilon : float, optional
+        Stabilization constant. Defaults to 1E-7.
 
     Notes
     -----
@@ -655,6 +661,38 @@ def apply_batch_normalization(computation_graph, variables, gammas,
     .. [BN] Sergey Ioffe and Christian Szegedy. *Batch Normalization:
        Accelerating Deep Network Training by Reducing Internal Covariate
        Shift*, arXiv:1502.03167.
+
+    Examples
+    --------
+    >>> import numpy
+    >>> import theano
+    >>> from theano import tensor, function
+    >>> from blocks.bricks import MLP, Identity
+    >>> from blocks.filter import VariableFilter
+    >>> from blocks.graph import (
+    ...     ComputationGraph, apply_batch_normalization)
+    >>> from blocks.initialization import Constant
+    >>> from blocks.roles import INPUT
+    >>> from blocks.utils import shared_floatx
+    >>> linear = MLP([Identity(), Identity()], [2, 10, 2],
+    ...              weights_init=Constant(1), biases_init=Constant(2))
+    >>> x = tensor.matrix('x')
+    >>> gamma_1 = shared_floatx(numpy.ones(2), name='gamma_1')
+    >>> gamma_2 = shared_floatx(numpy.ones(10), name='gamma_2')
+    >>> beta_1 = shared_floatx(numpy.zeros(2), name='beta_1')
+    >>> beta_2 = shared_floatx(numpy.zeros(10), name='beta_2')
+    >>> y = linear.apply(x)
+    >>> cg = ComputationGraph(y)
+    >>> inputs = VariableFilter(
+    ...     roles=[INPUT],
+    ...     bricks=linear.linear_transformations)(cg.variables)
+    >>> cg_bn = apply_batch_normalization(
+    ...     cg, inputs, [gamma_1, gamma_2], [beta_1, beta_2])
+    >>> fprop = function(cg.inputs, cg.outputs[0])
+    >>> bn_fprop = function(cg_bn.inputs, cg_bn.outputs[0])
+    >>> linear.initialize()
+    >>> print fprop(numpy.ones((3, 2), dtype=theano.config.floatX))
+    >>> print bn_fprop(numpy.ones((3, 2), dtype=theano.config.floatX))
 
     """
     epsilon = numpy.cast[theano.config.floatX](epsilon)
