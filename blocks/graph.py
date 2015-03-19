@@ -14,7 +14,7 @@ from toolz import unique
 
 from blocks.config import config
 from blocks.roles import (add_role, has_roles, AUXILIARY, PARAMETER, DROPOUT,
-                          COLLECTED, COLLECTOR)
+                          COLLECTED, COLLECTOR, BN)
 from blocks.utils import (is_graph_input, is_shared_variable, dict_union,
                           shared_floatx_zeros, shared_like)
 import warnings
@@ -708,7 +708,7 @@ def apply_batch_normalization(computation_graph, variables, gammas,
         for var, mu, sigma_sqr, gamma, beta in
         zip(variables, means, variances, gammas, betas)]
     for variable, replacement in replacements:
-        add_role(replacement, DROPOUT)
+        add_role(replacement, BN)
         replacement.tag.replacement_of = variable
 
     return computation_graph.replace(replacements)
