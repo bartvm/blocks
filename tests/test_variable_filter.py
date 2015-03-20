@@ -5,8 +5,6 @@ from blocks.roles import BIAS, FILTER, PARAMETER
 
 from theano import tensor
 
-from unittest import TestCase
-
 
 def test_variable_filter():
     # Creating computation graph
