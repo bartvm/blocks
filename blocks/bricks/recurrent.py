@@ -12,6 +12,7 @@ from blocks.bricks import Initializable, Sigmoid, Tanh
 from blocks.bricks.base import Application, application, Brick, lazy
 from blocks.initialization import NdarrayInitialization
 from blocks.roles import add_role, WEIGHT, BIAS
+from blocks.select import Selector
 from blocks.utils import (pack, shared_floatx_nans, dict_union, dict_subset,
                           is_shared_variable)
 
@@ -108,6 +109,7 @@ def recurrent(*args, **kwargs):
             """
             # Extract arguments related to iteration and immediately relay the
             # call to the wrapped function if `iterate=False`
+            scan_strict = kwargs.pop('scan_strict', False)
             iterate = kwargs.pop('iterate', True)
             if not iterate:
                 return application_function(brick, *args, **kwargs)
@@ -181,12 +183,21 @@ def recurrent(*args, **kwargs):
             for name, state in states_given.items():
                 states_given[name] = tensor.unbroadcast(state,
                                                         *range(state.ndim))
+            if scan_strict:
+                # Find all shared variables
+                shared_vars = list(Selector(brick).get_params().values())
+                # Just make `scan_function` discard them before calling
+                # `application_function`
+                strict = {'strict': True}
+            else:
+                shared_vars = []
+                strict = {}
 
             def scan_function(*args):
                 args = list(args)
                 arg_names = (list(sequences_given) + list(states_given) +
                              list(contexts_given))
-                kwargs = dict(equizip(arg_names, args))
+                kwargs = dict(equizip(arg_names, args[:-len(shared_vars)]))
                 kwargs.update(rest_kwargs)
                 outputs = application(iterate=False, **kwargs)
                 # We want to save the computation graph returned by the
@@ -195,15 +206,17 @@ def recurrent(*args, **kwargs):
                 application_call.inner_inputs = args
                 application_call.inner_outputs = pack(outputs)
                 return outputs
+
             outputs_info = (list(states_given.values()) +
                             [None] * (len(application.outputs) -
                                       len(application.states)))
             result, updates = theano.scan(
                 scan_function, sequences=list(sequences_given.values()),
                 outputs_info=outputs_info,
-                non_sequences=list(contexts_given.values()),
+                non_sequences=list(contexts_given.values()) + shared_vars,
                 n_steps=n_steps,
-                go_backwards=reverse)
+                go_backwards=reverse,
+                **strict)
             result = pack(result)
             if return_initial_states:
                 # Undo Subtensor
