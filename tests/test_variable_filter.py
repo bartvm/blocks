@@ -52,8 +52,8 @@ def test_variable_filter():
     assert [cg.variables[2]] == name_filter(cg.variables)
 
     # Testing filtering by name regex
-    name_filter = VariableFilter(name_regex='W_no.?m')
-    assert [cg.variables[2]] == name_filter(cg.variables)
+    name_filter_regex = VariableFilter(name_regex='W_no.?m')
+    assert [cg.variables[2]] == name_filter_regex(cg.variables)
 
     # Testing filtering by application
     appli_filter = VariableFilter(applications=brick1.apply)
@@ -63,7 +63,3 @@ def test_variable_filter():
     # Testing filtering by applications
     appli_filter_list = VariableFilter(applications=[brick1.apply])
     assert variables == appli_filter_list(cg.variables)
-
-    # Testing filtering by one without raising an error
-    one_filter = VariableFilter(applications=[brick1.apply], one=True)
-    assert cg.variables[1] == one_filter(cg.variables)
