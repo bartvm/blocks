@@ -5,6 +5,8 @@ from blocks.roles import BIAS, FILTER, PARAMETER
 
 from theano import tensor
 
+from unittest import TestCase
+
 
 def test_variable_filter():
     # Creating computation graph
@@ -61,7 +63,9 @@ def test_variable_filter():
     assert variables == appli_filter(cg.variables)
 
     # Testing filtering by applications
-    appli_filter = VariableFilter(applications=[brick1.apply, brick2.apply])
-    variables = [cg.variables[1], cg.variables[8]]
-    assert variables == appli_filter(cg.variables)
-    assert_raises(ValueError, appli_filter, cg.variables)
+    appli_filter_list = VariableFilter(applications=[brick1.apply])
+    assert variables == appli_filter_list(cg.variables)
+
+    # Testing filtering by one without raising an error
+    one_filter = VariableFilter(applications=[brick1.apply], one=True)
+    assert cg.variables[1] == one_filter(cg.variables)
