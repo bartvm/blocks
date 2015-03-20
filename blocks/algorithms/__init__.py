@@ -3,8 +3,6 @@ import logging
 import itertools
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
-from six.moves import reduce
-
 from picklable_itertools.extras import equizip
 
 import theano
@@ -221,7 +219,7 @@ class GradientDescent(DifferentiableCostMinimizer):
         for param in self.params:
             all_updates.append((param, param - self.steps[param]))
         all_updates += self.step_rule_updates
-        self._function = theano.function(self.inputs, [], updates=all_updates)
+        self._function = theano.function(self.inputs, [], updates=all_updates, allow_input_downcast=True)
         logger.info("The training algorithm is initialized")
 
     def process_batch(self, batch):
@@ -575,80 +573,6 @@ class StepClipping(StepRule):
             (param, step * multiplier)
             for param, step in previous_steps.items())
         return steps, []
-
-
-class VariableClipping(StepRule):
-    """Clip the maximum norm of individual variables along certain axes.
-
-    This :class:`StepRule` can be used to implement L2 norm constraints on
-    e.g. the weight vectors of individual hidden units, convolutional
-    filters or entire weight tensors. Combine with :class:`Restrict`
-    (and possibly :class:`CompositeRule`), to apply such constraints only
-    to certain variables and/or apply different norm constraints to
-    different variables.
-
-    Parameters
-    ----------
-    threshold : float
-        Maximum norm for a given (portion of a) tensor.
-    axes : iterable, optional
-        An iterable collection of integer axes over which to
-        sum in order to calculate the L2 norm. If `None`
-        (the default), the norm is computed over all elements
-        of the tensor.
-
-    Notes
-    -----
-    Because of the way the :class:`StepRule` API works, this particular
-    rule implements norm clipping of the value *after* update in the
-    following way: it computes ``param - previous_step``, scales it
-    to have (possibly axes-wise) norm(s) of at most `threshold`,
-    then subtracts *that* value from `param` to yield an 'equivalent
-    step' that respects the desired norm constraints. This procedure
-    implicitly assumes one is doing simple (stochastic) gradient descent,
-    and so steps computed by this step rule may not make sense for use
-    in other contexts.
-
-    Investigations into max-norm regularization date from [Srebro2005]_.
-    The first appearance of this technique as a regularization method
-    for the weight vectors of individual hidden units in feed-forward
-    neural networks may be [Hinton2012]_.
-
-    .. [Srebro2005] Nathan Srebro and Adi Shraibman.
-       "Rank, Trace-Norm and Max-Norm". *18th Annual Conference
-       on Learning Theory (COLT)*, June 2005.
-
-    .. [Hinton2012] Geoffrey E. Hinton, Nitish Srivastava,
-       Alex Krizhevsky, Ilya Sutskever, Ruslan R. Salakhutdinov.
-       "Improving neural networks by preventing co-adaptation of
-       feature detectors". arXiv:1207.0580.
-
-    """
-    def __init__(self, threshold, axes=None):
-        axes = axes if axes is not None else ()
-        self.axes = set(axes)
-        self.threshold = shared_floatx(threshold)
-        if len(axes) != len(self.axes):
-            raise ValueError("axes must be unique")
-
-    def compute_step(self, param, previous_step):
-        if any(axis >= previous_step.ndim for axis in self.axes):
-            raise ValueError("Invalid axes {} for {}, ndim={}".format(
-                self.axes, param, previous_step.ndim))
-        if len(self.axes) == 0:
-            norms = l2_norm([param - previous_step])
-        else:
-            squares = tensor.sqr(param - previous_step)
-            norms = tensor.sqrt(
-                reduce(lambda t, a: t.sum(axis=a, keepdims=True),
-                       sorted(self.axes), squares))
-        # We want a step s* that is the same as scaling (param - previous_step)
-        # by threshold / norm when threshold < norm.
-        shrinking_step = (param -
-                          (self.threshold / norms) * (param - previous_step))
-        return tensor.switch(norms > self.threshold,
-                             shrinking_step,
-                             previous_step), ()
 
 
 class Adam(StepRule):
