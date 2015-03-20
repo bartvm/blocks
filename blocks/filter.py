@@ -55,15 +55,12 @@ class VariableFilter(object):
     name : str, optional
         The variable name. The Blocks name (i.e.
         `x.tag.name`) is used.
-    name_re : str, optional
+    name_regex : str, optional
         A regular expression for the variable name. The Blocks name (i.e.
         `x.tag.name`) is used.
     applications : :class:`.Application` instance
         or list of :class:`.Application` instance, optional
         Matches a variable that was produced by the application given.
-    one : boolean, optional
-        If one=True, either return the found variable,
-        or None, or raise an exception if several were found
 
     Notes
     -----
