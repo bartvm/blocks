@@ -41,23 +41,24 @@ class MonitoringExtension(TrainingExtension):
 
 
 class DataStreamMonitoring(SimpleExtension, MonitoringExtension):
-    """Monitors values of Theano variables on a data stream.
+    """Monitors Theano variables and monitored-quantities on a data stream.
 
     By default monitoring is done before the first and after every epoch.
 
     Parameters
     ----------
-    variables : list of :class:`~tensor.TensorVariable`
+    variables : list of :class:`~tensor.TensorVariable` and
+        :class:`MonitoredQuantity`
         The variables to monitor. The variable names are used as record
         names in the logs.
     updates : list of tuples or :class:`~collections.OrderedDict` or None
         :class:`~tensor.TensorSharedVariable` updates to be performed
-        during evaluation. Be careful not to update any model parameters
-        as this is not intended to alter your model in any meaningfull
-        way. A typical use case of this option arises when the theano
-        function used for evaluation contains a call to
-        :func:`~theano.scan` which might have returned shared
-        variable updates.
+        during evaluation. This parameter is only for Theano variables.
+        Be careful not to update any model parameters as this is not
+        intended to alter your model in any meaningfull way. A typical
+        use case of this option arises when the theano function used
+        for evaluation contains a call to :func:`~theano.scan` which
+        might have returned shared variable updates.
     data_stream : instance of :class:`.DataStream`
         The data stream to monitor on. A data epoch is requested
         each time monitoring is done.

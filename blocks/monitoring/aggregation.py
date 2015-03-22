@@ -151,3 +151,46 @@ class TakeLast(AggregationScheme):
                               (self.storage, tensor.zeros_like(self.storage))],
                           accumulation_updates=[(self.storage, self.variable)],
                           readout_variable=self.storage)
+
+
+@add_metaclass(ABCMeta)
+class MonitoredQuantity(object):
+    """The base class for monitored-quantities.
+
+    To monitor a non-Theano quanity in Blocks you have to implement this
+    interface for it. The initialize method initializes accumulators and
+    the parameters needed to compute this quantity, accumulate method
+    accumulates results for every batch, and finallly readout is called
+    to get the accumulated resutls.
+
+    See Also
+    ------------
+       :class:`~blocks.monitoring.evaluators.DatasetEvaluator`,
+       :class:`~blocks.extensions.DataStreamMonitoring`
+
+    Attributes
+    ----------
+    requires : list
+        List of Theano variables needed to calculate this quantity.
+    name : str
+        The name of monitored quantity which appears in the log.
+
+    """
+    def __init__(self, requires=None, name=None):
+        self.requires = requires
+        self.name = name
+
+    @abstractmethod
+    def initialize(self):
+        """Initialize accumulators for this monitored quantity."""
+        pass
+
+    @abstractmethod
+    def accumulate(self):
+        """Accumulate results for every batch."""
+        pass
+
+    @abstractmethod
+    def readout(self):
+        """Readout the accumulated results to capture the final result."""
+        pass
