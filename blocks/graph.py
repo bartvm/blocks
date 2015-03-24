@@ -17,8 +17,7 @@ from blocks.config import config
 from blocks.roles import (add_role, has_roles, AUXILIARY, PARAMETER, DROPOUT,
                           COLLECTED, COLLECTOR, BATCH_NORMALIZED)
 from blocks.utils import (is_graph_input, is_shared_variable, dict_union,
-                          shared_floatx_zeros, shared_like)
-import warnings
+                          shared_floatx_zeros, shared_like, pack)
 
 logger = logging.getLogger(__name__)
 
@@ -703,21 +702,22 @@ def apply_batch_normalization(computation_graph, variables, gammas,
     epsilon = numpy.cast[theano.config.floatX](epsilon)
 
     # Broadcast gamma and beta properly
-    axis = axis if isinstance(axis, (list, tuple)) else (axis,)
+    axes = pack(axis)
     mappings = [
-        dict([(d, i) for i, d in
-              enumerate(a for a in xrange(var.ndim) if a not in axis)])
+        dict([(axis, i) for i, axis in
+              enumerate(dim for dim in xrange(var.ndim) if dim not in axes)])
         for var in variables]
     broadcasted_dims = [
-        tuple(mapping[d] if d not in axis else 'x' for d in xrange(var.ndim))
+        tuple(mapping[dim] if dim not in axes else 'x'
+              for dim in xrange(var.ndim))
         for mapping, var in zip(mappings, variables)]
     gammas = [tensor.as_tensor_variable(gamma).dimshuffle(*dims)
               for gamma, dims in zip(gammas, broadcasted_dims)]
     betas = [tensor.as_tensor_variable(beta).dimshuffle(*dims)
              for beta, dims in zip(betas, broadcasted_dims)]
 
-    means = [var.mean(axis=axis, keepdims=True) for var in variables]
-    variances = [var.var(axis=axis, keepdims=True) for var in variables]
+    means = [var.mean(axis=axes, keepdims=True) for var in variables]
+    variances = [var.var(axis=axes, keepdims=True) for var in variables]
     replacements = [
         (var, gamma * (var - mu) / tensor.sqrt(sigma_sqr + epsilon) + beta)
         for var, mu, sigma_sqr, gamma, beta in
