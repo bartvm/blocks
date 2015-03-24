@@ -67,6 +67,7 @@ Quickstart
    >>> from fuel.schemes import SequentialScheme
    >>> from blocks.extensions import FinishAfter, Printing
    >>> from blocks.extensions.monitoring import DataStreamMonitoring
+   >>> from blocks.model import Model
    >>> from blocks.main_loop import MainLoop
 
 Construct your model.

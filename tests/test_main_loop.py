@@ -2,6 +2,7 @@ from fuel.datasets import IterableDataset
 from six.moves import cPickle
 
 from blocks.main_loop import MainLoop
+from blocks.model import Model
 from blocks.extensions import TrainingExtension, FinishAfter
 from blocks.utils import unpack
 from tests import MockAlgorithm
@@ -36,6 +37,7 @@ def test_main_loop():
     finish_extension.add_condition(
         'after_epoch', predicate=lambda log: log.status.epochs_done == 2)
     main_loop = MainLoop(MockAlgorithm(), TestDataStream(),
+                         Model(),
                          extensions=[WriteBatchExtension(),
                                      finish_extension])
     main_loop.run()
@@ -51,7 +53,7 @@ def test_training_resumption():
     def do_test(with_serialization):
         data_stream = IterableDataset(range(10)).get_example_stream()
         main_loop = MainLoop(
-            MockAlgorithm(), data_stream,
+            MockAlgorithm(), data_stream, Model(),
             extensions=[WriteBatchExtension(),
                         FinishAfter(after_n_batches=14)])
         main_loop.run()

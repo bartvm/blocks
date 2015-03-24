@@ -89,6 +89,12 @@ class CostRole(VariableRole):
 COST = CostRole()
 
 
+class ObjectiveRole(VariableRole):
+    pass
+
+OBJECTIVE = ObjectiveRole()
+
+
 class ParameterRole(VariableRole):
     pass
 

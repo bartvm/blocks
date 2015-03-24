@@ -211,11 +211,14 @@ extension.
 
 We can now use the :class:`.MainLoop` to combine all the different
 bits and pieces. We use two more extensions to make our training stop after
-a single epoch and to make sure that our progress is printed.
+a single epoch and to make sure that our progress is printed. In addition 
+instantiate a :class:`Model` object that will provide extensions with 
+information about the model they need.
 
 >>> from blocks.main_loop import MainLoop
 >>> from blocks.extensions import FinishAfter, Printing
->>> main_loop = MainLoop(data_stream=data_stream, algorithm=algorithm,
+>>> from blocks.model import Model
+>>> main_loop = MainLoop(data_stream=data_stream, algorithm=algorithm, model=Model(cost),
 ...                      extensions=[monitor, FinishAfter(after_n_epochs=1), Printing()])
 >>> main_loop.run() # doctest: +SKIP
 <BLANKLINE>

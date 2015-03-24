@@ -1,71 +1,140 @@
 """Defines models.
 
 A model is a thin layer of abstraction between the user-defined computation
-graph, bricks, parameters and main loop extensions. This module provides
-the basic :class:`AbstractModel` interface as well as its implementations
-(currently only :class:`Model`).
+graph, bricks, parameters and main loop extensions.
 
 """
 import logging
-from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
-from itertools import chain
 
-from six import add_metaclass
-
-from blocks.graph import ComputationGraph
+from blocks.brickgraph import BrickComputationGraph
 from blocks.select import Selector
-from blocks.filter import VariableFilter, get_brick
-from blocks.roles import PARAMETER
+from blocks.filter import VariableFilter
+from blocks.roles import OBJECTIVE
 
 logger = logging.getLogger()
 
-multiple_message = """
 
-Model with multiple outputs are currently only partially supported \
-in Blocks. For instance a call of 'get_objective' will crash. \
-Contact Blocks developers for more details.
-"""
+class Model(object):
+    """Gives extensions access to parameters, bricks, etc.
 
+    Model is used in the :class:`~blocks.main_loop.MainLoop` as a
+    middleware between extensions and the objects the user built to define
+    what and how should be trained. This includes a computation graph, a
+    set of parameters, often also a set of bricks and an objective
+    variable. In the common case all these things can be extracted from the
+    computation graph, but :class:`Model` provides a way to override those
+    when necessary.
 
-@add_metaclass(ABCMeta)
-class AbstractModel(object):
-    """A parameterized entity trained in the main loop.
+    Unlike other frameworks you _do not have to_ inherit from
+    :class:`Model` to train something new. The :class:`Model` should cover
+    needs of most people. You might find it helpful to define a
+    :class:`Model` subclass as this way the logic you equip it with will be
+    accessible for the extensions and after loading the model from a
+    pickled file.
 
-    A model is a parameterized entity the user trains a in a main loop.
-    The following are traits of every model:
+    Parameters
+    ----------
+    outputs : (list of) :class:`~theano.Variable`, optional
+        The output variables of the computation graph. If given, a
+        :class:`BrickComputationGraph` with these outputs is treated
+        as the model's computation graph. Can be given only if
+        `computation_graph` is not given.
+    computation_graph : instance of :class:`.ComputationGraph`
+        The computation graph. Can not be given when `outputs` are not
+        given.
+    objective : :class:`~theano.Variable`, optional
+        The objective varible. If not given, the objective is extracted
+        from the computation graph, see :meth:`get_objective`.
+    parameters : list of shared Theano variables, optional
+        The parameters. If not given, the parameters are extracted
+        from the computation graph, see :meth:`get_parameters`.
+    top_bricks : list of :class:`~blocks.bricks.base.Brick`
+        The top bricks of the model. If not given, the bricks are extracted
+        from the computation graph, see :meth:`get_top_bricks`.
 
-    * It has parameters and supports a way to access them. In addition
-    to returning handles to parameter objects it can return their values
-    as numpy arrays and set their values to given numpy arrays.
-
-    * It has an optimality objective.
-
-    * It can be serialized and deserialized by mean of pickling.
-
-    * It might have bricks as its components.
-
-    This class provides an interface for models. For experiments use
-    a subclass, e.g. the :class:`Model`.
+    Examples
+    --------
+    >>> import theano
+    >>> from theano import tensor
+    >>> from blocks.bricks import Tanh, Softmax, MLP
+    >>> from blocks.bricks.cost import CategoricalCrossEntropy
+    >>> mlp = MLP(activations=[Tanh(), Softmax()], dims=[784, 100, 10])
+    >>> x = tensor.matrix('features')
+    >>> y = tensor.lmatrix('targets')
+    >>> y_hat = mlp.apply(x)
+    >>> cost = CategoricalCrossEntropy().apply(y.flatten(), y_hat)
+    >>> model = Model(cost)
+    >>> [brick.name for brick in model.get_top_bricks()]
+    ['mlp', 'categoricalcrossentropy']
+    >>> model.get_parameters()
+    [b, b, W, W]
+    >>> model.get_objective()
+    categoricalcrossentropy_apply_cost
 
     """
-    @abstractmethod
-    def get_params(self):
-        """Return the model parameters.
+    def __init__(self, outputs=None,
+                 computation_graph=None, objective=None,
+                 parameters=None, top_bricks=None):
+        self._computation_graph = computation_graph
+        self._objective = objective
+        self._parameters = parameters
+        self._top_bricks = top_bricks
+        if outputs:
+            if self._computation_graph:
+                raise ValueError
+            self._computation_graph = BrickComputationGraph(outputs)
 
-        Returns
-        -------
-        params : OrderedDict
-            Dictionary of (name, parameter) pairs.
+    def get_computation_graph(self):
+        if not self._computation_graph:
+            raise ValueError
+        return self._computation_graph
 
-        """
-        pass
+    def set_computation_graph(self, computation_graph):
+        self._computation_graph = computation_graph
+
+    def get_objective(self):
+        if self._objective:
+            return self._objective
+        computation_graph = self.get_computation_graph()
+        if len(computation_graph.outputs) == 1:
+            return computation_graph.outputs[0]
+        objective, = VariableFilter(
+            roles=[OBJECTIVE])(computation_graph)
+        raise ValueError
+
+    def set_objective(self, objective):
+        self._objective = objective
+
+    def get_top_bricks(self):
+        if self._top_bricks:
+            return self._top_bricks
+        if isinstance(self.get_computation_graph(), BrickComputationGraph):
+            return self.get_computation_graph().top_bricks
+        raise ValueError
+
+    def set_top_bricks(self, top_bricks):
+        self._top_brikcs = top_bricks
+
+    def get_parameters(self, hierarchical_names=False):
+        if self._parameters:
+            parameters = self._parameters
+
+        parameters = self.get_computation_graph().parameters
+        if hierarchical_names:
+            param2name = {
+                v: k for k, v in
+                Selector(self.get_top_bricks()).get_params().items()}
+            return OrderedDict(
+                [(param2name[p] if p in param2name else p.name, p)
+                 for p in parameters])
+        return parameters
+
+    def set_parameters(self, parameters):
+        self._parameters = parameters
 
     def get_param_values(self):
         """Return the values of model parameters.
-
-        The default implementation assumes that parameters are Theano
-        shared variables.
 
         Returns
         -------
@@ -73,14 +142,13 @@ class AbstractModel(object):
             Dictionary of (parameter name, :class:`~numpy.ndarray`) pairs.
 
         """
-        return OrderedDict((name, param.get_value())
-                           for name, param in self.get_params().items())
+        return OrderedDict(
+            (name, param.get_value())
+            for name, param
+            in self.get_parameters(hierarchical_names=True).items())
 
     def set_param_values(self, param_values):
         """Set the values of model parameters.
-
-        The default implementation assumes that parameters are Theano
-        shared variables.
 
         Parameters
         ----------
@@ -88,7 +156,7 @@ class AbstractModel(object):
             Dictionary of (parameter name, :class:`~numpy.ndarray`) pairs.
 
         """
-        params = self.get_params()
+        params = self.get_parameters(hierarchical_names=True)
 
         unknown = set(param_values) - set(params)
         missing = set(params) - set(param_values)
@@ -100,94 +168,3 @@ class AbstractModel(object):
         for name, value in param_values.items():
             if name in params:
                 params[name].set_value(value)
-
-    @abstractmethod
-    def get_objective(self):
-        """Return the optimization objective."""
-        pass
-
-    def get_top_bricks(self):
-        """Return the top-level bricks that are used in the model.
-
-        Returns
-        -------
-        bricks : list
-            List of bricks.
-
-        """
-        raise NotImplementedError()
-
-
-class Model(AbstractModel, ComputationGraph):
-    """Wraps a computation graph to support model interface.
-
-    This model covers the most common case when all information
-    about the model is contained in an annotated computation graph:
-    parameters are identified by the roles, bricks found by annotations.
-    Due to frequency of this case this class is called simply 'Model'
-    and not 'ComputationGraphModel'.
-
-    .. todo::
-
-        Overriding the automatically found parameters and bricks might
-        be needed.
-
-        If there are top bricks in scan inner graphs, those will not be
-        found.
-
-    Parameters
-    ----------
-    outputs : (list of) :class:`~theano.Variable`
-        The output variables of the computation graph.
-
-    """
-    def __init__(self, outputs):
-        super(Model, self).__init__(outputs)
-        if len(self.outputs) > 1:
-            logger.warning("model with multiple output " + multiple_message)
-
-        bricks = [get_brick(var) for var
-                  in self.variables + self.scan_variables if get_brick(var)]
-        children = set(chain(*(brick.children for brick in bricks)))
-        # Quadratic complexity: we should not have thousands of
-        # top-level bricks.
-        self.top_bricks = []
-        for brick in bricks:
-            if brick not in children and brick not in self.top_bricks:
-                self.top_bricks.append(brick)
-        if len(set(b.name for b in self.top_bricks)) < len(self.top_bricks):
-            raise ValueError("top bricks with the same name")
-
-        brick_param_names = {
-            v: k for k, v in Selector(self.top_bricks).get_params().items()}
-        self.params = []
-        for param in VariableFilter(roles=[PARAMETER])(self.shared_variables):
-            if param in brick_param_names:
-                self.params.append((brick_param_names[param], param))
-            else:
-                self.params.append((param.name, param))
-        self.params = OrderedDict(self.params)
-
-    def get_objective(self):
-        """Return the output variable, if there is a single one.
-
-        If there is only one output variable, it is a reasonable default
-        setting to assume that it is the optimization objective.
-
-        """
-        if len(self.outputs) == 1:
-            return self.outputs[0]
-        raise NotImplementedError
-
-    def get_params(self):
-        """Get model parameters.
-
-        The parameter names are formed from positions of their owner bricks
-        in the bricks hierarchy. The variable names are used for the
-        parameters that do not belong to any brick.
-
-        """
-        return self.params
-
-    def get_top_bricks(self):
-        return self.top_bricks

@@ -184,7 +184,7 @@ def main(mode, save_path, num_batches, data_path=None):
 
         # Give an idea of what's going on
         model = Model(cost)
-        params = model.get_params()
+        params = model.get_parameters(hierarchical_names=True)
         logger.info("Parameters:\n" +
                     pprint.pformat(
                         [(key, value.get_value().shape) for key, value

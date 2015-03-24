@@ -72,9 +72,9 @@ class MainLoop(object):
         The training algorithm.
     data_stream : instance of :class:`.DataStream`.
         The data stream.
-    model : :class:`.AbstractModel` instance, optional
+    model : :class:`~blocks.Model` instance
         The model object. It is entirely transparent for the main loop
-        but may be used by extensions.
+        and used only by extensions.
     log : instance of :class:`.TrainingLog`, optional
         The log. When not given, a :class:`.TrainingLog` is created.
     extensions : list of :class:`.TrainingExtension` instances
@@ -82,8 +82,8 @@ class MainLoop(object):
         here.
 
     """
-    def __init__(self, algorithm, data_stream,
-                 model=None, log=None, extensions=None):
+    def __init__(self, algorithm, data_stream, model,
+                 log=None, extensions=None):
         if not log:
             log = TrainingLog()
         if not extensions:
@@ -139,7 +139,7 @@ class MainLoop(object):
             # similarly.
             if not self._model.get_objective() == self.algorithm.cost:
                 logger.warning("different costs for model and algorithm")
-            if not (set(self._model.get_params().values()) ==
+            if not (set(self._model.get_parameters()) ==
                     set(self.algorithm.params)):
                 logger.warning("different params for model and algorithm")
 
