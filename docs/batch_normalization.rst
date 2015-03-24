@@ -83,7 +83,7 @@ Try training the network for 10 epochs. The error rate should stay around 90%.
 ...                     mnist_test.num_examples, 500)),
 ...             prefix='test'),
 ...         Printing()])
->>> main_loop.run()
+>>> main_loop.run() # doctest: +SKIP
 
 Applying batch normalization
 ----------------------------
@@ -132,7 +132,7 @@ so their value is learned during training:
 >>> betas = [shared_floatx(
 ...               numpy.zeros(get_brick(var).output_dim),
 ...               name=var.name + '_beta')
-...           for var in variables]
+...          for var in variables]
 >>> for beta in betas:
 ...     add_role(beta, PARAMETER)
 
@@ -180,7 +180,7 @@ Let's see how this modified network does on MNIST:
 ...                     mnist_test.num_examples, 500)),
 ...             prefix='test'),
 ...         Printing()])
->>> main_loop.run()
+>>> main_loop.run() # doctest: +SKIP
 
 You should see the training and test error rates go below 3% in 10 epochs, which
 is an impressive improvement over the vanilla network!
