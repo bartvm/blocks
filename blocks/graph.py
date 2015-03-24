@@ -705,7 +705,7 @@ def apply_batch_normalization(computation_graph, variables, gammas,
     # Broadcast gamma and beta properly
     axes = pack(axis)
     mappings = [
-        dict([(axis, i) for i, axis in
+        dict([(axis_, i) for i, axis_ in
               enumerate(dim for dim in xrange(var.ndim) if dim not in axes)])
         for var in variables]
     broadcasted_dims = [
