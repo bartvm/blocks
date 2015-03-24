@@ -49,7 +49,7 @@ from six import add_metaclass
 
 from blocks.bricks import (MLP, Identity, Brick, Initializable, Sequence,
                            Feedforward, Linear, Tanh)
-from blocks.bricks.base import lazy, application
+from blocks.bricks.base import lazy, application, allocation_push
 from blocks.bricks.parallel import Parallel, Distribute
 from blocks.bricks.recurrent import recurrent, BaseRecurrent
 from blocks.utils import dict_union, dict_subset
@@ -105,7 +105,7 @@ class AbstractAttention(Brick):
     attended_dim : int
 
     """
-    @lazy
+    @lazy(allocation=['state_names', 'state_dims', 'attended_dim'])
     def __init__(self, state_names, state_dims, attended_dim, **kwargs):
         self.state_names = state_names
         self.state_dims = state_dims
@@ -303,7 +303,7 @@ class SequenceContentAttention(GenericSequenceAttention, Initializable):
        Machine Translation by Jointly Learning to Align and Translate.
 
     """
-    @lazy
+    @lazy(allocation=['match_dim'])
     def __init__(self, match_dim, state_transformer=None,
                  attended_transformer=None, energy_computer=None, **kwargs):
         super(SequenceContentAttention, self).__init__(**kwargs)
@@ -323,7 +323,8 @@ class SequenceContentAttention(GenericSequenceAttention, Initializable):
         self.children = [self.state_transformers, attended_transformer,
                          energy_computer]
 
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         self.state_transformers.input_dims = self.state_dims
         self.state_transformers.output_dims = [self.match_dim
                                                for name in self.state_names]
@@ -414,7 +415,7 @@ class SequenceContentAttention(GenericSequenceAttention, Initializable):
 
 class ShallowEnergyComputer(Sequence, Initializable, Feedforward):
     """A simple energy computer: first tanh, then weighted sum."""
-    @lazy
+    @lazy()
     def __init__(self, **kwargs):
         super(ShallowEnergyComputer, self).__init__(
             [Tanh().apply, MLP([Identity()]).apply], **kwargs)
@@ -566,7 +567,8 @@ class AttentionRecurrent(AbstractAttentionRecurrent, Initializable):
 
         self.children = [self.transition, self.attention, self.distribute]
 
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         self.attention.state_dims = self.transition.get_dims(
             self.attention.state_names)
         self.attention.attended_dim = self.get_dim(self.attended_name)

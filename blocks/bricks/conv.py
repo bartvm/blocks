@@ -2,7 +2,8 @@ from theano.tensor.nnet.conv import conv2d, ConvOp
 from theano.tensor.signal.downsample import max_pool_2d, DownsampleFactorMax
 
 from blocks.bricks import Initializable, Feedforward, Sequence
-from blocks.bricks.base import application, Brick, lazy
+from blocks.bricks.base import (application, Brick, lazy, allocation,
+                                initialization, allocation_push)
 from blocks.roles import add_role, FILTER, BIAS
 from blocks.utils import shared_floatx_nans
 
@@ -38,7 +39,7 @@ class Convolutional(Initializable):
         details. Defaults to 'valid'.
 
     """
-    @lazy
+    @lazy(allocation=['filter_size', 'num_filters', 'num_channels'])
     def __init__(self, filter_size, num_filters, num_channels, batch_size=None,
                  image_size=None, step=(1, 1), border_mode='valid', **kwargs):
         super(Convolutional, self).__init__(**kwargs)
@@ -51,24 +52,26 @@ class Convolutional(Initializable):
         self.step = step
         self.border_mode = border_mode
 
-    def _allocate(self):
+    @allocation
+    def allocate(self):
         W = shared_floatx_nans((self.num_filters, self.num_channels) +
                                self.filter_size, name='W')
         add_role(W, FILTER)
-        self.params.append(W)
+        self.parameters.append(W)
         self.add_auxiliary_variable(W.norm(2), name='W_norm')
         if self.use_bias:
             b = shared_floatx_nans(self.get_dim('output'), name='b')
             add_role(b, BIAS)
-            self.params.append(b)
+            self.parameters.append(b)
             self.add_auxiliary_variable(b.norm(2), name='b_norm')
 
-    def _initialize(self):
+    @initialization
+    def initialize(self):
         if self.use_bias:
-            W, b = self.params
+            W, b = self.parameters
             self.biases_init.initialize(b, self.rng)
         else:
-            W, = self.params
+            W, = self.parameters
         self.weights_init.initialize(W, self.rng)
 
     @application(inputs=['input_'], outputs=['output'])
@@ -94,9 +97,9 @@ class Convolutional(Initializable):
 
         """
         if self.use_bias:
-            W, b = self.params
+            W, b = self.parameters
         else:
-            W, = self.params
+            W, = self.parameters
 
         output = conv2d(
             input_, W,
@@ -137,7 +140,7 @@ class MaxPooling(Initializable, Feedforward):
         two dimensions will be used to calculate the output dimension.
 
     """
-    @lazy
+    @lazy(allocation=['pooling_size'])
     def __init__(self, pooling_size, step=None, input_dim=None, **kwargs):
         super(MaxPooling, self).__init__(**kwargs)
 
@@ -190,7 +193,7 @@ class ConvolutionalActivation(Sequence, Initializable):
     :class:`Convolutional` for the other parameters.
 
     """
-    @lazy
+    @lazy(allocation=['filter_size', 'num_filters', 'num_channels'])
     def __init__(self, activation, filter_size, num_filters, num_channels,
                  batch_size=None, image_size=None, step=(1, 1),
                  border_mode='valid', **kwargs):
@@ -208,7 +211,8 @@ class ConvolutionalActivation(Sequence, Initializable):
             application_methods=[self.convolution.apply, activation],
             **kwargs)
 
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         for attr in ['filter_size', 'num_filters', 'step', 'border_mode',
                      'batch_size', 'num_channels', 'image_size']:
             setattr(self.convolution, attr, getattr(self, attr))
@@ -241,7 +245,8 @@ class ConvolutionalLayer(Sequence, Initializable):
     Uses max pooling.
 
     """
-    @lazy
+    @lazy(allocation=['filter_size', 'num_filters', 'pooling_size',
+                      'num_channels'])
     def __init__(self, activation, filter_size, num_filters, pooling_size,
                  num_channels, conv_step=(1, 1), pooling_step=None,
                  batch_size=None, image_size=None, border_mode='valid',
@@ -264,12 +269,13 @@ class ConvolutionalLayer(Sequence, Initializable):
         self.border_mode = border_mode
         self.image_size = image_size
 
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         for attr in ['filter_size', 'num_filters', 'num_channels',
                      'batch_size', 'border_mode', 'image_size']:
             setattr(self.convolution, attr, getattr(self, attr))
         self.convolution.step = self.conv_step
-        self.convolution._push_allocation_config()
+        self.convolution.push_allocation_config()
         if self.image_size is not None:
             pooling_input_dim = self.convolution.get_dim('output')
         else:
@@ -318,7 +324,7 @@ class ConvolutionalSequence(Sequence, Initializable, Feedforward):
     layer by the :meth:`~.Brick.push_allocation_config` method.
 
     """
-    @lazy
+    @lazy(allocation=['num_channels'])
     def __init__(self, layers, num_channels, batch_size=None, image_size=None,
                  **kwargs):
         self.layers = layers
@@ -337,7 +343,8 @@ class ConvolutionalSequence(Sequence, Initializable, Feedforward):
             return self.layers[-1].get_dim(name)
         return super(ConvolutionalSequence, self).get_dim(name)
 
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         num_channels = self.num_channels
         image_size = self.image_size
         for layer in self.layers:
@@ -346,7 +353,7 @@ class ConvolutionalSequence(Sequence, Initializable, Feedforward):
             layer.batch_size = self.batch_size
 
             # Push input dimensions to children
-            layer._push_allocation_config()
+            layer.push_allocation_config()
 
             # Retrieve output dimensions
             # and set it for next layer

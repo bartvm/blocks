@@ -4,7 +4,7 @@ import copy
 from picklable_itertools.extras import equizip
 
 from blocks.bricks import Initializable, Linear
-from blocks.bricks.base import lazy, application
+from blocks.bricks.base import lazy, application, allocation_push
 from blocks.utils import pack
 
 
@@ -56,7 +56,7 @@ class Parallel(Initializable):
     See :class:`.Initializable` for initialization parameters.
 
     """
-    @lazy
+    @lazy(allocation=['input_dims', 'output_dims'])
     def __init__(self, input_names, input_dims, output_dims,
                  prototype=None, child_prefix=None, **kwargs):
         super(Parallel, self).__init__(**kwargs)
@@ -75,7 +75,8 @@ class Parallel(Initializable):
             self.children.append(copy.deepcopy(self.prototype))
             self.children[-1].name = "{}_{}".format(child_prefix, name)
 
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         for input_dim, output_dim, child in \
                 equizip(self.input_dims, self.output_dims, self.children):
             child.input_dim = input_dim
@@ -141,7 +142,7 @@ class Fork(Parallel):
     See :class:`.Initializable` for initialization parameters.
 
     """
-    @lazy
+    @lazy(allocation=['input_dim'])
     def __init__(self, output_names, input_dim,  prototype=None, **kwargs):
         self.output_names = output_names
         self.input_dim = input_dim
@@ -149,9 +150,10 @@ class Fork(Parallel):
         super(Fork, self).__init__(output_names, prototype=prototype,
                                    child_prefix="fork", **kwargs)
 
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         self.input_dims = [self.input_dim for name in self.output_names]
-        super(Fork, self)._push_allocation_config()
+        super(Fork, self).push_allocation_config()
 
     @application(inputs=['input_'])
     def apply(self, input_):
@@ -212,7 +214,7 @@ class Distribute(Fork):
     See :class:`.Initializable` for initialization parameters.
 
     """
-    @lazy
+    @lazy(allocation=['source_dim', 'target_dims'])
     def __init__(self, target_names, source_name, target_dims, source_dim,
                  prototype=None, **kwargs):
         self.target_names = target_names
@@ -224,10 +226,11 @@ class Distribute(Fork):
             output_names=target_names, output_dims=target_dims,
             input_dim=source_dim, prototype=prototype, **kwargs)
 
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         self.input_dim = self.source_dim
         self.output_dims = self.target_dims
-        super(Distribute, self)._push_allocation_config()
+        super(Distribute, self).push_allocation_config()
 
     @application
     def apply(self, **kwargs):
@@ -307,7 +310,7 @@ class Merge(Parallel):
     array([[ 11.,  11.]]...
 
     """
-    @lazy
+    @lazy(allocation=['input_dims', 'output_dim'])
     def __init__(self, input_names, input_dims, output_dim, **kwargs):
         self.output_dim = output_dim
         super(Merge, self).__init__(
@@ -322,6 +325,7 @@ class Merge(Parallel):
         # small number of outputs
         return sum(outputs)
 
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         self.output_dims = [self.output_dim for input_name in self.input_names]
-        super(Merge, self)._push_allocation_config()
+        super(Merge, self).push_allocation_config()

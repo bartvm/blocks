@@ -36,9 +36,9 @@ def test_main_loop_dump_manager():
 
         """
         W1 = (main_loop1.model.get_top_bricks()[0].linear_transformations[0]
-                              .params[0].get_value())
+                              .parameters[0].get_value())
         W2 = (main_loop2.model.get_top_bricks()[0].linear_transformations[0]
-                              .params[0].get_value())
+                              .parameters[0].get_value())
         assert numpy.all(W1 == W2)
         if check_log:
             assert sorted(list(main_loop1.log)) == sorted(list(main_loop2.log))

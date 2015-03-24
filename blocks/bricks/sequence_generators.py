@@ -5,7 +5,7 @@ from six import add_metaclass
 from theano import tensor
 
 from blocks.bricks import Initializable, Random, Bias
-from blocks.bricks.base import application, Brick, lazy
+from blocks.bricks.base import application, Brick, lazy, allocation_push
 from blocks.bricks.parallel import Fork, Distribute, Merge
 from blocks.bricks.lookup import LookupTable
 from blocks.bricks.recurrent import recurrent
@@ -94,7 +94,7 @@ class BaseSequenceGenerator(Initializable):
     See :class:`.Initializable` for initialization parameters.
 
     """
-    @lazy
+    @lazy()
     def __init__(self, readout, transition, fork, **kwargs):
         super(BaseSequenceGenerator, self).__init__(**kwargs)
         self.readout = readout
@@ -115,7 +115,8 @@ class BaseSequenceGenerator(Initializable):
     def _glimpse_names(self):
         return self.transition.take_glimpses.outputs
 
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         # Configure readout. That involves `get_dim` requests
         # to the transition. To make sure that it answers
         # correctly we should finish its configuration first.
@@ -367,7 +368,7 @@ class Readout(AbstractReadout, Initializable):
         change dimensions).
 
     """
-    @lazy
+    @lazy(allocation=['source_names', 'readout_dim'])
     def __init__(self, source_names, readout_dim, emitter=None,
                  feedback_brick=None, merge=None, merge_prototype=None,
                  post_merge=None, merged_dim=None, **kwargs):
@@ -394,7 +395,8 @@ class Readout(AbstractReadout, Initializable):
         self.children = [self.emitter, self.feedback_brick,
                          self.merge, self.post_merge]
 
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         self.emitter.readout_dim = self.get_dim('readouts')
         self.feedback_brick.output_dim = self.get_dim('outputs')
         self.merge.input_names = self.source_names
@@ -449,7 +451,7 @@ class TrivialEmitter(AbstractEmitter):
     By default :meth:`cost` always returns zero tensor.
 
     """
-    @lazy
+    @lazy(allocation=['readout_dim'])
     def __init__(self, readout_dim, **kwargs):
         super(TrivialEmitter, self).__init__(**kwargs)
         self.readout_dim = readout_dim
@@ -517,7 +519,7 @@ class SoftmaxEmitter(AbstractEmitter, Initializable, Random):
 
 class TrivialFeedback(AbstractFeedback):
     """A feedback brick for the case when readout are outputs."""
-    @lazy
+    @lazy(allocation=['output_dim'])
     def __init__(self, output_dim, **kwargs):
         super(TrivialFeedback, self).__init__(**kwargs)
         self.output_dim = output_dim
@@ -552,7 +554,8 @@ class LookupFeedback(AbstractFeedback, Initializable):
                                   weights_init=self.weights_init)
         self.children = [self.lookup]
 
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         self.lookup.length = self.num_outputs
         self.lookup.dim = self.feedback_dim
 

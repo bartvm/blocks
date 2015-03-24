@@ -1,5 +1,6 @@
 """The interface of bricks and some simple implementations."""
 import logging
+from abc import ABCMeta
 
 import numpy
 from six import add_metaclass
@@ -9,7 +10,9 @@ from toolz import interleave
 from picklable_itertools.extras import equizip
 
 from blocks import config
-from blocks.bricks.base import application, _Brick, Brick, lazy
+from blocks.bricks.base import (application, Brick, lazy, allocation,
+                                initialization, allocation_push,
+                                initialization_push)
 from blocks.roles import add_role, WEIGHT, BIAS
 from blocks.utils import pack, shared_floatx_nans
 
@@ -99,7 +102,7 @@ class Initializable(Brick):
     has_biases = True
     seed_rng = numpy.random.RandomState(config.default_seed)
 
-    @lazy
+    @lazy(initialization=['weights_init'])
     def __init__(self, weights_init, biases_init=None, use_bias=True,
                  seed=None, **kwargs):
         super(Initializable, self).__init__(**kwargs)
@@ -138,7 +141,8 @@ class Initializable(Brick):
     def rng(self, rng):
         self._rng = rng
 
-    def _push_initialization_config(self):
+    @initialization_push
+    def push_initialization_config(self):
         for child in self.children:
             if isinstance(child, Initializable):
                 child.rng = self.rng
@@ -200,7 +204,7 @@ class Linear(Initializable, Feedforward):
     .. math:: f(\mathbf{x}) = \mathbf{W}\mathbf{x} + \mathbf{b}
 
     """
-    @lazy
+    @lazy(allocation=['input_dim', 'output_dim'])
     def __init__(self, input_dim, output_dim, **kwargs):
         super(Linear, self).__init__(**kwargs)
         self.input_dim = input_dim
@@ -208,29 +212,31 @@ class Linear(Initializable, Feedforward):
 
     @property
     def W(self):
-        return self.params[0]
+        return self.parameters[0]
 
     @property
     def b(self):
-        return self.params[1]
+        return self.parameters[1]
 
-    def _allocate(self):
+    @allocation
+    def allocate(self):
         W = shared_floatx_nans((self.input_dim, self.output_dim), name='W')
         add_role(W, WEIGHT)
-        self.params.append(W)
+        self.parameters.append(W)
         self.add_auxiliary_variable(W.norm(2), name='W_norm')
         if self.use_bias:
             b = shared_floatx_nans((self.output_dim,), name='b')
             add_role(b, BIAS)
-            self.params.append(b)
+            self.parameters.append(b)
             self.add_auxiliary_variable(b.norm(2), name='b_norm')
 
-    def _initialize(self):
+    @initialization
+    def initialize(self):
         if self.use_bias:
-            W, b = self.params
+            W, b = self.parameters
             self.biases_init.initialize(b, self.rng)
         else:
-            W, = self.params
+            W, = self.parameters
         self.weights_init.initialize(W, self.rng)
 
     @application(inputs=['input_'], outputs=['output'])
@@ -249,9 +255,9 @@ class Linear(Initializable, Feedforward):
 
         """
         if self.use_bias:
-            W, b = self.params
+            W, b = self.parameters
         else:
-            W, = self.params
+            W, = self.parameters
         output = tensor.dot(input_, W)
         if self.use_bias:
             output += b
@@ -267,18 +273,20 @@ class Linear(Initializable, Feedforward):
 
 class Bias(Feedforward, Initializable):
     """Add a bias (i.e. sum with a vector)."""
-    @lazy
+    @lazy(allocation=['dim'])
     def __init__(self, dim, **kwargs):
         super(Bias, self).__init__(**kwargs)
         self.dim = dim
 
-    def _allocate(self):
+    @allocation
+    def allocate(self):
         b = shared_floatx_nans((self.output_dim,), name='b')
         add_role(b, BIAS)
-        self.params.append(b)
+        self.parameters.append(b)
 
-    def _initialize(self):
-        b, = self.params
+    @initialization
+    def initialize(self):
+        b, = self.parameters
         self.biases_init.initialize(b, self.rng)
 
     @application(inputs=['input_'], outputs=['output'])
@@ -296,7 +304,7 @@ class Bias(Feedforward, Initializable):
             The transformed input plus optional bias
 
         """
-        b, = self.params
+        b, = self.parameters
         return input_ + b
 
     def get_dim(self, name):
@@ -334,7 +342,7 @@ class Maxout(Brick):
     for each output dimension the result with the highest value.
 
     """
-    @lazy
+    @lazy(allocation=['num_pieces'])
     def __init__(self, num_pieces, **kwargs):
         super(Maxout, self).__init__(**kwargs)
         self.num_pieces = num_pieces
@@ -384,7 +392,7 @@ class LinearMaxout(Initializable, Feedforward):
     See :class:`Initializable` for initialization parameters.
 
     """
-    @lazy
+    @lazy(allocation=['input_dim', 'output_dim', 'num_pieces'])
     def __init__(self, input_dim, output_dim, num_pieces, **kwargs):
         super(LinearMaxout, self).__init__(**kwargs)
         self.linear = Linear()
@@ -404,7 +412,8 @@ class LinearMaxout(Initializable, Feedforward):
     def input_dim(self, value):
         self.linear.input_dim = value
 
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         self.linear.output_dim = self.output_dim * self.num_pieces
         self.maxout.num_pieces = self.num_pieces
 
@@ -428,7 +437,7 @@ class LinearMaxout(Initializable, Feedforward):
         return output
 
 
-class ActivationDocumentation(_Brick):
+class ActivationDocumentation(ABCMeta):
     """Dynamically adds documentation to activations.
 
     Notes
@@ -630,7 +639,7 @@ class MLP(Sequence, Initializable, Feedforward):
     >>> mlp.initialize()
 
     """
-    @lazy
+    @lazy(allocation=['dims'])
     def __init__(self, activations, dims, **kwargs):
         self.activations = activations
 
@@ -666,7 +675,8 @@ class MLP(Sequence, Initializable, Feedforward):
     def output_dim(self, value):
         self.dims[-1] = value
 
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         if not len(self.dims) - 1 == len(self.linear_transformations):
             raise ValueError
         for input_dim, output_dim, layer in \

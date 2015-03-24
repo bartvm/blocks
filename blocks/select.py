@@ -171,7 +171,7 @@ class Selector(object):
             result = [(Path([Path.BrickName(brick.name),
                              Path.ParamName(param.name)]),
                        param)
-                      for param in brick.params
+                      for param in brick.parameters
                       if not param_name or param.name == param_name]
             result = OrderedDict(result)
             for child in brick.children:

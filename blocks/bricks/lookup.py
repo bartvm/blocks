@@ -1,6 +1,6 @@
 """Introduces Lookup brick."""
 from blocks.bricks import Initializable
-from blocks.bricks.base import application, lazy
+from blocks.bricks.base import application, lazy, allocation, initialization
 from blocks.utils import check_theano_variable, shared_floatx_nans
 
 
@@ -22,7 +22,7 @@ class LookupTable(Initializable):
     """
     has_bias = False
 
-    @lazy
+    @lazy(allocation=['length', 'dim'])
     def __init__(self, length, dim, **kwargs):
         super(LookupTable, self).__init__(**kwargs)
         self.length = length
@@ -30,13 +30,15 @@ class LookupTable(Initializable):
 
     @property
     def W(self):
-        return self.params[0]
+        return self.parameters[0]
 
-    def _allocate(self):
-        self.params.append(shared_floatx_nans((self.length, self.dim),
-                           name='W'))
+    @allocation
+    def allocate(self):
+        self.parameters.append(shared_floatx_nans((self.length, self.dim),
+                               name='W'))
 
-    def _initialize(self):
+    @initialization
+    def initialize(self):
         self.weights_init.initialize(self.W, self.rng)
 
     @application

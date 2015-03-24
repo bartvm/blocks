@@ -9,7 +9,8 @@ import theano
 from theano import tensor, Variable
 
 from blocks.bricks import Initializable, Sigmoid, Tanh
-from blocks.bricks.base import Application, application, Brick, lazy
+from blocks.bricks.base import (Application, application, Brick, lazy,
+                                allocation, initialization)
 from blocks.initialization import NdarrayInitialization
 from blocks.roles import add_role, WEIGHT, BIAS
 from blocks.utils import (pack, shared_floatx_nans, dict_union, dict_subset,
@@ -252,7 +253,7 @@ class SimpleRecurrent(BaseRecurrent, Initializable):
     See :class:`.Initializable` for initialization parameters.
 
     """
-    @lazy
+    @lazy(allocation=['dim'])
     def __init__(self, dim, activation, **kwargs):
         super(SimpleRecurrent, self).__init__(**kwargs)
         self.dim = dim
@@ -260,7 +261,7 @@ class SimpleRecurrent(BaseRecurrent, Initializable):
 
     @property
     def W(self):
-        return self.params[0]
+        return self.parameters[0]
 
     def get_dim(self, name):
         if name == 'mask':
@@ -270,10 +271,13 @@ class SimpleRecurrent(BaseRecurrent, Initializable):
             return self.dim
         return super(SimpleRecurrent, self).get_dim(name)
 
-    def _allocate(self):
-        self.params.append(shared_floatx_nans((self.dim, self.dim), name="W"))
+    @allocation
+    def allocate(self):
+        self.parameters.append(shared_floatx_nans((self.dim, self.dim),
+                                                  name="W"))
 
-    def _initialize(self):
+    @initialization
+    def initialize(self):
         self.weights_init.initialize(self.W, self.rng)
 
     @recurrent(sequences=['inputs', 'mask'], states=['states'],
@@ -338,7 +342,7 @@ class LSTM(BaseRecurrent, Initializable):
     See :class:`.Initializable` for initialization parameters.
 
     """
-    @lazy
+    @lazy(allocation=['dim'])
     def __init__(self, dim, activation=None, **kwargs):
         super(LSTM, self).__init__(**kwargs)
         self.dim = dim
@@ -356,7 +360,8 @@ class LSTM(BaseRecurrent, Initializable):
             return 0
         return super(LSTM, self).get_dim(name)
 
-    def _allocate(self):
+    @allocation
+    def allocate(self):
         self.W_state = shared_floatx_nans((self.dim, 4*self.dim),
                                           name='W_state')
         self.W_cell_to_in = shared_floatx_nans((self.dim,),
@@ -372,12 +377,14 @@ class LSTM(BaseRecurrent, Initializable):
         add_role(self.W_cell_to_out, WEIGHT)
         add_role(self.biases, BIAS)
 
-        self.params = [self.W_state, self.W_cell_to_in, self.W_cell_to_forget,
-                       self.W_cell_to_out, self.biases]
+        self.parameters = [self.W_state, self.W_cell_to_in,
+                           self.W_cell_to_forget, self.W_cell_to_out,
+                           self.biases]
 
-    def _initialize(self):
+    @initialization
+    def initialize(self):
         self.biases_init.initialize(self.biases, self.rng)
-        for w in self.params[:-1]:
+        for w in self.parameters[:-1]:
             self.weights_init.initialize(w, self.rng)
 
     @recurrent(sequences=['inputs', 'mask'], states=['states', 'cells'],
@@ -464,7 +471,7 @@ class GatedRecurrent(BaseRecurrent, Initializable):
         for Statistical Machine Translation*, EMNLP (2014), pp. 1724-1734.
 
     """
-    @lazy
+    @lazy(allocation=['dim'])
     def __init__(self, dim, activation=None, gate_activation=None,
                  use_update_gate=True, use_reset_gate=True, **kwargs):
         super(GatedRecurrent, self).__init__(**kwargs)
@@ -483,15 +490,15 @@ class GatedRecurrent(BaseRecurrent, Initializable):
 
     @property
     def state_to_state(self):
-        return self.params[0]
+        return self.parameters[0]
 
     @property
     def state_to_update(self):
-        return self.params[1]
+        return self.parameters[1]
 
     @property
     def state_to_reset(self):
-        return self.params[2]
+        return self.parameters[2]
 
     def get_dim(self, name):
         if name == 'mask':
@@ -500,17 +507,19 @@ class GatedRecurrent(BaseRecurrent, Initializable):
             return self.dim
         return super(GatedRecurrent, self).get_dim(name)
 
-    def _allocate(self):
+    @allocation
+    def allocate(self):
         def new_param(name):
             return shared_floatx_nans((self.dim, self.dim), name=name)
 
-        self.params.append(new_param('state_to_state'))
-        self.params.append(new_param('state_to_update')
-                           if self.use_update_gate else None)
-        self.params.append(new_param('state_to_reset')
-                           if self.use_reset_gate else None)
+        self.parameters.append(new_param('state_to_state'))
+        self.parameters.append(new_param('state_to_update')
+                               if self.use_update_gate else None)
+        self.parameters.append(new_param('state_to_reset')
+                               if self.use_reset_gate else None)
 
-    def _initialize(self):
+    @initialization
+    def initialize(self):
         self.weights_init.initialize(self.state_to_state, self.rng)
         if self.use_update_gate:
             self.weights_init.initialize(self.state_to_update, self.rng)
@@ -605,7 +614,7 @@ class Bidirectional(Initializable):
     """
     has_bias = False
 
-    @lazy
+    @lazy()
     def __init__(self, prototype, **kwargs):
         super(Bidirectional, self).__init__(**kwargs)
         self.prototype = prototype

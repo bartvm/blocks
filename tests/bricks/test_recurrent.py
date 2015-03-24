@@ -264,10 +264,10 @@ class TestBidirectional(unittest.TestCase):
                                       activation=Tanh(), seed=1)
         self.bidir.allocate()
         self.simple.initialize()
-        self.bidir.children[0].params[0].set_value(
-            self.simple.params[0].get_value())
-        self.bidir.children[1].params[0].set_value(
-            self.simple.params[0].get_value())
+        self.bidir.children[0].parameters[0].set_value(
+            self.simple.parameters[0].get_value())
+        self.bidir.children[1].parameters[0].set_value(
+            self.simple.parameters[0].get_value())
         self.x_val = 0.1 * numpy.asarray(
             list(itertools.permutations(range(4))),
             dtype=floatX)

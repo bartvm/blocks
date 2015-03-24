@@ -6,7 +6,8 @@ from theano import tensor
 
 from blocks.bricks import (Identity, Linear, Maxout, LinearMaxout, MLP, Tanh,
                            Sequence, Random)
-from blocks.bricks.base import Application, application, Brick, lazy
+from blocks.bricks.base import (Application, application, Brick, lazy,
+                                allocation_push, allocation, initialization)
 from blocks.bricks.parallel import Parallel, Fork
 from blocks.filter import get_application_call, get_brick
 from blocks.initialization import Constant
@@ -14,7 +15,7 @@ from blocks.utils import shared_floatx
 
 
 class TestBrick(Brick):
-    @lazy
+    @lazy(allocation=['config'])
     def __init__(self, config, **kwargs):
         super(TestBrick, self).__init__(**kwargs)
         self.config = config
@@ -74,21 +75,25 @@ class ParentBrick(Brick):
 
 
 class BrokenAllocateBrick(Brick):
-    def _push_allocation_config(self):
+    @allocation_push
+    def push_allocation_config(self):
         raise AttributeError
 
-    def _allocate(self):
+    @allocation
+    def allocate(self):
         raise AttributeError
 
 
 class BrokenInitializeBrick(Brick):
-    def _initialize(self):
+    @initialization
+    def initialize(self):
         raise AttributeError
 
 
 class ParameterBrick(Brick):
-    def _allocate(self):
-        self.params.append(
+    @allocation
+    def allocate(self):
+        self.parameters.append(
             theano.shared(numpy.zeros((10, 10), dtype=theano.config.floatX)))
 
 
@@ -139,11 +144,11 @@ def test_allocate():
     parameter_brick = ParameterBrick()
     assert not hasattr(parameter_brick, 'params')
     parameter_brick.allocate()
-    assert len(parameter_brick.params) == 1
-    parameter_brick.params[0].set_value(
+    assert len(parameter_brick.parameters) == 1
+    parameter_brick.parameters[0].set_value(
         numpy.ones((10, 10), dtype=theano.config.floatX))
     parameter_brick.allocate()
-    assert numpy.all(parameter_brick.params[0].get_value() == 0)
+    assert numpy.all(parameter_brick.parameters[0].get_value() == 0)
 
     broken_parent_brick = ParentBrick(BrokenAllocateBrick())
     assert_raises(AttributeError, broken_parent_brick.allocate)
@@ -468,8 +473,8 @@ def test_linear_nan_allocation():
                     biases_init=Constant(1))
     linear.apply(x)
     w1 = numpy.nan * numpy.zeros((16, 8))
-    w2 = linear.params[0].get_value()
+    w2 = linear.parameters[0].get_value()
     b1 = numpy.nan * numpy.zeros(8)
-    b2 = linear.params[1].get_value()
+    b2 = linear.parameters[1].get_value()
     numpy.testing.assert_equal(w1, w2)
     numpy.testing.assert_equal(b1, b2)

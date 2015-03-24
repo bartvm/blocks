@@ -18,8 +18,8 @@ def test_variable_filter():
     y = brick2.apply(h2)
     cg = ComputationGraph(y)
 
-    parameters = [brick1.W, brick1.b, brick2.params[0]]
-    bias = [brick1.b, brick2.params[0]]
+    parameters = [brick1.W, brick1.b, brick2.parameters[0]]
+    bias = [brick1.b, brick2.parameters[0]]
     brick1_bias = [brick1.b]
 
     # Testing filtering by role

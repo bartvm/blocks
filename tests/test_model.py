@@ -36,8 +36,10 @@ def test_model():
         '/mlp/linear_0.W': 2 * numpy.ones((10, 10), dtype=floatX),
         '/mlp/linear_0.b': 3 * numpy.ones(10, dtype=floatX)}
     model3.set_param_values(param_values)
-    assert numpy.all(mlp3.linear_transformations[0].params[0].get_value() == 2)
-    assert numpy.all(mlp3.linear_transformations[0].params[1].get_value() == 3)
+    assert numpy.all(
+        mlp3.linear_transformations[0].parameters[0].get_value() == 2)
+    assert numpy.all(
+        mlp3.linear_transformations[0].parameters[1].get_value() == 3)
     got_param_values = model3.get_param_values()
     assert len(got_param_values) == len(param_values)
     for name, value in param_values.items():

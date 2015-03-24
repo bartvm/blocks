@@ -29,13 +29,13 @@ def test_selector():
         def __init__(self, children, **kwargs):
             super(MockBrickTop, self).__init__(**kwargs)
             self.children = children
-            self.params = []
+            self.parameters = []
 
     class MockBrickBottom(Brick):
 
         def __init__(self, **kwargs):
             super(MockBrickBottom, self).__init__(**kwargs)
-            self.params = [theano.shared(0, "V"), theano.shared(0, "W")]
+            self.parameters = [theano.shared(0, "V"), theano.shared(0, "W")]
 
     b1 = MockBrickBottom(name="b1")
     b2 = MockBrickBottom(name="b2")
@@ -56,14 +56,14 @@ def test_selector():
     assert s21.bricks[0] == b2
     assert len(s21.bricks) == 1
 
-    assert s2.select("/t2/b2.V")[0] == b2.params[0]
+    assert s2.select("/t2/b2.V")[0] == b2.parameters[0]
 
     params = list(s1.get_params().items())
     assert params[0][0] == "/t1/b1.V"
-    assert params[0][1] == b1.params[0]
+    assert params[0][1] == b1.parameters[0]
     assert params[1][0] == "/t1/b1.W"
-    assert params[1][1] == b1.params[1]
+    assert params[1][1] == b1.parameters[1]
     assert params[2][0] == "/t1/b2.V"
-    assert params[2][1] == b2.params[0]
+    assert params[2][1] == b2.parameters[0]
     assert params[3][0] == "/t1/b2.W"
-    assert params[3][1] == b2.params[1]
+    assert params[3][1] == b2.parameters[1]

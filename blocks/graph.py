@@ -368,7 +368,8 @@ class Annotation(object):
         >>> from blocks.roles import COST
         >>> from blocks.utils import shared_floatx_nans
         >>> class Foo(Brick):
-        ...     def _allocate(self):
+        ...     @allocation
+        ...     def allocate(self):
         ...         W = shared_floatx_nans((10, 10))
         ...         self.add_auxiliary_variable(W.mean(), name='mean_W')
         ...     @application
