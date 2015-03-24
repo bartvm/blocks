@@ -637,7 +637,8 @@ def apply_dropout(computation_graph, variables, drop_prob, rng=None,
 
 
 def apply_batch_normalization(computation_graph, variables, gammas,
-                              betas, axis=0, epsilon=1e-7):
+                              betas, axis=0, epsilon=1e-7,
+                              use_population=False):
     """Returns a graph to variables in a computational graph.
 
     Parameters
@@ -654,6 +655,11 @@ def apply_batch_normalization(computation_graph, variables, gammas,
         Batch axis, or batch axes. Defaults to 0.
     epsilon : float, optional
         Stabilization constant. Defaults to 1E-7.
+    use_population : bool, optional
+        If `True`, use population statistics instead of batch statistics.
+        In that case, `gammas` and `betas` represent the population
+        statistics and a variable `var` is simply replaced with
+        `gamma * var + beta`. Defaults to `False`.
 
     Notes
     -----
@@ -719,10 +725,14 @@ def apply_batch_normalization(computation_graph, variables, gammas,
 
     means = [var.mean(axis=axes, keepdims=True) for var in variables]
     variances = [var.var(axis=axes, keepdims=True) for var in variables]
-    replacements = [
-        (var, gamma * (var - mu) / tensor.sqrt(sigma_sqr + epsilon) + beta)
-        for var, mu, sigma_sqr, gamma, beta in
-        zip(variables, means, variances, gammas, betas)]
+    if use_population:
+        replacements = [(var, gamma * var + beta) for var, gamma, beta in
+                        zip(variables, gammas, betas)]
+    else:
+        replacements = [
+            (var, gamma * (var - mu) / tensor.sqrt(sigma_sqr + epsilon) + beta)
+            for var, mu, sigma_sqr, gamma, beta in
+            zip(variables, means, variances, gammas, betas)]
     for variable, replacement in replacements:
         add_role(replacement, BATCH_NORMALIZED)
         replacement.tag.replacement_of = variable
