@@ -189,6 +189,19 @@ In addition to ``epsilon``, ``apply_batch_normalization`` accepts two optional
 arguments (``use_population`` and ``axis``) which we will cover in detail in
 the next two sections.
 
+.. warning::
+
+    You may wonder why ``error_rate`` was included as an output to the
+    computation graph. The reason is that in replacing variables in the graph,
+    ``apply_batch_normalization`` creates a **new** computation graph using
+    the original graph. The original ``cost`` and ``error_rate`` variables
+    are still a function of the **non-normalized** variables, whereas the
+    returned computation graph has outputs that are function of the
+    **normalized** variables.
+
+    You should always be careful in manipulating variables that were created
+    **before** batch normalization was applied.
+
 Test-time batch normalization
 -----------------------------
 
