@@ -43,6 +43,7 @@ In-depth
    :maxdepth: 1
 
    rnn
+   batch_normalization
    configuration
    serialization
    api/index.rst
