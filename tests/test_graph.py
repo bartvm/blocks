@@ -190,6 +190,21 @@ def test_apply_batch_normalization():
         atol=1e-5)
 
 
+def test_apply_batch_normalization_use_population():
+    x = tensor.matrix()
+    y = 2 * x
+
+    cg = ComputationGraph([y])
+    cg_bn = apply_batch_normalization(
+        cg, [x], [numpy.array([2, 3]).astype(floatX)],
+        [numpy.array([-1, -2]).astype(floatX)], use_population=True)
+    assert_allclose(
+        cg_bn.outputs[0].eval(
+            {x: numpy.arange(4).reshape((2, 2)).astype(floatX)}),
+        [[-2., 2.], [6., 14.]],
+        atol=1e-5)
+
+
 def test_apply_batch_normalization_conv():
     x = tensor.tensor4()
     y = 2 * x
