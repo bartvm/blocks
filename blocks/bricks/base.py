@@ -828,7 +828,7 @@ def lazy(func):
 class ApplicationCall(Annotation):
     """A link between the variable tags and bricks.
 
-    The application call can be used to attach to an apply call auxiliary
+    The application call can be used to attach, to an apply call, auxiliary
     variables (e.g. monitors or regularizers) that do not form part of the
     main computation graph.
 
@@ -836,15 +836,13 @@ class ApplicationCall(Annotation):
     application method and can be accessed by specifying an
     application_call argument.
 
-    Also see :class:`.Annotation`.
-
     Parameters
     ----------
     brick : :class:`Brick` instance
-        The brick whose application is called
+        The brick whose application is called.
     application : :class:`BoundApplication` instance
-        The bound application (i.e. belong to a brick instance) object
-        being called
+        The bound application (i.e. belonging to a brick instance) object
+        being called.
 
     Examples
     --------
@@ -858,6 +856,10 @@ class ApplicationCall(Annotation):
     >>> from blocks.filter import get_application_call
     >>> get_application_call(y) # doctest: +ELLIPSIS
     <blocks.bricks.base.ApplicationCall object at ...>
+
+    See Also
+    --------
+    :class:`.Annotation`
 
     """
     def __init__(self, brick, application):
