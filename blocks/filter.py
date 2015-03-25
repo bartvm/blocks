@@ -58,7 +58,7 @@ class VariableFilter(object):
     name_regex : str, optional
         A regular expression for the variable name. The Blocks name (i.e.
         `x.tag.name`) is used.
-    application : :class:`.Application` instance
+    applications : :class:`.Application` instance
         or list of :class:`.Application` instance, optional
         Matches a variable that was produced by the application given.
 
@@ -93,7 +93,7 @@ class VariableFilter(object):
 
     """
     def __init__(self, roles=None, bricks=None, each_role=False, name=None,
-                 name_regex=None, application=None):
+                 name_regex=None, applications=None):
         self.roles = roles
         if isinstance(bricks, Brick):
             self.bricks = [bricks]
@@ -102,10 +102,10 @@ class VariableFilter(object):
         self.each_role = each_role
         self.name = name
         self.name_regex = name_regex
-        if isinstance(application, BoundApplication):
-            self.application = [application]
+        if isinstance(applications, BoundApplication):
+            self.applications = [applications]
         else:
-            self.application = application
+            self.applications = applications
 
     def __call__(self, variables):
         """Filter the given variables.
@@ -141,9 +141,9 @@ class VariableFilter(object):
             variables = [var for var in variables
                          if hasattr(var.tag, 'name') and
                          re.match(self.name_regex, var.tag.name)]
-        if self.application:
+        if self.applications:
             variables = [var for var in variables
                          if get_application_call(var) and
                          get_application_call(var).application in
-                         self.application]
+                         self.applications]
         return variables
