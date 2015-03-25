@@ -60,6 +60,6 @@ def test_variable_filter():
     variables = [cg.variables[1], cg.variables[8]]
     assert variables == appli_filter(cg.variables)
 
-    # Testing filtering by applications
+    # Testing filtering by application
     appli_filter_list = VariableFilter(application=[brick1.apply])
     assert variables == appli_filter_list(cg.variables)

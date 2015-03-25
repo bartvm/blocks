@@ -102,7 +102,7 @@ class VariableFilter(object):
         self.each_role = each_role
         self.name = name
         self.name_regex = name_regex
-        if isinstance(applications, BoundApplication):
+        if isinstance(application, BoundApplication):
             self.application = [application]
         else:
             self.application = application
