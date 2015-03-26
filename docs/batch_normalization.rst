@@ -225,7 +225,6 @@ it takes the value 0.
 
 Let's build a convolutional version of our hard-to-train MLP:
 
->>> from blocks.bricks import MLP, Sigmoid, Softmax
 >>> from blocks.bricks.conv import ConvolutionalSequence, ConvolutionalLayer
 >>> vanilla_convnet = ConvolutionalSequence(
 ...     layers=[
