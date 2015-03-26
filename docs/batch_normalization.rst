@@ -212,6 +212,187 @@ Test-time batch normalization
 Batch normalization for convnets
 --------------------------------
 
-.. todo::
+Batch normalization is also applicable to convolutional nets. The authors of the
+paper suggest to apply batch normalization after the convolution but before
+the non-linearity is applied. In order to maintain the convolutional property,
+they suggest normalizing across all pixels of a feature map in addition to the
+batch axis.
 
-    Talk about ``axis``
+This is accomplished by passing an ``axis`` argument to
+``apply_batch_normalization``, which defines which axes are part of the
+"mini-batch" across which batch normalization will be performed. By default,
+it takes the value 0.
+
+Let's build a convolutional version of our hard-to-train MLP:
+
+>>> from blocks.bricks import MLP, Sigmoid, Softmax
+>>> from blocks.bricks.conv import ConvolutionalSequence, ConvolutionalLayer
+>>> vanilla_convnet = ConvolutionalSequence(
+...     layers=[
+...         ConvolutionalLayer(
+...             filter_size=(3, 3), num_filters=5, pooling_size=(2, 2),
+...             activation=Sigmoid().apply),
+...         ConvolutionalLayer(
+...             filter_size=(3, 3), num_filters=22, pooling_size=(2, 2),
+...             activation=Sigmoid().apply),
+...         ConvolutionalLayer(
+...             filter_size=(3, 3), num_filters=196, pooling_size=(2, 2),
+...             activation=Sigmoid().apply)],
+...     num_channels=1, batch_size=100, image_size=(28, 28),
+...     weights_init=IsotropicGaussian(0.01), biases_init=Constant(0))
+>>> vanilla_convnet.initialize()
+>>> vanilla_mlp = MLP(
+...     [Sigmoid(), Softmax()],
+...     [numpy.prod(vanilla_convnet.layers[-1].get_dim('output')), 500, 10],
+...     weights_init=IsotropicGaussian(0.01), biases_init=Constant(0))
+>>> vanilla_mlp.initialize()
+>>> conv_x = x.reshape((x.shape[0], 1, 28, 28))
+>>> probs = vanilla_mlp.apply(vanilla_convnet.apply(conv_x).flatten(ndim=2))
+>>> cost = CategoricalCrossEntropy().apply(y.flatten(), probs)
+>>> cost.name = 'cost'
+>>> error_rate = MisclassificationRate().apply(y.flatten(), probs)
+>>> error_rate.name = 'error_rate'
+
+We created a convnet with three layers. Each layer has 3-by-3 filters and a
+2-by-2 tiled pooling is applied. The number of filters has been chosen to
+maintain roughly 784 units at each layer. The output of the convnet is passed
+through an MLP with one 500-units sigmoidal hidden layer.
+
+Training this network for 10 epochs fails to learn, just like before:
+
+>>> cg = ComputationGraph([cost])
+>>> algorithm = GradientDescent(
+...     cost=cost, params=cg.parameters, step_rule=Scale(0.01))
+>>> main_loop = MainLoop(
+...     algorithm,
+...     DataStream(
+...         mnist_train,
+...         iteration_scheme=SequentialScheme(mnist_train.num_examples, 100)),
+...     extensions=[
+...         FinishAfter(after_n_epochs=10),
+...         DataStreamMonitoring(
+...             [cost, error_rate],
+...             DataStream(
+...                 mnist_train,
+...                 iteration_scheme=SequentialScheme(
+...                     mnist_train.num_examples, 100)),
+...             prefix='train'),
+...         DataStreamMonitoring(
+...             [cost, error_rate],
+...             DataStream(
+...                 mnist_test,
+...                 iteration_scheme=SequentialScheme(
+...                     mnist_test.num_examples, 100)),
+...             prefix='test'),
+...         Printing()])
+>>> main_loop.run() # doctest: +SKIP
+
+Let's now apply batch normalization to this network. As before, we'll remove
+biases because :math:`\beta` will act as a bias for our units.
+
+>>> convnet = ConvolutionalSequence(
+...     layers=[
+...         ConvolutionalLayer(
+...             filter_size=(3, 3), num_filters=5, pooling_size=(2, 2),
+...             activation=Sigmoid().apply),
+...         ConvolutionalLayer(
+...             filter_size=(3, 3), num_filters=22, pooling_size=(2, 2),
+...             activation=Sigmoid().apply),
+...         ConvolutionalLayer(
+...             filter_size=(3, 3), num_filters=196, pooling_size=(2, 2),
+...             activation=Sigmoid().apply)],
+...     num_channels=1, batch_size=100, image_size=(28, 28),
+...     weights_init=IsotropicGaussian(0.01))
+>>> for layer in convnet.layers:
+...     layer.convolution.convolution.use_bias = False
+>>> convnet.initialize()
+>>> mlp = MLP(
+...     [Sigmoid(), Softmax()],
+...     [numpy.prod(convnet.layers[-1].get_dim('output')), 500, 10],
+...     weights_init=IsotropicGaussian(0.01), use_bias=False)
+>>> mlp.initialize()
+>>> probs = mlp.apply(convnet.apply(conv_x).flatten(ndim=2))
+>>> cost = CategoricalCrossEntropy().apply(y.flatten(), probs)
+>>> error_rate = MisclassificationRate().apply(y.flatten(), probs)
+
+First, we apply batch normalization on the convolutional part of the network.
+
+>>> cg = ComputationGraph([cost, error_rate])
+>>> variables = VariableFilter(
+...     bricks=[layer.convolution.convolution for layer in convnet.layers],
+...     roles=[OUTPUT])(cg.variables)
+>>> gammas = [shared_floatx(
+...               numpy.ones(get_brick(var).num_filters),
+...               name=var.name + '_gamma')
+...           for var in variables]
+>>> for gamma in gammas:
+...     add_role(gamma, PARAMETER)
+>>> betas = [shared_floatx(
+...               numpy.zeros(get_brick(var).num_filters),
+...               name=var.name + '_beta')
+...          for var in variables]
+>>> for beta in betas:
+...     add_role(beta, PARAMETER)
+>>> cg = apply_batch_normalization(
+...     cg, variables, gammas, betas, axis=[0, 2, 3], epsilon=1e-5)
+
+By passing ``axis=[0, 2, 3]``, we're telling ``apply_batch_normalization`` to
+normalize across the batch (0), width (2) and height (3) axes.
+
+Notice how the dimensionality of :math:`\gamma` and :math:`\beta` is the number
+of filters; this is because we're normalizing across the batch, width and height
+axes, which means that filter maps are now scaled and shifted by a single scalar
+value.
+
+We then apply batch normalization on the fully-connected part of the network,
+just like before.
+
+>>> variables = VariableFilter(
+...     bricks=mlp.linear_transformations, roles=[OUTPUT])(cg.variables)
+>>> gammas = [shared_floatx(
+...               numpy.ones(get_brick(var).output_dim),
+...               name=var.name + '_gamma')
+...           for var in variables]
+>>> for gamma in gammas:
+...     add_role(gamma, PARAMETER)
+>>> betas = [shared_floatx(
+...               numpy.zeros(get_brick(var).output_dim),
+...               name=var.name + '_beta')
+...          for var in variables]
+>>> for beta in betas:
+...     add_role(beta, PARAMETER)
+>>> cg = apply_batch_normalization(
+...     cg, variables, gammas, betas, axis=0, epsilon=1e-5)
+
+In this case, passing the ``axis`` argument is optional, since it already
+defaults to 0.
+
+Training the batch-normalized convnet does *much* better than the original one.
+
+>>> algorithm = GradientDescent(
+...     cost=cg.outputs[0], params=cg.parameters, step_rule=Scale(0.01))
+>>> main_loop = MainLoop(
+...     algorithm,
+...     DataStream(
+...         mnist_train,
+...         iteration_scheme=SequentialScheme(mnist_train.num_examples, 100)),
+...     extensions=[
+...         FinishAfter(after_n_epochs=10),
+...         DataStreamMonitoring(
+...             cg.outputs,
+...             DataStream(
+...                 mnist_train,
+...                 iteration_scheme=SequentialScheme(
+...                     mnist_train.num_examples, 100)),
+...             prefix='train'),
+...         DataStreamMonitoring(
+...             cg.outputs,
+...             DataStream(
+...                 mnist_test,
+...                 iteration_scheme=SequentialScheme(
+...                     mnist_test.num_examples, 100)),
+...             prefix='test'),
+...         Printing()])
+>>> main_loop.run() # doctest: +SKIP
+
+In 10 epochs, the test error should drop below 1.1%!
