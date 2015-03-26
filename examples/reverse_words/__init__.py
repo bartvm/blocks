@@ -82,7 +82,7 @@ def _filter_long(data):
 
 
 def _is_nan(log):
-    return math.isnan(log.current_row.total_gradient_norm)
+    return math.isnan(log.current_entry['total_gradient_norm'])
 
 
 class WordReverser(Initializable):

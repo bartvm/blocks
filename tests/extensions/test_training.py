@@ -91,36 +91,36 @@ def test_track_the_best():
     extension = TrackTheBest("cost")
     extension.main_loop = main_loop
 
-    main_loop.status.iterations_done += 1
-    main_loop.log.current_row.cost = 5
+    main_loop.status['iterations_done'] += 1
+    main_loop.log.current_entry['cost'] = 5
     extension.dispatch('after_batch')
-    assert main_loop.status.best_cost == 5
-    assert main_loop.log.current_row['cost_best_so_far']
+    assert main_loop.status['best_cost'] == 5
+    assert main_loop.log.current_entry['cost_best_so_far']
 
-    main_loop.status.iterations_done += 1
-    main_loop.log.current_row.cost = 6
+    main_loop.status['iterations_done'] += 1
+    main_loop.log.current_entry['cost'] = 6
     extension.dispatch('after_batch')
-    assert main_loop.status.best_cost == 5
-    assert main_loop.log.current_row['cost_best_so_far'] is None
+    assert main_loop.status['best_cost'] == 5
+    assert 'cost_best_so_far' not in main_loop.log.current_entry
 
-    main_loop.status.iterations_done += 1
-    main_loop.log.current_row.cost = 5
+    main_loop.status['iterations_done'] += 1
+    main_loop.log.current_entry['cost'] = 5
     extension.dispatch('after_batch')
-    assert main_loop.status.best_cost == 5
-    assert main_loop.log.current_row['cost_best_so_far'] is None
+    assert main_loop.status['best_cost'] == 5
+    assert 'cost_best_so_far' not in main_loop.log.current_entry
 
-    main_loop.status.iterations_done += 1
-    main_loop.log.current_row.cost = 4
+    main_loop.status['iterations_done'] += 1
+    main_loop.log.current_entry['cost'] = 4
     extension.dispatch('after_batch')
-    assert main_loop.status.best_cost == 4
-    assert main_loop.log.current_row['cost_best_so_far']
+    assert main_loop.status['best_cost'] == 4
+    assert main_loop.log.current_entry['cost_best_so_far']
 
 
 class WriteCostExtension(TrainingExtension):
 
     def after_batch(self, batch):
-        self.main_loop.log.current_row.cost = abs(
-            self.main_loop.log.status.iterations_done - 5) + 3
+        self.main_loop.log.current_entry['cost'] = abs(
+            self.main_loop.log.status['iterations_done'] - 5) + 3
 
 
 def test_save_the_best():
@@ -139,12 +139,12 @@ def test_save_the_best():
                             (dst_best.name,))])
         main_loop.run()
 
-        assert main_loop.log[4].saved_to == (dst.name, dst_best.name)
-        assert main_loop.log[5].saved_to == (dst.name, dst_best.name)
-        assert main_loop.log[6].saved_to == (dst.name,)
+        assert main_loop.log[4]['saved_to'] == [dst.name, dst_best.name]
+        assert main_loop.log[5]['saved_to'] == [dst.name, dst_best.name]
+        assert main_loop.log[6]['saved_to'] == [dst.name]
         with open(dst_best.name, 'rb') as src:
-            assert cPickle.load(src).log.status.iterations_done == 5
+            assert cPickle.load(src).log.status['iterations_done'] == 5
         root, ext = os.path.splitext(dst_best.name)
         log_path = root + "_log" + ext
         with open(log_path, 'rb') as src:
-            assert cPickle.load(src).status.iterations_done == 5
+            assert cPickle.load(src).status['iterations_done'] == 5

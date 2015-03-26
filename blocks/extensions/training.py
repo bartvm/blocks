@@ -36,7 +36,7 @@ class SharedVariableModifier(SimpleExtension):
         self.num_args = len(inspect.getargspec(function).args)
 
     def do(self, which_callback, *args):
-        iterations_done = self.main_loop.log.status.iterations_done
+        iterations_done = self.main_loop.log.status['iterations_done']
         if self.num_args == 1:
             new_value = self.function(iterations_done)
         else:
@@ -80,13 +80,13 @@ class TrackTheBest(SimpleExtension):
         super(TrackTheBest, self).__init__(**kwargs)
 
     def do(self, which_callback, *args):
-        current_value = self.main_loop.log.current_row[self.record_name]
+        current_value = self.main_loop.log.current_entry[self.record_name]
         if current_value is None:
             return
-        best_value = getattr(self.main_loop.status, self.best_name, None)
+        best_value = self.main_loop.status.get(self.best_name, None)
         if (best_value is None or
                 (current_value != best_value and
                  self.choose_best(current_value, best_value) ==
                  current_value)):
             self.main_loop.status[self.best_name] = current_value
-            self.main_loop.log.current_row[self.notification_name] = True
+            self.main_loop.log.current_entry[self.notification_name] = True

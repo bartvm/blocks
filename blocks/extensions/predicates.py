@@ -11,4 +11,4 @@ class OnLogRecord(object):
         self.record_name = record_name
 
     def __call__(self, log):
-        return bool(log.current_row[self.record_name])
+        return log.current_entry.get(self.record_name, False)

@@ -33,7 +33,7 @@ def test_training_data_monitoring():
     class TrueCostExtension(TrainingExtension):
 
         def before_batch(self, data):
-            self.main_loop.log.current_row.true_cost = (
+            self.main_loop.log.current_entry['true_cost'] = (
                 ((W.get_value() * data["features"]).sum() -
                  data["targets"]) ** 2)
 
@@ -52,19 +52,19 @@ def test_training_data_monitoring():
     main_loop.run()
 
     # Check monitoring of a shared varible
-    assert_allclose(main_loop.log.current_row.train1_V, 7.0)
+    assert_allclose(main_loop.log.current_entry['train1_V'], 7.0)
 
     for i in range(n_batches):
         # The ground truth is written to the log before the batch is
         # processed, where as the extension writes after the batch is
         # processed. This is why the iteration numbers differs here.
-        assert_allclose(main_loop.log[i].true_cost,
-                        main_loop.log[i + 1].train1_cost)
+        assert_allclose(main_loop.log[i]['true_cost'],
+                        main_loop.log[i + 1]['train1_cost'])
     assert_allclose(
-        main_loop.log[n_batches].train2_cost,
-        sum([main_loop.log[i].true_cost
+        main_loop.log[n_batches]['train2_cost'],
+        sum([main_loop.log[i]['true_cost']
              for i in range(n_batches)]) / n_batches)
     assert_allclose(
-        main_loop.log[n_batches].train2_W_sum,
-        sum([main_loop.log[i].train1_W_sum
+        main_loop.log[n_batches]['train2_W_sum'],
+        sum([main_loop.log[i]['train1_W_sum']
              for i in range(1, n_batches + 1)]) / n_batches)

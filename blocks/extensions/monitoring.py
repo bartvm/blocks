@@ -37,7 +37,7 @@ class MonitoringExtension(TrainingExtension):
         for name, value in record_tuples:
             if not name:
                 raise ValueError("monitor variable without name")
-            setattr(log.current_row, self._record_name(name), value)
+            log.current_entry[self._record_name(name)] = value
 
 
 class DataStreamMonitoring(SimpleExtension, MonitoringExtension):
@@ -133,10 +133,11 @@ class TrainingDataMonitoring(SimpleExtension, MonitoringExtension):
                 self._buffer.accumulation_updates)
             self._buffer.initialize_aggregators()
         else:
-            if self.main_loop.status.iterations_done == self._last_time_called:
+            if (self.main_loop.status['iterations_done'] ==
+                    self._last_time_called):
                 raise Exception("TrainingDataMonitoring.do should be invoked"
                                 " no more than once per iteration")
-            self._last_time_called = self.main_loop.status.iterations_done
+            self._last_time_called = self.main_loop.status['iterations_done']
             self.add_records(self.main_loop.log,
                              self._buffer.get_aggregated_values().items())
             self._buffer.initialize_aggregators()

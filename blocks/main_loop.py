@@ -84,9 +84,9 @@ class MainLoop(object):
     """
     def __init__(self, algorithm, data_stream,
                  model=None, log=None, extensions=None):
-        if not log:
+        if log is None:
             log = TrainingLog()
-        if not extensions:
+        if extensions is None:
             extensions = []
 
         self.data_stream = data_stream
@@ -96,10 +96,10 @@ class MainLoop(object):
 
         self._model = model
 
-        self.status._training_started = False
-        self.status._epoch_started = False
-        self.status._epoch_interrupt_received = False
-        self.status._batch_interrupt_received = False
+        self.status['training_started'] = False
+        self.status['epoch_started'] = False
+        self.status['epoch_interrupt_received'] = False
+        self.status['batch_interrupt_received'] = False
 
     @property
     def model(self):
@@ -150,26 +150,27 @@ class MainLoop(object):
                 signal.SIGTERM, self._handle_batch_interrupt)
             try:
                 logger.info("Entered the main loop")
-                if not self.status._training_started:
+                if not self.status['training_started']:
                     for extension in self.extensions:
                         extension.main_loop = self
                     self._run_extensions('before_training')
                     self.algorithm.initialize()
-                    self.status._training_started = True
+                    self.status['training_started'] = True
                 # We can not write "else:" here because extensions
                 # called "before_training" could have changed the status
                 # of the main loop.
-                if self.log.status.iterations_done > 0:
+                if self.log.status['iterations_done'] > 0:
                     self._run_extensions('on_resumption')
-                    self.status._epoch_interrupt_received = False
-                    self.status._batch_interrupt_received = False
+                    self.status['epoch_interrupt_received'] = False
+                    self.status['batch_interrupt_received'] = False
                 while self._run_epoch():
                     pass
             except TrainingFinish:
-                self.log.current_row.training_finished = True
+                self.log.current_entry['training_finished'] = True
             except Exception as e:
                 self._restore_signal_handlers()
-                self.log.current_row.got_exception = traceback.format_exc(e)
+                self.log.current_entry['got_exception'] = \
+                    traceback.format_exc(e)
                 logger.error("Error occured during training." + error_message)
                 try:
                     self._run_extensions('on_error')
@@ -179,7 +180,7 @@ class MainLoop(object):
                                  error_in_error_handling_message)
                 reraise_as(e)
             finally:
-                if self.log.current_row.training_finished:
+                if self.log.current_entry.get('training_finished', False):
                     self._run_extensions('after_training')
                 self._restore_signal_handlers()
 
@@ -200,20 +201,20 @@ class MainLoop(object):
                        if extension.name == name], singleton=True)
 
     def _run_epoch(self):
-        if not self.status._epoch_started:
+        if not self.status['epoch_started']:
             try:
-                self.log.status._received_first_batch = False
+                self.log.status['received_first_batch'] = False
                 self.epoch_iterator = (self.data_stream.
                                        get_epoch_iterator(as_dict=True))
             except StopIteration:
                 return False
-            self.status._epoch_started = True
+            self.status['epoch_started'] = True
             self._run_extensions('before_epoch')
         while self._run_iteration():
             pass
-        self.status._epoch_started = False
-        self.status.epochs_done += 1
-        self.status._epoch_ends.append(self.status.iterations_done)
+        self.status['epoch_started'] = False
+        self.status['epochs_done'] += 1
+        self.log.current_entry['epoch_ended'] = True
         self._run_extensions('after_epoch')
         self._check_finish_training('epoch')
         return True
@@ -222,13 +223,13 @@ class MainLoop(object):
         try:
             batch = next(self.epoch_iterator)
         except StopIteration:
-            if not self.log.status._received_first_batch:
+            if not self.log.status['received_first_batch']:
                 reraise_as(ValueError("epoch iterator yielded zero batches"))
             return False
-        self.log.status._received_first_batch = True
+        self.log.status['received_first_batch'] = True
         self._run_extensions('before_batch', batch)
         self.algorithm.process_batch(batch)
-        self.status.iterations_done += 1
+        self.status['iterations_done'] += 1
         self._run_extensions('after_batch', batch)
         self._check_finish_training('batch')
         return True
@@ -250,11 +251,11 @@ class MainLoop(object):
         # In case when keyboard interrupt is handled right at the end of
         # the iteration the corresponding log record can be found only in
         # the previous row.
-        if (self.log.current_row.training_finish_requested or
-                self.status._batch_interrupt_received):
+        if (self.log.current_entry.get('training_finish_requested', False) or
+                self.status.get('batch_interrupt_received', False)):
             raise TrainingFinish
         if (level == 'epoch' and
-                self.status._epoch_interrupt_received):
+                self.status.get('epoch_interrupt_received', False)):
             raise TrainingFinish
 
     def _handle_epoch_interrupt(self, signal_number, frame):
@@ -262,20 +263,20 @@ class MainLoop(object):
         logger.warning('Received epoch interrupt signal.' +
                        epoch_interrupt_message)
         signal.signal(signal.SIGINT, self._handle_batch_interrupt)
-        self.log.current_row.epoch_interrupt_received = True
+        self.log.current_entry['epoch_interrupt_received'] = True
         # Add a record to the status. Unlike the log record it will be
         # easy to access at later iterations.
-        self.status._epoch_interrupt_received = True
+        self.status['epoch_interrupt_received'] = True
 
     def _handle_batch_interrupt(self, signal_number, frame):
         # After 2nd CTRL + C or SIGTERM signal (from cluster) finish batch
         self._restore_signal_handlers()
         logger.warning('Received batch interrupt signal.' +
                        batch_interrupt_message)
-        self.log.current_row.batch_interrupt_received = True
+        self.log.current_entry['batch_interrupt_received'] = True
         # Add a record to the status. Unlike the log record it will be
         # easy to access at later iterations.
-        self.status._batch_interrupt_received = True
+        self.status['batch_interrupt_received'] = True
 
     def _restore_signal_handlers(self):
         signal.signal(signal.SIGINT, self.original_sigint_handler)

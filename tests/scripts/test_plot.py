@@ -30,7 +30,7 @@ def some_experiments():
 
 def test_load_log():
     log = TrainingLog()
-    log[0].channel0 = 0
+    log[0]['channel0'] = 0
 
     # test simple TrainingLog pickles
     with tempfile.NamedTemporaryFile() as f:
@@ -38,7 +38,7 @@ def test_load_log():
         f.flush()
 
         log2 = plot.load_log(f.name)
-        assert log2[0].channel0 == 0
+        assert log2[0]['channel0'] == 0
 
     # test MainLoop pickles
     main_loop = MainLoop(model=None, data_stream=None,
@@ -49,7 +49,7 @@ def test_load_log():
         f.flush()
 
         log2 = plot.load_log(f.name)
-        assert log2[0].channel0 == 0
+        assert log2[0]['channel0'] == 0
 
 
 @silence_printing

@@ -50,8 +50,8 @@ def test_main_loop_dump_manager():
     folder2 = tempfile.mkdtemp()
 
     main_loop1 = sqrt_example(folder, 17)
-    assert main_loop1.log.status.epochs_done == 3
-    assert main_loop1.log.status.iterations_done == 17
+    assert main_loop1.log.status['epochs_done'] == 3
+    assert main_loop1.log.status['iterations_done'] == 17
 
     # Test loading from the folder where `main_loop` is saved
     main_loop2 = sqrt_example(folder2, 1)
@@ -65,9 +65,9 @@ def test_main_loop_dump_manager():
     # Continue until 33 iterations are done
     main_loop2.find_extension("FinishAfter").set_conditions(after_n_batches=33)
     main_loop2.run()
-    assert main_loop2.log.status.iterations_done == 33
+    assert main_loop2.log.status['iterations_done'] == 33
 
     # Compare with a main loop after continuous 33 iterations
     main_loop3 = sqrt_example(folder, 33)
-    assert main_loop3.log.status.iterations_done == 33
+    assert main_loop3.log.status['iterations_done'] == 33
     assert_equal(main_loop2, main_loop3, check_log=False)

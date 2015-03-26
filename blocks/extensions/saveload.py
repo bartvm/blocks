@@ -90,18 +90,19 @@ class Checkpoint(SimpleExtension):
             path = self.path
             if len(from_user):
                 path, = from_user
-            already_saved_to = self.main_loop.log.current_row[SAVED_TO]
-            if not already_saved_to:
-                already_saved_to = ()
-            self.main_loop.log.current_row[SAVED_TO] = (
-                already_saved_to + (path,))
+            already_saved_to = self.main_loop.log.current_entry.get(SAVED_TO,
+                                                                    [])
+            if not isinstance(already_saved_to, list):
+                already_saved_to = [already_saved_to]
+            self.main_loop.log.current_entry[SAVED_TO] = (
+                already_saved_to + [unicode(path)])
             secure_pickle_dump(self.main_loop, path)
             filenames = self.save_separately_filenames(path)
             for attribute in self.save_separately:
                 secure_pickle_dump(getattr(self.main_loop, attribute),
                                    filenames[attribute])
         except Exception:
-            self.main_loop.log.current_row[SAVED_TO] = None
+            self.main_loop.log.current_entry[SAVED_TO] = None
             raise
 
 
@@ -132,7 +133,7 @@ class LoadFromDump(TrainingExtension):
                     .format(self.manager.folder))
         try:
             self.manager.load_to(self.main_loop)
-            self.main_loop.log.current_row[LOADED_FROM] = self.manager.folder
+            self.main_loop.log.current_entry[LOADED_FROM] = self.manager.folder
         except Exception:
             reraise_as("Failed to load the state")
 
@@ -161,9 +162,9 @@ class Dump(SimpleExtension):
 
     def do(self, callback_name, *args, **kwargs):
         try:
-            self.main_loop.log.current_row[SAVED_TO] = (
+            self.main_loop.log.current_entry[SAVED_TO] = (
                 self.manager.folder)
             self.manager.dump(self.main_loop)
         except Exception:
-            self.main_loop.log.current_row[SAVED_TO] = None
+            self.main_loop.log.current_entry[SAVED_TO] = None
             raise

@@ -9,6 +9,8 @@ language: python
 python:
   - "2.7"
   - "3.4"
+services:
+  - mongodb
 env:
   - TESTS=float32
   - TESTS=float64
@@ -36,6 +38,7 @@ install:
   # Install all Python dependencies
   - conda install -q --yes python=$TRAVIS_PYTHON_VERSION mkl bokeh nose numpy pip coverage six scipy toolz
   - pip install -q nose2[coverage-plugin] coveralls
+  - pip install git+git://github.com/mongodb/mongo-python-driver.git@3.0b0#egg=pymongo
 script:
   - pip install . -r requirements.txt # Tests setup.py
   - # Must export environment variable so that the subprocess is aware of it

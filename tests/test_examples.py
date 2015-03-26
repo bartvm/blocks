@@ -30,7 +30,7 @@ def test_mnist():
         main_loop.find_extension("FinishAfter").set_conditions(
             after_n_epochs=2)
         main_loop.run()
-        assert main_loop.log.status.epochs_done == 2
+        assert main_loop.log.status['epochs_done'] == 2
 
 
 @silence_printing

@@ -153,9 +153,9 @@ class Predicate(object):
 
     def __call__(self, log):
         if self.condition.endswith('epochs'):
-            entry = log.status.epochs_done
+            entry = log.status['epochs_done']
         else:
-            entry = log.status.iterations_done
+            entry = log.status['iterations_done']
         if self.condition.startswith('every'):
             return entry % self.num == 0
         else:
@@ -163,7 +163,7 @@ class Predicate(object):
 
 
 def has_done_epochs(log):
-    return log.status.epochs_done == 0
+    return log.status['epochs_done'] == 0
 
 
 def always_true(log):
@@ -363,7 +363,7 @@ class FinishAfter(SimpleExtension):
         super(FinishAfter, self).__init__(**kwargs)
 
     def do(self, which_callback, *args):
-        self.main_loop.log.current_row.training_finish_requested = True
+        self.main_loop.log.current_entry['training_finish_requested'] = True
 
 
 class Printing(SimpleExtension):
@@ -377,9 +377,8 @@ class Printing(SimpleExtension):
         super(Printing, self).__init__(**kwargs)
 
     def _print_attributes(self, attribute_tuples):
-        for attr, value in sorted(attribute_tuples, key=first):
-            if not attr.startswith("_"):
-                print("\t", "{}:".format(attr), value)
+        for attr, value in sorted(attribute_tuples.items(), key=first):
+            print("\t", "{}:".format(attr), value)
 
     def do(self, which_callback, *args):
         log = self.main_loop.log
@@ -387,7 +386,7 @@ class Printing(SimpleExtension):
 
         print()
         print("".join(79 * "-"))
-        if which_callback == "before_epoch" and log.status.epochs_done == 0:
+        if which_callback == "before_epoch" and log.status['epochs_done'] == 0:
             print("BEFORE FIRST EPOCH")
         elif which_callback == "on_resumption":
             print("TRAINING HAS BEEN RESUMED")
@@ -403,8 +402,8 @@ class Printing(SimpleExtension):
             print("Training status:")
             self._print_attributes(log.status)
             print("Log records from the iteration {}:".format(
-                log.status.iterations_done))
-            self._print_attributes(log.current_row)
+                log.status['iterations_done']))
+            self._print_attributes(log.current_entry)
         print()
 
 
@@ -460,7 +459,7 @@ class ProgressBar(TrainingExtension):
 
         """
         iter_per_epoch = self.get_iter_per_epoch()
-        epochs_done = self.main_loop.log._status.epochs_done
+        epochs_done = self.main_loop.log.status['epochs_done']
 
         if iter_per_epoch is None:
             widgets = ["Epoch {}, step ".format(epochs_done),
@@ -550,44 +549,45 @@ class Timing(TrainingExtension):
 
     def before_training(self):
         self.started_at = self.clock_function()
-        self.log.status._epoch_before_interrupted = 0
-        self.log.status._total_before_interrupted = 0
+        self.log.status['epoch_before_interrupted'] = 0
+        self.log.status['total_before_interrupted'] = 0
 
     def before_epoch(self):
         self.epoch_started_at = self.clock_function()
-        if self.log.status.epochs_done == 0:
-            self.log.current_row.initialization_took = (
+        if self.log.status['epochs_done'] == 0:
+            self.log.current_entry['initialization_took'] = (
                 self.epoch_started_at - self.started_at)
 
     def before_batch(self, batch):
         self.batch_started_at = self.clock_function()
 
     def after_batch(self, batch):
-        self.log.current_row.iteration_took = (
+        self.log.current_entry['iteration_took'] = (
             self.clock_function() - self.batch_started_at)
-        self.log.current_row.total_took = (
-            self.log.status._total_before_interrupted +
+        self.log.current_entry['total_took'] = (
+            self.log.status['total_before_interrupted'] +
             self.clock_function() - self.started_at)
 
     def after_epoch(self):
-        self.log.current_row.epoch_took = (
-            self.log.status._epoch_before_interrupted +
+        self.log.current_entry['epoch_took'] = (
+            self.log.status['epoch_before_interrupted'] +
             self.clock_function() - self.epoch_started_at)
-        self.log.status._epoch_before_interrupted = 0
+        self.log.status['epoch_before_interrupted'] = 0
 
     def after_training(self):
-        self.log.current_row.final_total_took = (
-            self.log.status._total_before_interrupted +
+        self.log.current_entry['final_total_took'] = (
+            self.log.status['total_before_interrupted'] +
             self.clock_function() - self.started_at)
 
         # Save intermediate results to the log.status
-        self.log.status._total_before_interrupted = (
-            self.log.current_row.final_total_took)
-        if self.log.status._epoch_started:
-            epoch_ends = self.log.status._epoch_ends
-            self.log.status._epoch_before_interrupted = (
-                self.clock_function() -
-                0 if not epoch_ends else self.log[epoch_ends[-1]].total_took)
+        self.log.status['total_before_interrupted'] = (
+            self.log.current_entry['final_total_took'])
+        if self.log.status['epoch_started']:
+            epoch_ends = [key for key, value in self.log.items()
+                          if 'epoch_ended' in value]
+            self.log.status['epoch_before_interrupted'] = (
+                self.clock_function() - 0
+                if not epoch_ends else self.log[epoch_ends[-1]]['total_took'])
 
     def on_resumption(self):
         self.started_at = self.clock_function()

@@ -102,9 +102,9 @@ class Plot(SimpleExtension):
 
     def do(self, which_callback, *args):
         log = self.main_loop.log
-        iteration = log.status.iterations_done
+        iteration = log.status['iterations_done']
         i = 0
-        for key, value in log.current_row:
+        for key, value in log.current_entry.items():
             if key in self.p_indices:
                 if key not in self.plots:
                     fig = self.p[self.p_indices[key]]

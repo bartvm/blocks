@@ -22,6 +22,7 @@ from blocks.extensions.monitoring import (DataStreamMonitoring,
                                           TrainingDataMonitoring)
 from blocks.extensions.plot import Plot
 from blocks.main_loop import MainLoop
+from blocks.log import TrainingLog
 
 
 def main(save_to, num_epochs):
@@ -51,10 +52,9 @@ def main(save_to, num_epochs):
         DataStream(mnist_train,
                    iteration_scheme=SequentialScheme(
                        mnist_train.num_examples, 50)),
+        log=TrainingLog(backend='mongodb'),
         model=Model(cost),
-        extensions=[Timing(),
-                    FinishAfter(after_n_epochs=num_epochs),
-                    DataStreamMonitoring(
+        extensions=[DataStreamMonitoring(
                         [cost, error_rate],
                         DataStream(mnist_test,
                                    iteration_scheme=SequentialScheme(
@@ -65,13 +65,6 @@ def main(save_to, num_epochs):
                          aggregation.mean(algorithm.total_gradient_norm)],
                         prefix="train",
                         after_epoch=True),
-                    Checkpoint(save_to),
-                    Plot(
-                        'MNIST example',
-                        channels=[
-                            ['test_final_cost',
-                             'test_misclassificationrate_apply_error_rate'],
-                            ['train_total_gradient_norm']]),
                     Printing()])
     main_loop.run()
 
