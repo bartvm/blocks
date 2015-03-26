@@ -204,10 +204,10 @@ def main(mode, save_path, num_batches, data_path=None):
         # Fetch variables useful for debugging
         generator = reverser.generator
         (energies,) = VariableFilter(
-            application=generator.readout.readout,
+            applications=generator.readout.readout,
             name="output")(cg.variables)
         (activations,) = VariableFilter(
-            application=generator.transition.apply,
+            applications=generator.transition.apply,
             name=generator.transition.apply.states[0])(cg.variables)
         max_length = named_copy(chars.shape[0], "max_length")
         cost_per_character = named_copy(
