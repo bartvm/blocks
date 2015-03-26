@@ -304,7 +304,7 @@ def test_saved_inner_graph():
     cg = ComputationGraph(application_call.inner_outputs)
     # Check that the inner scan graph is annotated
     # with `recurrent.apply`
-    assert len(VariableFilter(application=recurrent.apply)(cg)) == 3
+    assert len(VariableFilter(applications=recurrent.apply)(cg)) == 3
     # Check that the inner graph is equivalent to the one
     # produced by a stand-alone of `recurrent.apply`
     assert is_same_graph(application_call.inner_outputs[0],
