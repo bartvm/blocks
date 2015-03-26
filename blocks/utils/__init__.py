@@ -298,7 +298,7 @@ def is_shared_variable(variable):
     """
     return (isinstance(variable, SharedVariable) and
             not isinstance(variable, RandomStateSharedVariable) and
-            not hasattr(variable, 'rng_owner'))
+            not hasattr(variable.tag, 'is_rng'))
 
 
 def dict_subset(dict_, keys, pop=False, must_have=True):

@@ -477,7 +477,16 @@ class SoftmaxEmitter(AbstractEmitter, Initializable, Random):
 
     Interprets readout elements as energies corresponding to their indices.
 
+    Parameters
+    ----------
+    initial_output : int or a scalar :class:`~theano.Variable`
+        The initial output.
+
     """
+    def __init__(self, initial_output=0, **kwargs):
+        self.initial_output = initial_output
+        super(SoftmaxEmitter, self).__init__(**kwargs)
+
     @application
     def probs(self, readouts):
         shape = readouts.shape
@@ -507,7 +516,7 @@ class SoftmaxEmitter(AbstractEmitter, Initializable, Random):
 
     @application
     def initial_outputs(self, batch_size, *args, **kwargs):
-        return tensor.zeros((batch_size,), dtype='int64')
+        return self.initial_output * tensor.ones((batch_size,), dtype='int64')
 
     def get_dim(self, name):
         if name == 'outputs':

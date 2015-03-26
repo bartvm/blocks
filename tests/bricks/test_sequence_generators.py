@@ -1,5 +1,5 @@
 import numpy
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
 import theano
 from theano import tensor
@@ -273,3 +273,10 @@ def test_with_attention():
     assert_allclose(weights_vals.sum(), 120.0, rtol=1e-5)
     assert_allclose(glimpses_vals.sum(), 199.2402, rtol=1e-5)
     assert_allclose(outputs_vals.sum(), -11.6008, rtol=1e-5)
+
+
+def test_softmax_emitter_initial_outputs():
+    emitter = SoftmaxEmitter(3)
+    emitter.readout_dim = 0
+    assert_equal(emitter.initial_outputs(2).eval(),
+                 3 * numpy.ones((2,), dtype='int64'))
