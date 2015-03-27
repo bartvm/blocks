@@ -87,8 +87,8 @@ def test_sequence_generator():
     assert states.shape == (n_steps, batch_size, dim)
     assert outputs.shape == (n_steps, batch_size, output_dim)
     assert costs.shape == (n_steps, batch_size)
-    assert_allclose(outputs.sum(), -0.33683, rtol=1e-5)
-    assert_allclose(states.sum(), 15.7909, rtol=1e-5)
+    assert_allclose(outputs.sum(), -0.61249, rtol=1e-5)
+    assert_allclose(states.sum(), 15.5803, rtol=1e-5)
     # There is no generation cost in this case, since generation is
     # deterministic
     assert_allclose(costs.sum(), 0.0)
@@ -130,13 +130,13 @@ def test_integer_sequence_generator():
     m_test = numpy.ones((n_steps, batch_size), dtype=floatX)
     costs_val = costs_fun(y_test, m_test)[0]
     assert costs_val.shape == (n_steps, batch_size)
-    assert_allclose(costs_val.sum(), 482.827, rtol=1e-5)
+    assert_allclose(costs_val.sum(), 482.835, rtol=1e-5)
 
     # Test 'cost' method
     cost = generator.cost(y, mask)
     assert cost.ndim == 0
-    cost_val = theano.function([y, mask], [cost])(y_test, m_test)
-    assert_allclose(cost_val, 16.0942, rtol=1e-5)
+    cost_val = theano.function([y, mask], [cost])(y_test, m_test)[0]
+    assert_allclose(cost_val, 16.0945, rtol=1e-5)
 
     # Test 'AUXILIARY' variable 'per_sequence_element' in 'cost' method
     cg = ComputationGraph([cost])
@@ -147,7 +147,7 @@ def test_integer_sequence_generator():
                    if el.name == aux_var_name][0]
     assert cost_per_el.ndim == 0
     cost_per_el_val = theano.function([y, mask], [cost_per_el])(y_test, m_test)
-    assert_allclose(cost_per_el_val, 1.60942, rtol=1e-5)
+    assert_allclose(cost_per_el_val, 1.60945, rtol=1e-5)
 
     # Test generate
     states, outputs, costs = generator.generate(
@@ -160,9 +160,9 @@ def test_integer_sequence_generator():
     assert outputs_val.shape == (n_steps, batch_size)
     assert outputs_val.dtype == 'int64'
     assert costs_val.shape == (n_steps, batch_size)
-    assert_allclose(states_val.sum(), -17.91811, rtol=1e-5)
-    assert_allclose(costs_val.sum(), 482.863, rtol=1e-5)
-    assert outputs_val.sum() == 630
+    assert_allclose(states_val.sum(), -19.72, rtol=1e-5)
+    assert_allclose(costs_val.sum(), 482.852, rtol=1e-5)
+    assert_equal(outputs_val.sum(), 629)
 
     # Test masks agnostic results of cost
     cost1 = costs_fun([[1], [2]], [[1], [1]])[0]
@@ -251,7 +251,7 @@ def test_with_attention():
                              attended: attended_vals,
                              attended_mask: attended_mask_vals})
     assert costs_vals.shape == (inp_len, batch_size)
-    assert_allclose(costs_vals.sum(), 13.5042, rtol=1e-5)
+    assert_allclose(costs_vals.sum(), 13.5552, rtol=1e-5)
 
     # Test `generate` method
     results = (
@@ -266,13 +266,13 @@ def test_with_attention():
     assert glimpses_vals.shape == (n_steps, batch_size, attended_dim)
     assert weights_vals.shape == (n_steps, batch_size, attended_len)
     assert costs_vals.shape == (n_steps, batch_size)
-    assert_allclose(states_vals.sum(), 23.4172, rtol=1e-5)
+    assert_allclose(states_vals.sum(), 23.3370, rtol=1e-5)
     # There is no generation cost in this case, since generation is
     # deterministic
     assert_allclose(costs_vals.sum(), 0.0, rtol=1e-5)
     assert_allclose(weights_vals.sum(), 120.0, rtol=1e-5)
     assert_allclose(glimpses_vals.sum(), 199.2402, rtol=1e-5)
-    assert_allclose(outputs_vals.sum(), -11.6008, rtol=1e-5)
+    assert_allclose(outputs_vals.sum(), -11.5917, rtol=1e-5)
 
 
 def test_softmax_emitter_initial_outputs():

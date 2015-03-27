@@ -1,4 +1,33 @@
-"""Sequence generation framework."""
+"""Sequence generation framework.
+
+Recurrent networks are often used to generate/model sequences.
+Examples include language modelling, machine translation, handwriting
+synthesis, etc.. A typical pattern in this context is that
+sequence elements are generated one ofter another, and every generated
+element is fed back into the recurrent network state. Sometimes
+also an attention mechanism is used to condition sequence generation
+on some structured input like another sequence or an image.
+
+This module provides :class:`SequenceGenerator` that builds a sequence
+generating network from three main components:
+
+* a core recurrent transition, e.g. :class:`~blocks.bricks.recurrent.LSTM`
+  or :class:`~blocks.bricks.recurrent.GRU`
+
+* a readout component that can produce sequence elements using
+  the network state and the information from the attention mechanism
+
+* an attention mechanism (see :module:`~blocks.bricks.attention` for
+  more information)
+
+Implementation-wise :class:`SequenceGenerator` fully relies on
+:class:`BaseSequenceGenerator`. At the level of the latter an
+attention is mandatory, moreover it must be a part of the recurrent
+transition (see :class:`~blocks.bricks.attention.AttentionRecurrent`).
+To simulate optional attention, :class:`SequenceGenerator` wraps the
+pure recurrent network in :class:`FakeAttentionRecurrent`.
+
+"""
 from abc import ABCMeta, abstractmethod
 
 from six import add_metaclass
@@ -20,7 +49,7 @@ class BaseSequenceGenerator(Initializable):
 
     This class combines two components, a readout network and an
     attention-equipped recurrent transition, into a context-dependent
-    sequence generator. Optionally a third component can be used which
+    sequence generator. Third component must be given which
     forks feedback from the readout network to obtain inputs for the
     transition.
 
@@ -47,38 +76,29 @@ class BaseSequenceGenerator(Initializable):
        readout, initial states and glimpses given by the `initial_state`
        method of the transition.
 
-    2. Given the contexts, the current state and the glimpses from the
-       previous step the attention mechanism hidden in the transition
-       produces current step glimpses. This happens in the `take_glimpses`
+    2. Given the contexts, the current states and glimpses
+       the attention mechanism hidden in the transition
+       produces the next glimpses. This happens in the `take_glimpses`
        method of the transition.
 
-    3. Using the contexts, the fed back output from the previous step, the
-       current states and glimpses, the readout brick is used to generate
-       the new output by calling its `readout` and `emit` methods.
+    3. The next states are computed from the current states, next
+       glimpses, feedback from the current outputs. This happens in in the
+       transition's `apply` method. The `fork` brick is used to
+       compute the transition's inputs from the feedback.
 
-    4. The new output is fed back in the `feedback` method of the readout
-       brick. This feedback, together with the contexts, the glimpses and
-       the previous states is used to get the new states in the
-       transition's `apply` method. Optionally the `fork` brick is used in
-       between to compute the transition's inputs from the feedback.
+    4. Using the contexts, the feedback from the current outputs, the
+       next states and glimpses, the readout brick is used to generate
+       the next output by calling its `readout` and `emit` methods.
 
     5. Back to step 1 if desired sequence length is not yet reached.
-
-    | A scheme of the algorithm described above follows.
-
-    .. image:: /_static/sequence_generator_scheme.png
-            :height: 500px
-            :width: 500px
-
-    ..
 
     **Notes:**
 
     * For machine translation we would have only one glimpse: the weighted
       average of the annotations.
 
-    * For speech recognition we would have three: the weighted average,
-      the alignment and the monotonicity penalty.
+    * For speech recognition we would have two: the weighted average,
+      and the alignment.
 
     Parameters
     ----------
@@ -196,27 +216,23 @@ class BaseSequenceGenerator(Initializable):
         states = dict_subset(kwargs, self._state_names, must_have=False)
         contexts = dict_subset(kwargs, self._context_names)
         feedback = self.readout.feedback(outputs)
-        inputs = self.fork.apply(feedback, as_dict=True)
-
-        # Run the recurrent network
-        results = self.transition.apply(
-            mask=mask, return_initial_states=True, as_dict=True,
-            **dict_union(inputs, states, contexts))
-
-        # Separate the deliverables. The last states are discarded: they
-        # are not used to predict any output symbol. The initial glimpses
-        # are discarded because they are not used for prediction.
-        # Remember, glimpses are computed _before_ output stage, states are
-        # computed after.
-        states = {name: results[name][:-1] for name in self._state_names}
-        glimpses = {name: results[name][1:] for name in self._glimpse_names}
-
-        # Compute the cost
         feedback = tensor.roll(feedback, 1, 0)
         feedback = tensor.set_subtensor(
             feedback[0],
             self.readout.feedback(self.readout.initial_outputs(
                 batch_size, **contexts)))
+        inputs = self.fork.apply(feedback, as_dict=True)
+
+        # Run the recurrent network
+        results = self.transition.apply(
+            mask=mask, as_dict=True,
+            **dict_union(inputs, states, contexts))
+
+        # Separate the deliverables.
+        states = dict_subset(results, self._state_names)
+        glimpses = dict_subset(results, self._glimpse_names)
+
+        # Compute the cost
         readouts = self.readout.readout(
             feedback=feedback, **dict_union(states, glimpses, contexts))
         costs = self.readout.cost(readouts, outputs)
@@ -239,8 +255,8 @@ class BaseSequenceGenerator(Initializable):
 
         Notes
         -----
-            The contexts, previous states and glimpses are expected
-            as keyword arguments.
+        The contexts, states and glimpses from the previous step are
+        expected as keyword arguments.
 
         """
         states = dict_subset(kwargs, self._state_names)
@@ -249,18 +265,17 @@ class BaseSequenceGenerator(Initializable):
 
         next_glimpses = self.transition.take_glimpses(
             as_dict=True, **dict_union(states, glimpses, contexts))
+        feedback = self.readout.feedback(outputs)
+        inputs = self.fork.apply(feedback, as_dict=True)
+        next_states = self.transition.compute_states(
+            as_dict=True,
+            **dict_union(inputs, states, next_glimpses, contexts))
         next_readouts = self.readout.readout(
-            feedback=self.readout.feedback(outputs),
-            **dict_union(states, next_glimpses, contexts))
+            feedback=feedback,
+            **dict_union(next_states, next_glimpses, contexts))
         next_outputs = self.readout.emit(next_readouts)
         next_costs = self.readout.cost(next_readouts, next_outputs)
-        next_feedback = self.readout.feedback(next_outputs)
-        next_inputs = (self.fork.apply(next_feedback, as_dict=True)
-                       if self.fork else {'feedback': next_feedback})
-        next_states = self.transition.compute_states(
-            as_list=True,
-            **dict_union(next_inputs, states, next_glimpses, contexts))
-        return (next_states + [next_outputs] +
+        return (list(next_states.values()) + [next_outputs] +
                 list(next_glimpses.values()) + [next_costs])
 
     @generate.delegate

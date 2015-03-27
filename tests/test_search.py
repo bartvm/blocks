@@ -1,7 +1,7 @@
 import numpy
 import theano
 from theano import tensor
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
 from blocks.graph import ComputationGraph
 from blocks.filter import VariableFilter
@@ -47,7 +47,7 @@ def test_beam_search():
     search = BeamSearch(10, samples)
     results, mask, costs = search.search(
         {inputs: input_vals}, 0, 3 * length, as_arrays=True)
-    assert results.sum() == 5084
+    assert_equal(results.sum(), 4506)
 
     true_costs = reverser.cost(
         input_vals, numpy.ones((length, beam_size), dtype=floatX),
