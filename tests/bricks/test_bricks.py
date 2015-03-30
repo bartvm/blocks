@@ -1,7 +1,7 @@
 import numpy
 import six
 import theano
-from numpy.testing import assert_allclose, assert_raises
+from numpy.testing import assert_allclose, assert_raises, assert_equal
 from theano import tensor
 
 from blocks.bricks import (Identity, Linear, Maxout, LinearMaxout, MLP, Tanh,
@@ -49,12 +49,12 @@ class TestBrick(Brick):
 
 
 class ParentBrick(Brick):
-    def __init__(self, child=None, **kwargs):
+    def __init__(self, child=None, second_child=None, **kwargs):
         super(ParentBrick, self).__init__(**kwargs)
         self.child = child
         if child is None:
             child = TestBrick()
-        self.children = [child]
+        self.children = [child, second_child] if second_child else [child]
 
     @application
     def apply(self, *args, **kwargs):
@@ -90,6 +90,11 @@ class ParameterBrick(Brick):
     def _allocate(self):
         self.params.append(
             theano.shared(numpy.zeros((10, 10), dtype=theano.config.floatX)))
+
+
+class BrickWithLoop(Brick):
+    def __init__(self, **kwargs):
+        super(BrickWithLoop, self).__init__()
 
 
 def test_super():
@@ -474,3 +479,20 @@ def test_linear_nan_allocation():
     b2 = linear.params[1].get_value()
     numpy.testing.assert_equal(w1, w2)
     numpy.testing.assert_equal(b1, b2)
+
+
+def test_get_unique_path():
+    identity = Identity()
+    mlp = MLP([identity, Identity()], [10, 20, 2])
+    assert_equal(identity.get_unique_path(), [mlp, identity])
+
+
+def test_get_unique_path_loop():
+    for step in [-1, 1]:
+        child_brick = TestBrick()
+        middle_bricks = [ParentBrick(child_brick, name='brick{}'.format(name))
+                         for name in ['1', '2']]
+        parent_brick = ParentBrick(*(middle_bricks[::step]))
+        assert_equal(child_brick.get_unique_path(),
+                     [parent_brick, middle_bricks[0], child_brick])
+
