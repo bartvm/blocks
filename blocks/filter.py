@@ -1,7 +1,7 @@
 from inspect import isclass
 import re
 
-from blocks.bricks.base import ApplicationCall, Brick
+from blocks.bricks.base import ApplicationCall, BoundApplication, Brick
 from blocks.roles import has_roles
 
 
@@ -44,7 +44,8 @@ class VariableFilter(object):
     ----------
     roles : list of :class:`.VariableRole` instances, optional
         Matches any variable which has one of the roles given.
-    bricks : list of :class:`.Brick` classes or instances, optional
+    bricks : list of :class:`.Brick` classes or instances,
+        or instance of :class:`.Brick` classes or instances, optional
         Matches any variable whose brick is either one of the given
         bricks, or whose brick is of given classes.
     each_role : bool, optional
@@ -52,9 +53,13 @@ class VariableFilter(object):
         ``False``, a variable matching any of the roles given will be
         returned. ``False`` by default.
     name : str, optional
+        The variable name. The Blocks name (i.e.
+        `x.tag.name`) is used.
+    name_regex : str, optional
         A regular expression for the variable name. The Blocks name (i.e.
         `x.tag.name`) is used.
-    application : :class:`.Application` instance
+    applications : :class:`.Application` instance
+        or list of :class:`.Application` instance, optional
         Matches a variable that was produced by the application given.
 
     Notes
@@ -88,12 +93,19 @@ class VariableFilter(object):
 
     """
     def __init__(self, roles=None, bricks=None, each_role=False, name=None,
-                 application=None):
+                 name_regex=None, applications=None):
         self.roles = roles
-        self.bricks = bricks
+        if isinstance(bricks, Brick):
+            self.bricks = [bricks]
+        else:
+            self.bricks = bricks
         self.each_role = each_role
         self.name = name
-        self.application = application
+        self.name_regex = name_regex
+        if isinstance(applications, BoundApplication):
+            self.applications = [applications]
+        else:
+            self.applications = applications
 
     def __call__(self, variables):
         """Filter the given variables.
@@ -124,10 +136,14 @@ class VariableFilter(object):
         if self.name:
             variables = [var for var in variables
                          if hasattr(var.tag, 'name') and
-                         re.match(self.name, var.tag.name)]
-        if self.application:
+                         self.name == var.tag.name]
+        if self.name_regex:
+            variables = [var for var in variables
+                         if hasattr(var.tag, 'name') and
+                         re.match(self.name_regex, var.tag.name)]
+        if self.applications:
             variables = [var for var in variables
                          if get_application_call(var) and
-                         get_application_call(var).application ==
-                         self.application]
+                         get_application_call(var).application in
+                         self.applications]
         return variables
