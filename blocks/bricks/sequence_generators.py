@@ -641,6 +641,9 @@ class SequenceGenerator(BaseSequenceGenerator):
         If ``True``, the :class:`AttentionRecurrent` wrapping the
         `transition` will add additional contexts for the attended and
         its mask.
+    prototype : :class:`.FeedForward`, optional
+        A transformation prototype. If ``None``, the default prototype
+        of :class:`~blocks.bricks.parallel.Fork` is used.
 
     Notes
     -----
@@ -648,13 +651,13 @@ class SequenceGenerator(BaseSequenceGenerator):
     be constructed with a single call).
 
     """
-    def __init__(self, readout, transition, attention=None,
-                 fork_inputs=None, add_contexts=True, **kwargs):
+    def __init__(self, readout, transition, attention=None, fork_inputs=None,
+                 add_contexts=True, prototype=None, **kwargs):
         if not fork_inputs:
             fork_inputs = [name for name in transition.apply.sequences
                            if name != 'mask']
 
-        fork = Fork(fork_inputs)
+        fork = Fork(fork_inputs, prototype=prototype)
         if attention:
             distribute = Distribute(fork_inputs,
                                     attention.take_glimpses.outputs[0])
