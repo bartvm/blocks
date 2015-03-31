@@ -83,13 +83,31 @@ class Plot(SimpleExtension):
         self.start_server = start_server
         self.document = document
         self.server_url = server_url
+
+        kwargs.setdefault('after_epoch', True)
+        kwargs.setdefault("before_first_epoch", True)
+
+        # set x_axis_label to the most frequent option
+        self.x_axis_label = ''
+        if (kwargs.get('after_epoch') or kwargs.get('after_n_epochs') or
+                kwargs.get('every_n_epochs')):
+            self.x_axis_label = 'epochs'
+        if (kwargs.get('after_batch') or kwargs.get('after_n_batches') or
+                kwargs.get('every_n_batches')):
+            self.x_axis_label = 'batches'
+
         self._startserver()
 
         # Create figures for each group of channels
         self.p = []
         self.p_indices = {}
         for i, channel_set in enumerate(channels):
-            self.p.append(figure(title='{} #{}'.format(self.document, i + 1)))
+            fig = figure(title='{} #{}'.format(self.document, i + 1),
+                         x_axis_label=self.x_axis_label,
+                         y_axis_label='value')
+            fig.axis.major_label_standoff = 1
+
+            self.p.append(fig)
             for channel in channel_set:
                 self.p_indices[channel] = i
         if open_browser:
@@ -97,28 +115,32 @@ class Plot(SimpleExtension):
         else:
             push()
 
-        kwargs.setdefault('after_epoch', True)
-        kwargs.setdefault("before_first_epoch", True)
         super(Plot, self).__init__(**kwargs)
 
     def do(self, which_callback, *args):
         log = self.main_loop.log
-        iteration = log.status['iterations_done']
+        if self.x_axis_label == 'epochs':
+            x = log.status['epochs_done']
+        elif self.x_axis_label == 'batches':
+            x = log.status['iterations_done']
+        else:
+            raise ValueError('x_axis_label should be either epoch or batches')
+
         i = 0
-        for key, value in log.current_row.items():
-            if key in self.p_indices:
+        for key in self.p_indices.keys():
+            if key in log.current_row:
+                value = log.current_row[key]
                 if key not in self.data_sources:
                     fig = self.p[self.p_indices[key]]
-                    fig.line(x=[iteration], y=[value], legend=key,
-                             x_axis_label='iterations',
-                             y_axis_label='value', name=key,
+                    fig.line(x=[x], y=[value], legend=key,
+                             name=key,
                              line_color=self.colors[i % len(self.colors)])
                     i += 1
                     renderer = fig.select(dict(name=key))
                     self.data_sources[key] = renderer[0].data_source
                     push()
                 else:
-                    self.data_sources[key].data['x'].append(iteration)
+                    self.data_sources[key].data['x'].append(x)
                     self.data_sources[key].data['y'].append(value)
 
                     self.session.store_objects(self.data_sources[key])
@@ -201,13 +223,16 @@ class PlotHistogram(SimpleExtension):
         output_server(self.document+' (epoch'+str(epoch)+')',
                       session=self.session, clear=True)
 
-        for key, value in log.current_row.items():
-            if key in channels:
+        for key in channels:
+            if key in log.current_row:
+                value = log.current_row[key]
                 kl_mean = value.mean(axis=0)
                 kl_std_dev = value.std(axis=0)
                 nhid = len(kl_mean)
 
-                fig = figure(title=key, plot_width=1000)
+                fig = figure(title=key, plot_width=1000,
+                             x_axis_label='epoch',
+                             y_axis_label=self.document)
                 # display alternating color histograms
                 fig.quad(top=kl_mean[::2], bottom=0, left=range(nhid)[::2],
                          right=range(nhid+1)[1::2], fill_color='#66E066',
