@@ -197,7 +197,7 @@ def test_apply_batch_normalization_use_population():
     cg = ComputationGraph([y])
     cg_bn = apply_batch_normalization(
         cg, [x], [numpy.array([2, 3]).astype(floatX)],
-        [numpy.array([-1, -2]).astype(floatX)], use_population=True)
+        [numpy.array([-1, -2]).astype(floatX)], use_population={x: True})
     assert_allclose(
         cg_bn.outputs[0].eval(
             {x: numpy.arange(4).reshape((2, 2)).astype(floatX)}),
