@@ -637,7 +637,7 @@ def apply_dropout(computation_graph, variables, drop_prob, rng=None,
 
 def apply_batch_normalization(computation_graph, variables, gammas,
                               betas, axis=0, epsilon=1e-7,
-                              use_population=False):
+                              use_population=None):
     """Returns a graph to variables in a computational graph.
 
     Parameters
@@ -654,11 +654,15 @@ def apply_batch_normalization(computation_graph, variables, gammas,
         Batch axis, or batch axes. Defaults to 0.
     epsilon : float, optional
         Stabilization constant. Defaults to 1E-7.
-    use_population : bool, optional
-        If `True`, use population statistics instead of batch statistics.
-        In that case, `gammas` and `betas` represent the population
-        statistics and a variable `var` is simply replaced with
-        `gamma * var + beta`. Defaults to `False`.
+    use_population : dict, optional
+        Maps variables to be replaced to a boolean value indicating
+        whether to use population statistics instead of batch
+        statistics. When using population statistics, `gammas` and
+        `betas` represent the population statistics and a variable
+        `var` is simply replaced with `gamma * var + beta`.
+        Defaults to `None`, in which case batch statistics are always
+        used. If a particular variable does not appear as a key in
+        the dictionary, it is presumed that it uses batch statistics.
 
     Notes
     -----
@@ -706,6 +710,11 @@ def apply_batch_normalization(computation_graph, variables, gammas,
 
     """
     epsilon = numpy.cast[theano.config.floatX](epsilon)
+    if not use_population:
+        use_population = dict([(var, False) for var in variables])
+    for var in variables:
+        if var not in use_population:
+            use_population[var] = False
 
     # Broadcast gamma and beta properly
     axes = pack(axis)
@@ -724,14 +733,15 @@ def apply_batch_normalization(computation_graph, variables, gammas,
 
     means = [var.mean(axis=axes, keepdims=True) for var in variables]
     variances = [var.var(axis=axes, keepdims=True) for var in variables]
-    if use_population:
-        replacements = [(var, gamma * var + beta) for var, gamma, beta in
-                        zip(variables, gammas, betas)]
-    else:
-        replacements = [
-            (var, gamma * (var - mu) / tensor.sqrt(sigma_sqr + epsilon) + beta)
-            for var, mu, sigma_sqr, gamma, beta in
-            zip(variables, means, variances, gammas, betas)]
+    replacements = []
+    zip_iterator = zip(variables, means, variances, gammas, betas)
+    for var, mu, sigma_sqr, gamma, beta in zip_iterator:
+        if use_population[var]:
+            replacements.append((var, gamma * var + beta))
+        else:
+            replacements.append(
+                (var,
+                 gamma * (var - mu) / tensor.sqrt(sigma_sqr + epsilon) + beta))
     for variable, replacement in replacements:
         add_role(replacement, BATCH_NORMALIZED)
         replacement.tag.replacement_of = variable
