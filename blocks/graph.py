@@ -636,7 +636,7 @@ def apply_dropout(computation_graph, variables, drop_prob, rng=None,
 
 
 def apply_batch_normalization(computation_graph, variables, gammas,
-                              betas, axis=0, epsilon=1e-7,
+                              betas, axis=None, epsilon=1e-7,
                               use_population=None):
     """Returns a graph to variables in a computational graph.
 
@@ -712,27 +712,29 @@ def apply_batch_normalization(computation_graph, variables, gammas,
     epsilon = numpy.cast[theano.config.floatX](epsilon)
     if not use_population:
         use_population = dict([(var, False) for var in variables])
+    if not axis:
+        axis = dict([(var, 0) for var in variables])
     for var in variables:
         if var not in use_population:
             use_population[var] = False
+        if var not in axis:
+            axis[var] = pack(0)
+        else:
+            axis[var] = pack(axis[var])
 
     # Broadcast gamma and beta properly
-    axes = pack(axis)
-    mappings = [
-        dict([(axis_, i) for i, axis_ in
-              enumerate(dim for dim in xrange(var.ndim) if dim not in axes)])
-        for var in variables]
-    broadcasted_dims = [
-        tuple(mapping[dim] if dim not in axes else 'x'
-              for dim in xrange(var.ndim))
-        for mapping, var in zip(mappings, variables)]
-    gammas = [tensor.as_tensor_variable(gamma).dimshuffle(*dims)
-              for gamma, dims in zip(gammas, broadcasted_dims)]
-    betas = [tensor.as_tensor_variable(beta).dimshuffle(*dims)
-             for beta, dims in zip(betas, broadcasted_dims)]
+    for i, var enumerate(variables):
+        axes = axis[var]
+        mapping = dict([(axis_, i) for i, axis_ in
+                         enumerate(dim for dim in xrange(var.ndim)
+                                   if ndim not in axes)])
+        dims = tuple(mapping[dim] if dim not in axes else 'x'
+                     for dim in xrange(var.ndim))
+        gammas[i] = tensor.as_tensor_variable(gammas[i]).dimshuffle(*dims)
+        betas[i] = tensor.as_tensor_variable(betas[i]).dimshuffle(*dims)
 
-    means = [var.mean(axis=axes, keepdims=True) for var in variables]
-    variances = [var.var(axis=axes, keepdims=True) for var in variables]
+    means = [var.mean(axis=axis[var], keepdims=True) for var in variables]
+    variances = [var.var(axis=axis[var], keepdims=True) for var in variables]
     replacements = []
     zip_iterator = zip(variables, means, variances, gammas, betas)
     for var, mu, sigma_sqr, gamma, beta in zip_iterator:
