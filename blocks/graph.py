@@ -723,11 +723,11 @@ def apply_batch_normalization(computation_graph, variables, gammas,
             axis[var] = pack(axis[var])
 
     # Broadcast gamma and beta properly
-    for i, var enumerate(variables):
+    for i, var in enumerate(variables):
         axes = axis[var]
-        mapping = dict([(axis_, i) for i, axis_ in
+        mapping = dict([(axis_, j) for j, axis_ in
                          enumerate(dim for dim in xrange(var.ndim)
-                                   if ndim not in axes)])
+                                   if dim not in axes)])
         dims = tuple(mapping[dim] if dim not in axes else 'x'
                      for dim in xrange(var.ndim))
         gammas[i] = tensor.as_tensor_variable(gammas[i]).dimshuffle(*dims)
