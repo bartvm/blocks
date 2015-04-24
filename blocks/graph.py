@@ -726,8 +726,8 @@ def apply_batch_normalization(computation_graph, variables, gammas,
     for i, var in enumerate(variables):
         axes = axis[var]
         mapping = dict([(axis_, j) for j, axis_ in
-                         enumerate(dim for dim in xrange(var.ndim)
-                                   if dim not in axes)])
+                        enumerate(dim for dim in xrange(var.ndim)
+                                  if dim not in axes)])
         dims = tuple(mapping[dim] if dim not in axes else 'x'
                      for dim in xrange(var.ndim))
         gammas[i] = tensor.as_tensor_variable(gammas[i]).dimshuffle(*dims)
