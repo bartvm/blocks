@@ -220,8 +220,10 @@ batch axis.
 
 This is accomplished by passing an ``axis`` argument to
 ``apply_batch_normalization``, which defines which axes are part of the
-"mini-batch" across which batch normalization will be performed. By default,
-it takes the value 0.
+"mini-batch" across which batch normalization will be performed. It's a dict
+mapping variables to an ``int`` or a list of ``int``. Variables that are not
+defined as keys in ``axis`` receive the default value of 0, and if no argument
+is given all variables receive the default value of 0.
 
 Let's build a convolutional version of our hard-to-train MLP:
 
@@ -314,26 +316,25 @@ biases because :math:`\beta` will act as a bias for our units.
 >>> cost = CategoricalCrossEntropy().apply(y.flatten(), probs)
 >>> error_rate = MisclassificationRate().apply(y.flatten(), probs)
 
-First, we apply batch normalization on the convolutional part of the network.
+Let's concentrate on the convolutional part of the network.
 
 >>> cg = ComputationGraph([cost, error_rate])
->>> variables = VariableFilter(
+>>> cnn_variables = VariableFilter(
 ...     bricks=[layer.convolution.convolution for layer in convnet.layers],
 ...     roles=[OUTPUT])(cg.variables)
->>> gammas = [shared_floatx(
-...               numpy.ones(get_brick(var).num_filters),
-...               name=var.name + '_gamma')
-...           for var in variables]
->>> for gamma in gammas:
+>>> cnn_gammas = [shared_floatx(
+...                   numpy.ones(get_brick(var).num_filters),
+...                   name=var.name + '_gamma')
+...               for var in cnn_variables]
+>>> for gamma in cnn_gammas:
 ...     add_role(gamma, PARAMETER)
->>> betas = [shared_floatx(
-...               numpy.zeros(get_brick(var).num_filters),
-...               name=var.name + '_beta')
-...          for var in variables]
->>> for beta in betas:
+>>> cnn_betas = [shared_floatx(
+...                   numpy.zeros(get_brick(var).num_filters),
+...                   name=var.name + '_beta')
+...              for var in cnn_variables]
+>>> for beta in cnn_betas:
 ...     add_role(beta, PARAMETER)
->>> cg = apply_batch_normalization(
-...     cg, variables, gammas, betas, axis=[0, 2, 3], epsilon=1e-5)
+>>> cnn_axis = [(var, [0, 2, 3]) for var in cnn_variables]
 
 By passing ``axis=[0, 2, 3]``, we're telling ``apply_batch_normalization`` to
 normalize across the batch (0), width (2) and height (3) axes.
@@ -343,28 +344,35 @@ of filters; this is because we're normalizing across the batch, width and height
 axes, which means that filter maps are now scaled and shifted by a single scalar
 value.
 
-We then apply batch normalization on the fully-connected part of the network,
-just like before.
+The fully-connected part of the network receives the same treatment as before.
 
->>> variables = VariableFilter(
+>>> mlp_variables = VariableFilter(
 ...     bricks=mlp.linear_transformations, roles=[OUTPUT])(cg.variables)
->>> gammas = [shared_floatx(
-...               numpy.ones(get_brick(var).output_dim),
-...               name=var.name + '_gamma')
-...           for var in variables]
->>> for gamma in gammas:
+>>> mlp_gammas = [shared_floatx(
+...                   numpy.ones(get_brick(var).output_dim),
+...                   name=var.name + '_gamma')
+...               for var in mlp_variables]
+>>> for gamma in mlp_gammas:
 ...     add_role(gamma, PARAMETER)
->>> betas = [shared_floatx(
-...               numpy.zeros(get_brick(var).output_dim),
-...               name=var.name + '_beta')
-...          for var in variables]
->>> for beta in betas:
+>>> mlp_betas = [shared_floatx(
+...                   numpy.zeros(get_brick(var).output_dim),
+...                   name=var.name + '_beta')
+...              for var in mlp_variables]
+>>> for beta in mlp_betas:
 ...     add_role(beta, PARAMETER)
->>> cg = apply_batch_normalization(
-...     cg, variables, gammas, betas, axis=0, epsilon=1e-5)
+>>> mlp_axis = [(var, 0) for var in cnn_variables]
 
 In this case, passing the ``axis`` argument is optional, since it already
 defaults to 0.
+
+Let's combine everything together:
+
+>>> variables = cnn_variables + mlp_variables
+>>> gammas = cnn_gammas + mlp_gammas
+>>> betas = cnn_betas + mlp_betas
+>>> axis = dict(cnn_axis + mlp_axis)
+>>> cg = apply_batch_normalization(
+...     cg, variables, gammas, betas, axis=axis, epsilon=1e-5)
 
 Training the batch-normalized convnet does *much* better than the original one.
 
