@@ -27,7 +27,7 @@ Vanilla network
 ---------------
 
 We'll start by constructing the vanilla version of the network to show that
-if fails to learn:
+it fails to learn:
 
 >>> from blocks.bricks import MLP, Sigmoid, Softmax
 >>> from blocks.bricks.cost import (
@@ -117,7 +117,7 @@ normalized:
 
 For every variable, we need to instantiate a :math:`\gamma` vector and a
 :math:`\beta` vector as shared variables and we need to tag them as parameters
-so their value is learned during training:
+so their values are learned during training:
 
 >>> import numpy
 >>> from blocks.filter import get_brick
@@ -145,7 +145,7 @@ The only thing left to do is to call ``blocks.graph.apply_batch_normalization``:
 >>> cg_bn = apply_batch_normalization(
 ...     cg, variables, gammas, betas, epsilon=1e-5)
 
-Here's what happened behing the scenes. The ``apply_batch_normalization``
+Here's what happened behind the scenes. The ``apply_batch_normalization``
 function received the original computation graph, a list of variables to
 batch-normalize and lists of corresponding :math:`\gamma` and :math:`\beta`
 vectors. It also received an optional :math:`\epsilon` value. Then, for every
@@ -259,7 +259,7 @@ We created a convnet with three layers. Each layer has 3-by-3 filters and a
 maintain roughly 784 units at each layer. The output of the convnet is passed
 through an MLP with one 500-units sigmoidal hidden layer.
 
-Training this network for 10 epochs fails to learn, just like before:
+The network trained for 10 epochs fails to learn, just like before:
 
 >>> cg = ComputationGraph([cost])
 >>> algorithm = GradientDescent(
