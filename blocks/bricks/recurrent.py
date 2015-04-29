@@ -29,7 +29,8 @@ class BaseRecurrent(Brick):
     has_bias = False
 
     @application
-    def initial_state(self, state_name, batch_size, *args, **kwargs):
+    def initial_state(self, application, state_name, batch_size, *args,
+                      **kwargs):
         r"""Return an initial state for an application call.
 
         Parameters
@@ -44,6 +45,7 @@ class BaseRecurrent(Brick):
             The keyword arguments of the application call.
 
         """
+        setattr(application, 'outputs', ['initial_%s' % state_name])
         dim = self.get_dim(state_name)
         if dim == 0:
             return tensor.zeros((batch_size,))
