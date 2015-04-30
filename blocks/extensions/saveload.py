@@ -5,7 +5,7 @@ import logging
 from blocks.extensions import SimpleExtension, TrainingExtension
 from blocks.dump import MainLoopDumpManager
 from blocks.utils import reraise_as
-from blocks.serialization import secure_pickle_dump
+from blocks.serialization import dump
 
 logger = logging.getLogger(__name__)
 
@@ -93,11 +93,11 @@ class Checkpoint(SimpleExtension):
             already_saved_to = self.main_loop.log.current_row.get(SAVED_TO, ())
             self.main_loop.log.current_row[SAVED_TO] = (
                 already_saved_to + (path,))
-            secure_pickle_dump(self.main_loop, path)
+            dump(self.main_loop, path)
             filenames = self.save_separately_filenames(path)
             for attribute in self.save_separately:
-                secure_pickle_dump(getattr(self.main_loop, attribute),
-                                   filenames[attribute])
+                dump(getattr(self.main_loop, attribute),
+                     filenames[attribute])
         except Exception:
             self.main_loop.log.current_row[SAVED_TO] = None
             raise
