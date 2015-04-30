@@ -22,9 +22,10 @@ import os
 import os.path
 
 import numpy
-from six.moves import cPickle
 
-from blocks.serialization import pickle_dump
+from theano.misc.pkl_utils import load
+
+from blocks.serialization import dump
 
 logger = logging.getLogger(__name__)
 
@@ -114,11 +115,11 @@ class MainLoopDumpManager(object):
 
     def dump_iteration_state(self, main_loop):
         with open(self.path_to_iteration_state, "wb") as destination:
-            pickle_dump(main_loop.iteration_state, destination)
+            dump(main_loop.iteration_state, destination)
 
     def dump_log(self, main_loop):
         with open(self.path_to_log, "wb") as destination:
-            pickle_dump(main_loop.log, destination)
+            dump(main_loop.log, destination)
 
     def dump(self, main_loop):
         """Dumps the main loop to the root folder.
@@ -139,11 +140,11 @@ class MainLoopDumpManager(object):
 
     def load_iteration_state(self):
         with open(self.path_to_iteration_state, "rb") as source:
-            return cPickle.load(source)
+            return load(source)
 
     def load_log(self):
         with open(self.path_to_log, "rb") as source:
-            return cPickle.load(source)
+            return load(source)
 
     def load(self):
         return (self.load_parameters(),
