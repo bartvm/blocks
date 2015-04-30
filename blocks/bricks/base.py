@@ -2,6 +2,7 @@ import inspect
 from abc import ABCMeta
 from collections import OrderedDict
 from functools import wraps
+from operator import attrgetter
 from types import MethodType
 
 import six
@@ -741,7 +742,7 @@ class Brick(Annotation):
     def get_unique_path(self):
         """Returns unique path to this brick in the application graph."""
         if self.parents:
-            parent = min(self.parents, key=operator.attrgetter('name'))
+            parent = min(self.parents, key=attrgetter('name'))
             return parent.get_unique_path() + [self]
         else:
             return [self]
