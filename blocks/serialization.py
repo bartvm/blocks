@@ -11,6 +11,9 @@ from theano.compile.sharedvalue import SharedVariable
 from theano.misc.pkl_utils import PersistentSharedVariableID
 
 
+BRICK_DELIMITER = '/'
+
+
 class PersistentParameterID(PersistentSharedVariableID):
     """Persist the names of parameter arrays in the zip file.
 
@@ -43,7 +46,7 @@ class PersistentParameterID(PersistentSharedVariableID):
                 if obj.name == 'pkl':
                     ValueError("can't pickle shared variable with name `pkl`")
                 if hasattr(obj, 'tag'):
-                    name = '/'.join(
+                    name = BRICK_DELIMITER.join(
                         [brick.name for brick
                          in obj.tag.annotations[0].get_unique_path()] +
                         [obj.name])
@@ -92,6 +95,8 @@ def dump(obj, f, protocol=DEFAULT_PROTOCOL,
     ...     dump(mlp, f)
     >>> 'mlp/linear_0/W' in numpy.load('model.zip').keys()
     True
+    >>> 'mlp/linear_0/b' in numpy.load('model.zip').keys()
+    True
     >>> numpy.load('model.zip')['mlp/linear_0/W'].shape
     (10, 10)
     >>> with open('model.zip', 'rb') as f:
@@ -100,5 +105,5 @@ def dump(obj, f, protocol=DEFAULT_PROTOCOL,
     <blocks.bricks.MLP object at ...: name=mlp>
 
     """
-    theano.misc.pkl_utils.dump(obj, f, persistent_id=PersistentParameterID)
+    theano.misc.pkl_utils.dump(obj, f, protocol, persistent_id)
 
