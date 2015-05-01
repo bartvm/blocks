@@ -15,7 +15,6 @@ from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.training import SharedVariableModifier, TrackTheBest
 from blocks.extensions.predicates import OnLogRecord
 from blocks.main_loop import MainLoop
-from blocks.serialization import dump
 from blocks.utils import shared_floatx
 from tests import MockMainLoop
 

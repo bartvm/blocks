@@ -4,7 +4,6 @@ from theano.misc.pkl_utils import load
 
 from blocks.config import config
 from blocks.extensions.saveload import SAVED_TO
-from blocks.serialization import dump
 from examples.sqrt import main as sqrt_test
 from examples.mnist import main as mnist_test
 from examples.markov_chain.main import main as markov_chain_test
