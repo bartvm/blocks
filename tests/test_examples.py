@@ -1,10 +1,10 @@
 from __future__ import print_function
 import tempfile
-
-from six.moves import cPickle
+from theano.misc.pkl_utils import load
 
 import blocks
 from blocks.extensions.saveload import SAVED_TO
+from blocks.serialization import dump
 from examples.sqrt import main as sqrt_test
 from examples.mnist import main as mnist_test
 from examples.markov_chain.main import main as markov_chain_test
@@ -26,7 +26,7 @@ def test_mnist():
     with tempfile.NamedTemporaryFile() as f:
         mnist_test(f.name, 1, True)
         with open(f.name, "rb") as source:
-            main_loop = cPickle.load(source)
+            main_loop = load(source)
         main_loop.find_extension("FinishAfter").set_conditions(
             after_n_epochs=2)
         main_loop.run()

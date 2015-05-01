@@ -1,6 +1,5 @@
 import os.path
 from tempfile import NamedTemporaryFile
-from six.moves import cPickle
 
 import numpy
 from numpy.testing import assert_allclose
@@ -8,6 +7,7 @@ from numpy.testing import assert_allclose
 import theano
 from fuel.datasets import IterableDataset
 from theano import tensor
+from theano.misc.pkl_utils import load
 
 from blocks.algorithms import GradientDescent, Scale
 from blocks.extensions import FinishAfter, TrainingExtension
@@ -15,6 +15,7 @@ from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.training import SharedVariableModifier, TrackTheBest
 from blocks.extensions.predicates import OnLogRecord
 from blocks.main_loop import MainLoop
+from blocks.serialization import dump
 from blocks.utils import shared_floatx
 from tests import MockMainLoop
 
@@ -143,8 +144,8 @@ def test_save_the_best():
         assert main_loop.log[5]['saved_to'] == (dst.name, dst_best.name)
         assert main_loop.log[6]['saved_to'] == (dst.name,)
         with open(dst_best.name, 'rb') as src:
-            assert cPickle.load(src).log.status['iterations_done'] == 5
+            assert load(src).log.status['iterations_done'] == 5
         root, ext = os.path.splitext(dst_best.name)
         log_path = root + "_log" + ext
         with open(log_path, 'rb') as src:
-            assert cPickle.load(src).status['iterations_done'] == 5
+            assert load(src).status['iterations_done'] == 5
