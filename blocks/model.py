@@ -36,8 +36,8 @@ class AbstractModel(object):
     The following are traits of every model:
 
     * It has parameters and supports a way to access them. In addition
-    to returning handles to parameter objects it can return their values
-    as numpy arrays and set their values to given numpy arrays.
+      to returning handles to parameter objects it can return their values
+      as numpy arrays and set their values to given numpy arrays.
 
     * It has an optimality objective.
 

@@ -132,3 +132,25 @@ def test_attention_recurrent():
     assert_allclose(weight_vals.sum(), input_length * batch_size, 1e-5)
     assert_allclose(states_vals.sum(), 113.429, rtol=1e-5)
     assert_allclose(glimpses_vals.sum(), 415.901, rtol=1e-5)
+
+
+def test_compute_weights_with_zero_mask():
+    state_dim = 2
+    attended_dim = 3
+    match_dim = 4
+    attended_length = 5
+    batch_size = 6
+
+    attention = SequenceContentAttention(
+        state_names=["states"], state_dims=[state_dim],
+        attended_dim=attended_dim, match_dim=match_dim,
+        weights_init=IsotropicGaussian(0.5),
+        biases_init=Constant(0))
+    attention.initialize()
+
+    energies = tensor.as_tensor_variable(
+        numpy.random.rand(attended_length, batch_size))
+    mask = tensor.as_tensor_variable(
+        numpy.zeros((attended_length, batch_size)))
+    weights = attention.compute_weights(energies, mask).eval()
+    assert numpy.all(numpy.isfinite(weights))

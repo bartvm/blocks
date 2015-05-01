@@ -17,9 +17,9 @@ If a setting is not configured and does not provide a default, a
 accessed.
 
 Configuration values can be accessed as attributes of
-:const:`blocks.config`.
+:const:`blocks.config.config`.
 
-    >>> from blocks import config
+    >>> from blocks.config import config
     >>> print(config.default_seed) # doctest: +SKIP
     1
 
@@ -81,7 +81,7 @@ class Configuration(object):
             yaml_file = os.environ['BLOCKS_CONFIG']
         else:
             yaml_file = os.path.expanduser('~/.blocksrc')
-        if os.path.isfile(yaml_file):
+        if os.path.isfile(yaml_file) and os.path.getsize(yaml_file):
             with open(yaml_file) as f:
                 for key, value in yaml.safe_load(f).items():
                     if key not in self.config:

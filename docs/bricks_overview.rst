@@ -40,8 +40,8 @@ The life-cycle of a brick is as follows:
 
 .. note::
    If the Theano variables of the brick object have not been allocated when 
-      :meth:`~.Application.apply` is called, Blocks will quietly call 
-         :meth:`.Brick.allocate`.
+   :meth:`~.Application.apply` is called, Blocks will quietly call 
+   :meth:`.Brick.allocate`.
 
 Example
 ^^^^^^^

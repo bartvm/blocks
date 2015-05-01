@@ -11,7 +11,7 @@ except ImportError:
     BOKEH_AVAILABLE = False
 
 
-from blocks import config
+from blocks.config import config
 from blocks.extensions import SimpleExtension
 
 logger = logging.getLogger(__name__)

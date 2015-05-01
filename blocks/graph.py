@@ -11,7 +11,7 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.scan_module.scan_op import Scan
 from toolz import unique
 
-from blocks import config
+from blocks.config import config
 from blocks.roles import add_role, has_roles, AUXILIARY, PARAMETER, DROPOUT
 from blocks.utils import (is_graph_input, is_shared_variable, dict_union,
                           shared_like)

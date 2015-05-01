@@ -11,7 +11,7 @@ from theano import tensor, Variable
 from blocks.bricks import Initializable, Sigmoid, Tanh
 from blocks.bricks.base import Application, application, Brick, lazy
 from blocks.initialization import NdarrayInitialization
-from blocks.roles import add_role, WEIGHT, BIAS
+from blocks.roles import add_role, WEIGHT
 from blocks.utils import (pack, shared_floatx_nans, dict_union, dict_subset,
                           is_shared_variable)
 
@@ -206,7 +206,9 @@ def recurrent(*args, **kwargs):
                 outputs_info=outputs_info,
                 non_sequences=list(contexts_given.values()),
                 n_steps=n_steps,
-                go_backwards=reverse)
+                go_backwards=reverse,
+                name='{}_{}_scan'.format(
+                    brick.name, application.application_name))
             result = pack(result)
             if return_initial_states:
                 # Undo Subtensor
@@ -365,19 +367,16 @@ class LSTM(BaseRecurrent, Initializable):
                                                    name='W_cell_to_forget')
         self.W_cell_to_out = shared_floatx_nans((self.dim,),
                                                 name='W_cell_to_out')
-        self.biases = shared_floatx_nans((4*self.dim,), name='biases')
         add_role(self.W_state, WEIGHT)
         add_role(self.W_cell_to_in, WEIGHT)
         add_role(self.W_cell_to_forget, WEIGHT)
         add_role(self.W_cell_to_out, WEIGHT)
-        add_role(self.biases, BIAS)
 
         self.params = [self.W_state, self.W_cell_to_in, self.W_cell_to_forget,
-                       self.W_cell_to_out, self.biases]
+                       self.W_cell_to_out]
 
     def _initialize(self):
-        self.biases_init.initialize(self.biases, self.rng)
-        for w in self.params[:-1]:
+        for w in self.params:
             self.weights_init.initialize(w, self.rng)
 
     @recurrent(sequences=['inputs', 'mask'], states=['states', 'cells'],
@@ -412,7 +411,7 @@ class LSTM(BaseRecurrent, Initializable):
             return x.T[no*self.dim: (no+1)*self.dim].T
         nonlinearity = self.children[0].apply
 
-        activation = tensor.dot(states, self.W_state) + inputs + self.biases
+        activation = tensor.dot(states, self.W_state) + inputs
         in_gate = tensor.nnet.sigmoid(slice_last(activation, 0) +
                                       cells * self.W_cell_to_in)
         forget_gate = tensor.nnet.sigmoid(slice_last(activation, 1) +
@@ -623,3 +622,7 @@ class Bidirectional(Initializable):
                                            *args, **kwargs)]
         return [tensor.concatenate([f, b], axis=2)
                 for f, b in equizip(forward, backward)]
+
+    @apply.delegate
+    def apply_delegate(self):
+        return self.children[0].apply

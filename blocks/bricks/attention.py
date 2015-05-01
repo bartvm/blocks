@@ -224,10 +224,14 @@ class GenericSequenceAttention(AbstractAttention):
             as `energies`.
 
         """
-        unormalized_weights = tensor.exp(energies)
+        unnormalized_weights = tensor.exp(energies)
         if attended_mask:
-            unormalized_weights *= attended_mask
-        return unormalized_weights / unormalized_weights.sum(axis=0)
+            unnormalized_weights *= attended_mask
+
+        # If mask consists of all zeros use 1 as the normalization coefficient
+        normalization = (unnormalized_weights.sum(axis=0) +
+                         tensor.all(1 - attended_mask, axis=0))
+        return unnormalized_weights / normalization
 
     @application
     def compute_weighted_averages(self, weights, attended):

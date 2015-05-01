@@ -6,8 +6,15 @@ from theano import tensor
 from blocks import bricks
 from blocks.bricks.base import application
 from blocks.graph import ComputationGraph
-from blocks.monitoring.aggregation import mean
+from blocks.monitoring.aggregation import mean, Mean
 from blocks.utils import shared_floatx
+
+from collections import OrderedDict
+from fuel.datasets import IndexableDataset
+from fuel.streams import DataStream
+from fuel.schemes import SequentialScheme
+
+from blocks.monitoring.evaluators import DatasetEvaluator
 
 
 class TestBrick(bricks.Brick):
@@ -52,3 +59,33 @@ def test_param_monitor():
     accumulate(numpy.arange(4, dtype=theano.config.floatX).reshape(2, 2))
     accumulate(numpy.arange(4, 10, dtype=theano.config.floatX).reshape(3, 2))
     assert_allclose(aggregator.readout_variable.eval(), 4.5)
+
+
+def test_mean_aggregator():
+    num_examples = 4
+    batch_size = 2
+
+    features = numpy.array([[0, 3],
+                           [2, 9],
+                           [2, 4],
+                           [5, 1]], dtype=theano.config.floatX)
+
+    dataset = IndexableDataset(OrderedDict([('features', features)]))
+
+    data_stream = DataStream(dataset,
+                             iteration_scheme=SequentialScheme(num_examples,
+                                                               batch_size))
+
+    x = tensor.matrix('features')
+    y = (x**2).mean(axis=0)
+    y.name = 'y'
+    z = y.sum()
+    z.name = 'z'
+
+    y.tag.aggregation_scheme = Mean(y, 1.)
+    z.tag.aggregation_scheme = Mean(z, 1.)
+
+    assert_allclose(DatasetEvaluator([y]).evaluate(data_stream)['y'],
+                    numpy.array([8.25, 26.75], dtype=theano.config.floatX))
+    assert_allclose(DatasetEvaluator([z]).evaluate(data_stream)['z'],
+                    numpy.array([35], dtype=theano.config.floatX))

@@ -3,10 +3,10 @@ import tempfile
 
 from numpy.testing import assert_raises
 
-from blocks.config_parser import Configuration, ConfigurationError
+from blocks.config import Configuration, ConfigurationError
 
 
-def test_config_parser():
+def test_config():
     _environ = dict(os.environ)
     try:
 

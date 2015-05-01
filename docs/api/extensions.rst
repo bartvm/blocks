@@ -19,6 +19,14 @@ Monitoring extensions
     :undoc-members:
     :show-inheritance:
 
+Training
+--------
+
+.. automodule:: blocks.extensions.training
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Serialization
 -------------
 

@@ -186,6 +186,8 @@ class SimpleExtension(TrainingExtension):
         If ``True``, :meth:`do` is invoked before training.
     before_first_epoch : bool
         If ``True``, :meth:`do` is invoked before the first epoch.
+    before_epoch : bool
+        If ``True``, :meth:`do` is invoked before every epoch.
     on_resumption : bool, optional
         If ``True``, :meth:`do` is invoked when training is resumed.
     on_interrupt : bool, optional
@@ -209,9 +211,9 @@ class SimpleExtension(TrainingExtension):
 
     """
     BOOLEAN_TRIGGERS = frozenset(["before_training", "before_first_epoch",
-                                  "on_resumption", "on_interrupt",
-                                  "after_epoch", "after_batch",
-                                  "after_training"])
+                                  "before_epoch", "on_resumption",
+                                  "on_interrupt", "after_epoch",
+                                  "after_batch", "after_training"])
 
     INTEGER_TRIGGERS = frozenset(["after_n_epochs", "after_n_batches",
                                   "every_n_epochs", "every_n_batches"])

@@ -8,7 +8,7 @@ from unittest.case import SkipTest
 from six import StringIO
 
 import blocks
-from blocks import config
+from blocks.config import config
 from blocks.main_loop import MainLoop
 from fuel.datasets import IterableDataset
 

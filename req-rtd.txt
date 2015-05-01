@@ -2,13 +2,11 @@
 --allow-unverified picklable-itertools
 git+https://github.com/dwf/picklable_itertools.git#egg=picklable-itertools
 
---allow-external fuel
---allow-unverified fuel
-git+https://github.com/bartvm/fuel#egg=fuel
-
 --allow-external theano
 --allow-unverified theano
 git+https://github.com/Theano/Theano.git#egg=theano
+
+mock
 
 sphinx==1.2.2  # rq.filter: ==1.2.2
 sphinxcontrib-napoleon==0.2.11  # rq.filter: ==0.2.11

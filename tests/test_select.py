@@ -1,9 +1,25 @@
 from copy import deepcopy
 
 import theano
+from numpy.testing import assert_raises
 
 from blocks.bricks.base import Brick
 from blocks.select import Path, Selector
+
+
+class MockBrickTop(Brick):
+
+    def __init__(self, children, **kwargs):
+        super(MockBrickTop, self).__init__(**kwargs)
+        self.children = children
+        self.params = []
+
+
+class MockBrickBottom(Brick):
+
+    def __init__(self, **kwargs):
+        super(MockBrickBottom, self).__init__(**kwargs)
+        self.params = [theano.shared(0, "V"), theano.shared(0, "W")]
 
 
 def test_path():
@@ -23,20 +39,16 @@ def test_path():
     assert hash(path4) != hash(path2)
 
 
+def test_selector_get_params_uniqueness():
+    top = MockBrickTop(
+        [MockBrickBottom(name="bottom"), MockBrickBottom(name="bottom")],
+        name="top")
+
+    selector = Selector([top])
+    assert_raises(ValueError, selector.get_params)
+
+
 def test_selector():
-    class MockBrickTop(Brick):
-
-        def __init__(self, children, **kwargs):
-            super(MockBrickTop, self).__init__(**kwargs)
-            self.children = children
-            self.params = []
-
-    class MockBrickBottom(Brick):
-
-        def __init__(self, **kwargs):
-            super(MockBrickBottom, self).__init__(**kwargs)
-            self.params = [theano.shared(0, "V"), theano.shared(0, "W")]
-
     b1 = MockBrickBottom(name="b1")
     b2 = MockBrickBottom(name="b2")
     b3 = MockBrickBottom(name="b3")

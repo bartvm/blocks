@@ -1,17 +1,4 @@
 """The blocks library for parametrized Theano ops."""
-import os.path
-from pkg_resources import get_distribution, DistributionNotFound
-
-from blocks.config_parser import config  # noqa
-
-
-try:
-    DIST = get_distribution('blocks')
-    DIST_LOC = os.path.normcase(DIST.location)
-    HERE = os.path.normcase(__file__)
-    if not HERE.startswith(os.path.join(DIST_LOC, 'blocks')):
-        raise DistributionNotFound
-except DistributionNotFound:
-    __version__ = 'not installed'
-else:
-    __version__ = DIST.version
+# Scary warning: Adding code to this file can break namespace packages
+# See https://pythonhosted.org/setuptools/setuptools.html#namespace-packages
+__version__ = '0.1a1'

@@ -1,7 +1,7 @@
 Configuration
 =============
 
-.. automodule:: blocks.config_parser
+.. automodule:: blocks.config
 
 .. autoclass:: ConfigurationError
    :show-inheritance:

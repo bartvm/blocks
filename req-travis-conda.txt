@@ -1,6 +1,6 @@
 bokeh==0.8.2
 coverage==3.7.1
-h5py==2.4.0
+h5py==2.5.0
 numpy==1.9.2
 pandas==0.16.0
 pytables=3.1.1

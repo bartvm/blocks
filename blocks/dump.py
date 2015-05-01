@@ -50,7 +50,7 @@ def save_parameter_values(param_values, path):
 
 
 def load_parameter_values(path):
-    """Load parameter values saved by :fun:`save_parameters`.
+    """Load parameter values saved by :func:`save_parameters`.
 
     This is a thin wrapper over `numpy.load`. It deals with
     `numpy`'s vulnerability to slashes in file names.

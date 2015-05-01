@@ -1,4 +1,33 @@
-"""Sequence generation framework."""
+"""Sequence generation framework.
+
+Recurrent networks are often used to generate/model sequences.
+Examples include language modelling, machine translation, handwriting
+synthesis, etc.. A typical pattern in this context is that
+sequence elements are generated one often another, and every generated
+element is fed back into the recurrent network state. Sometimes
+also an attention mechanism is used to condition sequence generation
+on some structured input like another sequence or an image.
+
+This module provides :class:`SequenceGenerator` that builds a sequence
+generating network from three main components:
+
+* a core recurrent transition, e.g. :class:`~blocks.bricks.recurrent.LSTM`
+  or :class:`~blocks.bricks.recurrent.GatedRecurrent`
+
+* a readout component that can produce sequence elements using
+  the network state and the information from the attention mechanism
+
+* an attention mechanism (see :mod:`~blocks.bricks.attention` for
+  more information)
+
+Implementation-wise :class:`SequenceGenerator` fully relies on
+:class:`BaseSequenceGenerator`. At the level of the latter an
+attention is mandatory, moreover it must be a part of the recurrent
+transition (see :class:`~blocks.bricks.attention.AttentionRecurrent`).
+To simulate optional attention, :class:`SequenceGenerator` wraps the
+pure recurrent network in :class:`FakeAttentionRecurrent`.
+
+"""
 from abc import ABCMeta, abstractmethod
 
 from six import add_metaclass
@@ -16,53 +45,83 @@ from blocks.utils import dict_union, dict_subset
 
 
 class BaseSequenceGenerator(Initializable):
-    """A generic sequence generator.
+    r"""A generic sequence generator.
 
     This class combines two components, a readout network and an
     attention-equipped recurrent transition, into a context-dependent
-    sequence generator. Optionally a third component can be used which
+    sequence generator. Third component must be also given which
     forks feedback from the readout network to obtain inputs for the
     transition.
 
-    **Definitions:**
-
-    * *States* of the generator are the states of the transition as
-      specified in `transition.state_names`.
-
-    * *Contexts* of the generator are the contexts of the transition as
-      specified in `transition.context_names`.
-
-    * *Glimpses* are intermediate entities computed at every generation
-      step from states, contexts and the previous step glimpses. They are
-      computed in the transition's `apply` method when not given or by
-      explicitly calling the transition's `take_glimpses` method. The set
-      of glimpses considered is specified in `transition.glimpse_names`.
+    The class provides two methods: :meth:`generate` and :meth:`cost`. The
+    former is to actually generate sequences and the latter is to compute
+    the cost of generating given sequences.
 
     The generation algorithm description follows.
 
+    **Definitions and notation:**
+
+    * States :math:`s_i` of the generator are the states of the transition
+      as specified in `transition.state_names`.
+
+    * Contexts of the generator are the contexts of the
+      transition as specified in `transition.context_names`.
+
+    * Glimpses :math:`g_i` are intermediate entities computed at every
+      generation step from states, contexts and the previous step glimpses.
+      They are computed in the transition's `apply` method when not given
+      or by explicitly calling the transition's `take_glimpses` method. The
+      set of glimpses considered is specified in
+      `transition.glimpse_names`.
+
+    * Outputs :math:`y_i` are produced at every step and form the output
+      sequence. A generation cost :math:`c_i` is assigned to each output.
+
     **Algorithm:**
 
-    1. The initial states are computed from the contexts. This includes
-       fake initial outputs given by the `initial_outputs` method of the
-       readout, initial states and glimpses given by the `initial_state`
-       method of the transition.
+    1. Initialization.
 
-    2. Given the contexts, the current state and the glimpses from the
-       previous step the attention mechanism hidden in the transition
-       produces current step glimpses. This happens in the `take_glimpses`
-       method of the transition.
+       .. math::
 
-    3. Using the contexts, the fed back output from the previous step, the
-       current states and glimpses, the readout brick is used to generate
-       the new output by calling its `readout` and `emit` methods.
+           y_0 = readout.initial\_outputs(contexts)\\
+           s_0, g_0 = transition.initial\_states(contexts)\\
+           i = 1\\
 
-    4. The new output is fed back in the `feedback` method of the readout
-       brick. This feedback, together with the contexts, the glimpses and
-       the previous states is used to get the new states in the
-       transition's `apply` method. Optionally the `fork` brick is used in
-       between to compute the transition's inputs from the feedback.
+       The default `initial_states` method that a recurrent transition
+       inherits from :class:`.BaseRecurrent` creates an initial states
+       of all zeros. Use your own transition classes to get custom
+       initial states.
 
-    5. Back to step 1 if desired sequence length is not yet reached.
+    2. New glimpses are computed:
+
+       .. math:: g_i = transition.take\_glimpses(
+           s_{i-1}, g_{i-1}, contexts)
+
+    3. A new output is generated by the readout and its cost is
+       computed:
+
+       .. math::
+
+            f_{i-1} = readout.feedback(y_{i-1}) \\
+            r_i = readout.readout(f_{i-1}, s_{i-1}, g_i, contexts) \\
+            y_i = readout.emit(r_i) \\
+            c_i = readout.cost(r_i, y_i)
+
+       Note that the *new* glimpses and the *old* states are used at this
+       step. The reason for not merging all readout methods into one is
+       to make an efficient implementation of :meth:`cost` possible.
+
+    4. New states are computed and iteration is done:
+
+       .. math::
+
+           f_i = readout.feedback(y_i) \\
+           s_i = transition.compute\_states(s_{i-1}, g_i,
+                fork.apply(f_i), contexts) \\
+           i = i + 1
+
+    5. Back to step 2 if the desired sequence
+       length has not been yet reached.
 
     | A scheme of the algorithm described above follows.
 
@@ -71,14 +130,6 @@ class BaseSequenceGenerator(Initializable):
             :width: 500px
 
     ..
-
-    **Notes:**
-
-    * For machine translation we would have only one glimpse: the weighted
-      average of the annotations.
-
-    * For speech recognition we would have three: the weighted average,
-      the alignment and the monotonicity penalty.
 
     Parameters
     ----------
@@ -89,9 +140,12 @@ class BaseSequenceGenerator(Initializable):
     fork : :class:`.Brick`
         The brick to compute the transition's inputs from the feedback.
 
-    Notes
-    -----
-    See :class:`.Initializable` for initialization parameters.
+    See Also
+    --------
+    :class:`.Initializable` : for initialization parameters
+
+    :class:`SequenceGenerator` : more user friendly interface to this\
+        brick
 
     """
     @lazy()
@@ -215,8 +269,7 @@ class BaseSequenceGenerator(Initializable):
         feedback = tensor.roll(feedback, 1, 0)
         feedback = tensor.set_subtensor(
             feedback[0],
-            self.readout.feedback(self.readout.initial_outputs(
-                batch_size, **contexts)))
+            self.readout.feedback(self.readout.initial_outputs(batch_size)))
         readouts = self.readout.readout(
             feedback=feedback, **dict_union(states, glimpses, contexts))
         costs = self.readout.cost(readouts, outputs)
@@ -297,53 +350,117 @@ class BaseSequenceGenerator(Initializable):
 
 
 @add_metaclass(ABCMeta)
-class AbstractEmitter(Brick):
-    """The interface for the emitter component of a readout."""
-    @abstractmethod
-    def emit(self, readouts):
-        pass
-
-    @abstractmethod
-    def cost(self, readouts, outputs):
-        pass
-
-    @abstractmethod
-    def initial_outputs(self, batch_size, *args, **kwargs):
-        pass
-
-
-@add_metaclass(ABCMeta)
-class AbstractFeedback(Brick):
-    """The interface for the feedback component of a readout."""
-    @abstractmethod
-    def feedback(self, outputs):
-        pass
-
-
-@add_metaclass(ABCMeta)
-class AbstractReadout(AbstractEmitter, AbstractFeedback):
+class AbstractReadout(Initializable):
     """The interface for the readout component of a sequence generator.
 
-    .. todo::
-
-       Explain what the methods should do.
-
-    """
-    @abstractmethod
-    def readout(self, **kwargs):
-        pass
-
-
-class Readout(AbstractReadout, Initializable):
-    """Readout brick with separated emitting and feedback parts.
+    The readout component of a sequence generator is a bridge between
+    the core recurrent network and the output sequence.
 
     Parameters
     ----------
     source_names : list
         A list of the source names (outputs) that are needed for the
-        readout part e.g. ``['states']`` or ``['states', 'glimpses']``.
+        readout part e.g. ``['states']`` or
+        ``['states', 'weighted_averages']`` or ``['states', 'feedback']``.
     readout_dim : int
         The dimension of the readout.
+
+    Attributes
+    ----------
+    source_names : list
+    readout_dim : int
+
+    See Also
+    --------
+    :class:`BaseSequenceGenerator` : see how exactly a readout is used
+
+    :class:`Readout` : the typically used readout brick
+
+    """
+    @lazy(allocation=['source_names', 'readout_dim'])
+    def __init__(self, source_names, readout_dim, **kwargs):
+        self.source_names = source_names
+        self.readout_dim = readout_dim
+        super(AbstractReadout, self).__init__(**kwargs)
+
+    @abstractmethod
+    def emit(self, readouts):
+        """Produce outputs from readouts.
+
+        Parameters
+        ----------
+        readouts : :class:`~theano.Variable`
+            Readouts produced by the :meth:`readout` method of
+            a `(batch_size, readout_dim)` shape.
+
+        """
+        pass
+
+    @abstractmethod
+    def cost(self, readouts, outputs):
+        """Compute generation cost of outputs given readouts.
+
+        Parameters
+        ----------
+        readouts : :class:`~theano.Variable`
+            Readouts produced by the :meth:`readout` method
+            of a `(..., readout dim)` shape.
+        outputs : :class:`~theano.Variable`
+            Outputs whose cost should be computed. Should have as many
+            or one less dimensions compared to `readout`. If readout has
+            `n` dimensions, first `n - 1` dimensions of `outputs` should
+            match with those of `readouts`.
+
+        """
+        pass
+
+    @abstractmethod
+    def initial_outputs(self, batch_size):
+        """Compute initial outputs for the generator's first step.
+
+        In the notation from the :class:`BaseSequenceGenerator`
+        documentation this method should compute :math:`y_0`.
+
+        """
+        pass
+
+    @abstractmethod
+    def readout(self, **kwargs):
+        r"""Compute the readout vector from states, glimpses, etc.
+
+        Parameters
+        ----------
+        \*\*kwargs: dict
+            Contains sequence generator states, glimpses,
+            contexts and feedback from the previous outputs.
+
+        """
+        pass
+
+    @abstractmethod
+    def feedback(self, outputs):
+        """Feeds outputs back to be used as inputs of the transition."""
+        pass
+
+
+class Readout(AbstractReadout):
+    r"""Readout brick with separated emitter and feedback parts.
+
+    :class:`Readout` combines a few bits and pieces into an object
+    that can be used as the readout component in
+    :class:`BaseSequenceGenerator`. This includes an emitter brick,
+    to which :meth:`emit`, :meth:`cost` and :meth:`initial_outputs`
+    calls are delegated, a feedback brick to which :meth:`feedback`
+    functionality is delegated, and a pipeline to actually compute
+    readouts from all the sources (see the `source_names` attribute
+    of :class:`AbstractReadout`).
+
+    The readout computation pipeline is constructed from `merge` and
+    `post_merge` brick, whose responsibilites are described in the
+    respective docstrings.
+
+    Parameters
+    ----------
     emitter : an instance of :class:`AbstractEmitter`
         The emitter component.
     feedback_brick : an instance of :class:`AbstractFeedback`
@@ -365,26 +482,32 @@ class Readout(AbstractReadout, Initializable):
         `merge` (or `merge_prototype`). If not give, it is assumed to be
         the same as `readout_dim` (i.e. `post_merge` is assumed to not
         change dimensions).
+    \*\*kwargs : dict
+        Passed to the parent's constructor.
+
+    See Also
+    --------
+    :class:`BaseSequenceGenerator` : see how exactly a readout is used
+
+    :class:`AbstractEmitter`, :class:`AbstractFeedback`
 
     """
-    @lazy(allocation=['source_names', 'readout_dim'])
-    def __init__(self, source_names, readout_dim, emitter=None,
-                 feedback_brick=None, merge=None, merge_prototype=None,
+    def __init__(self, emitter=None, feedback_brick=None,
+                 merge=None, merge_prototype=None,
                  post_merge=None, merged_dim=None, **kwargs):
         super(Readout, self).__init__(**kwargs)
-        self.source_names = source_names
-        self.readout_dim = readout_dim
 
         if not emitter:
-            emitter = TrivialEmitter(readout_dim)
+            emitter = TrivialEmitter(self.readout_dim)
         if not feedback_brick:
-            feedback_brick = TrivialFeedback(readout_dim)
+            feedback_brick = TrivialFeedback(self.readout_dim)
         if not merge:
-            merge = Merge(input_names=source_names, prototype=merge_prototype)
+            merge = Merge(input_names=self.source_names,
+                          prototype=merge_prototype)
         if not post_merge:
-            post_merge = Bias(dim=readout_dim)
+            post_merge = Bias(dim=self.readout_dim)
         if not merged_dim:
-            merged_dim = readout_dim
+            merged_dim = self.readout_dim
         self.emitter = emitter
         self.feedback_brick = feedback_brick
         self.merge = merge
@@ -419,8 +542,8 @@ class Readout(AbstractReadout, Initializable):
         return self.emitter.cost(readouts, outputs)
 
     @application
-    def initial_outputs(self, batch_size, *args, **kwargs):
-        return self.emitter.initial_outputs(batch_size, **kwargs)
+    def initial_outputs(self, batch_size):
+        return self.emitter.initial_outputs(batch_size)
 
     @application(outputs=['feedback'])
     def feedback(self, outputs):
@@ -434,6 +557,57 @@ class Readout(AbstractReadout, Initializable):
         elif name == 'readouts':
             return self.readout_dim
         return super(Readout, self).get_dim(name)
+
+
+@add_metaclass(ABCMeta)
+class AbstractEmitter(Brick):
+    """The interface for the emitter component of a readout.
+
+    Attributes
+    ----------
+    readout_dim : int
+        The dimension of the readout. Is given by the
+        :class:`Readout` brick when allocation configuration
+        is pushed.
+
+    See Also
+    --------
+    :class:`Readout`
+
+    :class:`SoftmaxEmitter` : for integer outputs
+
+    """
+    @abstractmethod
+    def emit(self, readouts):
+        """Implements the respective method of :class:`Readout`."""
+        pass
+
+    @abstractmethod
+    def cost(self, readouts, outputs):
+        """Implements the respective method of :class:`Readout`."""
+        pass
+
+    @abstractmethod
+    def initial_outputs(self, batch_size):
+        """Implements the respective method of :class:`Readout`."""
+        pass
+
+
+@add_metaclass(ABCMeta)
+class AbstractFeedback(Brick):
+    """The interface for the feedback component of a readout.
+
+    See Also
+    --------
+    :class:`Readout`
+
+    :class:`LookupFeedback` for integer outputs
+
+    """
+    @abstractmethod
+    def feedback(self, outputs):
+        """Implements the respective method of :class:`Readout`."""
+        pass
 
 
 class TrivialEmitter(AbstractEmitter):
@@ -463,7 +637,7 @@ class TrivialEmitter(AbstractEmitter):
         return tensor.zeros_like(outputs)
 
     @application
-    def initial_outputs(self, batch_size, *args, **kwargs):
+    def initial_outputs(self, batch_size):
         return tensor.zeros((batch_size, self.readout_dim))
 
     def get_dim(self, name):
@@ -515,7 +689,7 @@ class SoftmaxEmitter(AbstractEmitter, Initializable, Random):
                             flat_outputs].reshape(outputs.shape))
 
     @application
-    def initial_outputs(self, batch_size, *args, **kwargs):
+    def initial_outputs(self, batch_size):
         return self.initial_output * tensor.ones((batch_size,), dtype='int64')
 
     def get_dim(self, name):
@@ -546,11 +720,6 @@ class LookupFeedback(AbstractFeedback, Initializable):
 
     Stores and retrieves distributed representations of integers.
 
-    Notes
-    -----
-    Currently works only with lazy initialization (can not be initialized
-    with a single constructor call).
-
     """
     def __init__(self, num_outputs=None, feedback_dim=None, **kwargs):
         super(LookupFeedback, self).__init__(**kwargs)
@@ -579,10 +748,18 @@ class LookupFeedback(AbstractFeedback, Initializable):
 class FakeAttentionRecurrent(AbstractAttentionRecurrent, Initializable):
     """Adds fake attention interface to a transition.
 
-    Notes
-    -----
-    Currently works only with lazy initialization (can not be initialized
-    with a single constructor call).
+    :class:`BaseSequenceGenerator` requires its transition brick to support
+    :class:`~blocks.bricks.attention.AbstractAttentionRecurrent` interface,
+    that is to have an embedded attention mechanism.  For the cases when no
+    attention is required (e.g.  language modeling or encoder-decoder
+    models), :class:`FakeAttentionRecurrent` is used to wrap a usual
+    recurrent brick. The resulting brick has no glimpses and simply
+    passes all states and contexts to the wrapped one.
+
+    .. todo::
+
+        Get rid of this brick and support attention-less transitions
+        in :class:`BaseSequenceGenerator`.
 
     """
     def __init__(self, transition, **kwargs):
@@ -625,7 +802,7 @@ class FakeAttentionRecurrent(AbstractAttentionRecurrent, Initializable):
 
 
 class SequenceGenerator(BaseSequenceGenerator):
-    """A more user-friendly interface for BaseSequenceGenerator.
+    r"""A more user-friendly interface for :class:`BaseSequenceGenerator`.
 
     Parameters
     ----------
@@ -634,18 +811,20 @@ class SequenceGenerator(BaseSequenceGenerator):
     transition : instance of :class:`.BaseRecurrent`
         The recurrent transition to be used in the sequence generator.
         Will be combined with `attention`, if that one is given.
-    attention : :class:`.Brick`
-        The attention mechanism to be added to ``transition``. Can be
-        ``None``, in which case no attention mechanism is used.
+    attention : object, optional
+        The attention mechanism to be added to ``transition``,
+        an instance of
+        :class:`~blocks.bricks.attention.AbstractAttention`.
     add_contexts : bool
-        If ``True``, the :class:`AttentionRecurrent` wrapping the
-        `transition` will add additional contexts for the attended and
-        its mask.
-
-    Notes
-    -----
-    Currently works only with lazy initialization (uses blocks that can not
-    be constructed with a single call).
+        If ``True``, the
+        :class:`.AttentionRecurrent` wrapping the
+        `transition` will add additional contexts for the attended and its
+        mask.
+    \*\*kwargs : dict
+        All keywords arguments are passed to the base class. If `fork`
+        keyword argument is not provided, :class:`.Fork` is created
+        that forks all transition sequential inputs without a "mask"
+        substring in them.
 
     """
     def __init__(self, readout, transition, attention=None,

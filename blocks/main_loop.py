@@ -3,7 +3,7 @@ import signal
 import logging
 import traceback
 
-from blocks import config
+from blocks.config import config
 from blocks.log import TrainingLog
 from blocks.utils import reraise_as, unpack, change_recursion_limit
 from blocks.utils.profile import Profile, Timer

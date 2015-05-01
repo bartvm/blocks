@@ -44,12 +44,10 @@ class VariableFilter(object):
     ----------
     roles : list of :class:`.VariableRole` instances, optional
         Matches any variable which has one of the roles given.
-    bricks : :class:`.Brick`, class or list, optional
-        If an instance of :class:`.Brick`, matches variables that are
-        owned by that brick. If a class object, matches variables whose
-        bricks are instances of that class. If list, perform the
-        above matching for each :class:`.Brick` instance or
-        class object contained in the list.
+    bricks : list of :class:`.Brick` classes or list of instances of
+             :class:`.Brick`, optional
+        Matches any variable that is instance of any of the given classes
+        or that is owned by any of the given brick instances.
     each_role : bool, optional
         If ``True``, the variable needs to have all given roles.  If
         ``False``, a variable matching any of the roles given will be
@@ -60,9 +58,9 @@ class VariableFilter(object):
     name_regex : str, optional
         A regular expression for the variable name. The Blocks name (i.e.
         `x.tag.name`) is used.
-    applications : :class:`.Application` instance or list, optional
-        Matches a variable that was produced by an application (or any
-        of a list of applications) given.
+    applications : list of :class:`.Application`, optional
+        Matches a variable that was produced by any of the applications
+        given.
 
     Notes
     -----
@@ -96,18 +94,21 @@ class VariableFilter(object):
     """
     def __init__(self, roles=None, bricks=None, each_role=False, name=None,
                  name_regex=None, applications=None):
+        if bricks is not None and not all(
+            isinstance(brick, Brick) or issubclass(brick, Brick)
+                for brick in bricks):
+            raise ValueError('`bricks` should be a list of Bricks')
+        if applications is not None and not all(
+            isinstance(application, BoundApplication)
+                for application in applications):
+            raise ValueError('`applications` should be a list of '
+                             'Applications')
         self.roles = roles
-        if isinstance(bricks, Brick):
-            self.bricks = [bricks]
-        else:
-            self.bricks = bricks
+        self.bricks = bricks
         self.each_role = each_role
         self.name = name
         self.name_regex = name_regex
-        if isinstance(applications, BoundApplication):
-            self.applications = [applications]
-        else:
-            self.applications = applications
+        self.applications = applications
 
     def __call__(self, variables):
         """Filter the given variables.
@@ -131,7 +132,7 @@ class VariableFilter(object):
                     if isclass(brick) and isinstance(var_brick, brick):
                         filtered_variables.append(var)
                         break
-                    elif var_brick is brick:
+                    elif isinstance(brick, Brick) and var_brick is brick:
                         filtered_variables.append(var)
                         break
             variables = filtered_variables

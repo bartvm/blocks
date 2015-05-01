@@ -410,9 +410,9 @@ class AdaDelta(StepRule):
     Parameters
     ----------
     decay_rate : float, optional
-        Decay rate in [0, 1]. Defaults to 0.
+        Decay rate in [0, 1]. Defaults to 0.95.
     epsilon : float, optional
-        Stabilizing constant for RMS. Defaults to 1e-7.
+        Stabilizing constant for RMS. Defaults to 1e-6.
 
     Notes
     -----
@@ -422,7 +422,7 @@ class AdaDelta(StepRule):
        Rate Method*, arXiv:1212.5701.
 
     """
-    def __init__(self, decay_rate=0., epsilon=1e-7):
+    def __init__(self, decay_rate=0.95, epsilon=1e-6):
         if not 0.0 <= decay_rate <= 1.0:
             raise ValueError("decay rate needs to be in [0, 1]")
         self.decay_rate = shared_floatx(decay_rate)
@@ -661,21 +661,21 @@ class Adam(StepRule):
     learning_rate : float, optional
         Step size.
         Default value is set to 0.0002.
-    beta_1 : float, optional
+    beta1 : float, optional
         Exponential decay rate for the first moment estimates.
         Default value is set to 0.1.
-    beta_2 : float, optional
+    beta2 : float, optional
         Exponential decay rate for the second moment estimates.
         Default value is set to 0.001.
     epsilon : float, optional
         Default value is set to 1e-8.
     decay_factor : float, optional
-        Default value is set to 1e-8.
+        Default value is set to 1 - 1e-8.
 
     """
     def __init__(self, learning_rate=0.002,
                  beta1=0.1, beta2=0.001, epsilon=1e-8,
-                 decay_factor=1e-8):
+                 decay_factor=(1 - 1e-8)):
         self.learning_rate = learning_rate
         self.beta1 = beta1
         self.beta2 = beta2

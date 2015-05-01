@@ -216,8 +216,10 @@ def test_adam():
 
     rtol = 1e-4
     assert_allclose(f()[0], [0.002, 0.002], rtol=rtol)
-    assert_allclose(f()[0], [0.01052621, 0.01052621], rtol=rtol)
-    assert_allclose(f()[0], [0.00738005, 0.00738005], rtol=rtol)
+    a.set_value([2, 3])
+    assert_allclose(f()[0], [0.0019407, 0.00196515], rtol=rtol)
+    a.set_value([1, 1.5])
+    assert_allclose(f()[0], [0.00178724, 0.0018223], rtol=rtol)
 
 
 def test_remove_not_finite():

@@ -6,6 +6,10 @@ ensure the codebase is of high quality, we ask all new developers to have a
 quick read through these rules to make sure that any code you contribute will be
 easy to merge!
 
+
+.. image:: /_static/code_quality.png
+   :width: 100%
+
 Formatting guidelines
 ---------------------
 Blocks follows the `PEP8 style guide`_ closely, so please make sure you are

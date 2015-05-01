@@ -287,6 +287,9 @@ class TestBidirectional(unittest.TestCase):
         h_simple = calc_simple(self.x_val, self.mask_val)[0]
         h_simple_rev = calc_simple(self.x_val[::-1], self.mask_val[::-1])[0]
 
+        output_names = self.bidir.apply.outputs
+
+        assert output_names == ['states']
         assert_allclose(h_simple, h_bidir[..., :3], rtol=1e-04)
         assert_allclose(h_simple_rev, h_bidir[::-1, ...,  3:], rtol=1e-04)
 
@@ -304,7 +307,7 @@ def test_saved_inner_graph():
     cg = ComputationGraph(application_call.inner_outputs)
     # Check that the inner scan graph is annotated
     # with `recurrent.apply`
-    assert len(VariableFilter(applications=recurrent.apply)(cg)) == 3
+    assert len(VariableFilter(applications=[recurrent.apply])(cg)) == 3
     # Check that the inner graph is equivalent to the one
     # produced by a stand-alone of `recurrent.apply`
     assert is_same_graph(application_call.inner_outputs[0],

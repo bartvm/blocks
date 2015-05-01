@@ -4,6 +4,7 @@ from abc import ABCMeta, abstractmethod
 
 from six import add_metaclass
 from theano import tensor
+from theano.ifelse import ifelse
 
 from blocks.utils import shared_like
 
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 class AggregationScheme(object):
     """How to incrementally evaluate a Theano variable over minibatches.
 
-    An AggregationScheme allocates :class:`Aggregator`s that can
+    An AggregationScheme allocates :class:`Aggregator` that can
     incrementally compute the value of a Theano variable on a full dataset
     by aggregating partial results computed on multiple batches.
 
@@ -103,14 +104,27 @@ class Mean(AggregationScheme):
         self.denominator = denominator
 
     def get_aggregator(self):
+        initialized = shared_like(0.)
         numerator_acc = shared_like(self.numerator)
         denominator_acc = shared_like(self.denominator)
-        initialization_updates = [(numerator_acc, 0.0),
-                                  (denominator_acc, 0.0)]
+
+        conditional_update_num = ifelse(initialized,
+                                        self.numerator + numerator_acc,
+                                        self.numerator)
+        conditional_update_den = ifelse(initialized,
+                                        self.denominator + denominator_acc,
+                                        self.denominator)
+
+        initialization_updates = [(numerator_acc,
+                                   tensor.zeros_like(numerator_acc)),
+                                  (denominator_acc,
+                                   tensor.zeros_like(denominator_acc)),
+                                  (initialized, 0.)]
         accumulation_updates = [(numerator_acc,
-                                 numerator_acc + self.numerator),
+                                 conditional_update_num),
                                 (denominator_acc,
-                                 denominator_acc + self.denominator)]
+                                 conditional_update_den),
+                                (initialized, 1.)]
         aggregator = Aggregator(aggregation_scheme=self,
                                 initialization_updates=initialization_updates,
                                 accumulation_updates=accumulation_updates,
@@ -119,7 +133,7 @@ class Mean(AggregationScheme):
         return aggregator
 
 
-def mean(numerator, denominator=1.0):
+def mean(numerator, denominator=1.):
     """Mean of quantity (numerator) over a number (denominator) values."""
     variable = numerator / denominator
     variable.tag.aggregation_scheme = Mean(numerator, denominator)
@@ -157,16 +171,11 @@ class TakeLast(AggregationScheme):
 class MonitoredQuantity(object):
     """The base class for monitored-quantities.
 
-    To monitor a non-Theano quanity in Blocks you have to implement this
+    To monitor a non-Theano quantity in Blocks you have to implement this
     interface for it. The initialize method initializes accumulators and
     the parameters needed to compute this quantity, accumulate method
-    accumulates results for every batch, and finallly readout is called
-    to get the accumulated resutls.
-
-    See Also
-    ------------
-    :class:`~blocks.monitoring.evaluators.DatasetEvaluator`
-    :class:`~blocks.extensions.DataStreamMonitoring`
+    accumulates results for every batch, and finally readout is called
+    to get the accumulated results.
 
     Attributes
     ----------
@@ -174,6 +183,11 @@ class MonitoredQuantity(object):
         List of Theano variables needed to calculate this quantity.
     name : str
         The name of monitored quantity which appears in the log.
+
+    See Also
+    --------
+    :class:`~blocks.monitoring.evaluators.DatasetEvaluator`
+    :class:`~blocks.extensions.DataStreamMonitoring`
 
     """
     def __init__(self, requires=None, name=None):

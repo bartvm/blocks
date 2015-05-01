@@ -19,7 +19,7 @@ from blocks.bricks.attention import SequenceContentAttention
 from blocks.bricks.parallel import Fork
 from blocks.bricks.sequence_generators import (
     SequenceGenerator, Readout, SoftmaxEmitter, LookupFeedback)
-from blocks.config_parser import config
+from blocks.config import config
 from blocks.graph import ComputationGraph
 from fuel.transformers import Mapping, Batch, Padding, Filter
 from fuel.datasets import OneBillionWord, TextFile
@@ -204,10 +204,10 @@ def main(mode, save_path, num_batches, data_path=None):
         # Fetch variables useful for debugging
         generator = reverser.generator
         (energies,) = VariableFilter(
-            applications=generator.readout.readout,
+            applications=[generator.readout.readout],
             name_regex="output")(cg.variables)
         (activations,) = VariableFilter(
-            applications=generator.transition.apply,
+            applications=[generator.transition.apply],
             name=generator.transition.apply.states[0])(cg.variables)
         max_length = named_copy(chars.shape[0], "max_length")
         cost_per_character = named_copy(

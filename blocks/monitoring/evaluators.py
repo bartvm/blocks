@@ -139,17 +139,10 @@ class AggregationBuffer(object):
                                  ' the data', scheme.__name__, v.name)
                     v.tag.aggregation_scheme = scheme(v)
                 else:
-                    if v.ndim == 0:
-                        logger.debug('Using the default '
-                                     ' (average over minibatches)'
-                                     ' aggregation scheme for %s', v.name)
-                        v.tag.aggregation_scheme = Mean(v, 1.0)
-                    else:
-                        # TODO: support averaging for multi-dim variables
-                        logger.debug('Multidimensional variable:'
-                                     ' using the TakeLast'
-                                     ' aggregation scheme for %s', v.name)
-                        v.tag.aggregation_scheme = TakeLast(v)
+                    logger.debug('Using the default '
+                                 ' (average over minibatches)'
+                                 ' aggregation scheme for %s', v.name)
+                    v.tag.aggregation_scheme = Mean(v, 1.0)
 
             aggregator = v.tag.aggregation_scheme.get_aggregator()
             self.initialization_updates.extend(

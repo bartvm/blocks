@@ -67,3 +67,10 @@ Cost bricks
     :members:
     :undoc-members:
     :show-inheritance:
+
+Wrapper bricks
+--------------
+.. automodule:: blocks.bricks.wrappers
+    :members:
+    :undoc-members:
+    :show-inheritance:
