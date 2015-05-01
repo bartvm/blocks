@@ -97,7 +97,7 @@ class Checkpoint(SimpleExtension):
             filenames = self.save_separately_filenames(path)
             for attribute in self.save_separately:
                 secure_pickle_dump(getattr(self.main_loop, attribute),
-                     filenames[attribute])
+                                   filenames[attribute])
         except Exception:
             self.main_loop.log.current_row[SAVED_TO] = None
             raise
