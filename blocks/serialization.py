@@ -49,6 +49,19 @@ class PersistentParameterID(PersistentNdarrayID):
         self.allow_unnamed = allow_unnamed
         self.allow_duplicates = allow_duplicates
 
+    def _resolve_name(self, obj):
+        if id(obj) in self.ndarray_names:
+            name = self.ndarray_names[id(obj)]
+            count = self.name_counter[name]
+            if count:
+                if not self.allow_duplicates:
+                    raise ValueError("multiple shared variables with the name "
+                                     "`{0}` found".format(name))
+                name = '{0}_{1}'.format(name, count + 1)
+            self.name_counter[name] += 1
+            return name
+        return super(PersistentParameterID, self)._resolve_name(obj)
+
     def __call__(self, obj):
         if isinstance(obj, SharedVariable):
             if obj.name:
