@@ -10,6 +10,7 @@ except ImportError:
 
 import theano
 from theano.compile.sharedvalue import SharedVariable
+from theano.misc import pkl_utils
 from theano.misc.pkl_utils import PersistentNdarrayID
 
 
@@ -129,6 +130,10 @@ def dump(obj, f, protocol=DEFAULT_PROTOCOL,
 
     """
     theano.misc.pkl_utils.dump(obj, f, protocol, persistent_id)
+
+
+# A thin wrapper around Theano load.
+load = pkl_utils.load
 
 
 def secure_pickle_dump(object_, path):

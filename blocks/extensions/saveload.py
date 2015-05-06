@@ -3,9 +3,9 @@ import os.path
 import logging
 
 from blocks.extensions import SimpleExtension, TrainingExtension
-from blocks.dump import MainLoopDumpManager
+from blocks.dump import load_parameter_values
 from blocks.utils import reraise_as
-from blocks.serialization import secure_pickle_dump
+from blocks.serialization import secure_pickle_dump, load
 
 logger = logging.getLogger(__name__)
 
@@ -103,8 +103,8 @@ class Checkpoint(SimpleExtension):
             raise
 
 
-class LoadFromDump(TrainingExtension):
-    """Loads a dump into the main loop.
+class Load(TrainingExtension):
+    """Loads a saved checkpoint into the main loop.
 
     Makes a `LOADED_FROM` record in the log with the dump path.
 
@@ -119,49 +119,56 @@ class LoadFromDump(TrainingExtension):
 
     """
     def __init__(self, state_path, **kwargs):
-        super(LoadFromDump, self).__init__(**kwargs)
-        self.manager = MainLoopDumpManager(state_path)
+        super(Load, self).__init__(**kwargs)
+        self.state_path = state_path
+
+    @property
+    def path_to_parameters(self):
+        return os.path.join(self.state_path, 'params.npz')
+
+    @property
+    def path_to_iteration_state(self):
+        return os.path.join(self.state_path, 'iterations_state.pkl')
+
+    @property
+    def path_to_log(self):
+        # The extension is omitted for the log because advanced
+        # log classes might have a better format for storing on the disk
+        # then pickled file. Or alternatively, log will be dump as pure
+        # text file of (time, key, value) triples. Currently log is just
+        # pickled though.
+        return os.path.join(self.state_path, 'log')
+
+    def load_parameters(self):
+        return load_parameter_values(self.path_to_parameters)
+
+    def load_iteration_state(self):
+        with open(self.path_to_iteration_state, "rb") as source:
+            return load(source)
+
+    def load_log(self):
+        with open(self.path_to_log, "rb") as source:
+            return load(source)
+
+    def load(self):
+        return (self.load_parameters(),
+                self.load_iteration_state(),
+                self.load_log())
+
+    def load_to(self, main_loop):
+        parameters, iteration_state, log = self.load()
+        main_loop.model.set_param_values(parameters)
+        main_loop.iteration_state = iteration_state
+        main_loop.log = log
 
     def before_training(self):
-        if not os.path.exists(self.manager.folder):
+        if not os.path.exists(self.state_path):
             logger.info("No dump found")
             return
         logger.info("Loading the state from {} into the main loop"
-                    .format(self.manager.folder))
+                    .format(self.state_path))
         try:
-            self.manager.load_to(self.main_loop)
+            self.load_to(self.main_loop)
             self.main_loop.log.current_row[LOADED_FROM] = self.manager.folder
         except Exception:
             reraise_as("Failed to load the state")
-
-
-class Dump(SimpleExtension):
-    """Dumps the state of the main loop.
-
-    Makes a `SAVED_TO` record in the log with the dumping destination
-    in the case of success and ``None`` in the case of failure.
-
-    Parameters
-    ----------
-    state_path : str
-        The folder to dump the state to. Will be created it does not
-        exist.
-
-    Notes
-    -----
-    Requires the model to be a Brick or a list of Bricks.
-
-    """
-    def __init__(self, state_path, **kwargs):
-        kwargs.setdefault("after_training", True)
-        super(Dump, self).__init__(**kwargs)
-        self.manager = MainLoopDumpManager(state_path)
-
-    def do(self, callback_name, *args, **kwargs):
-        try:
-            self.main_loop.log.current_row[SAVED_TO] = (
-                self.manager.folder)
-            self.manager.dump(self.main_loop)
-        except Exception:
-            self.main_loop.log.current_row[SAVED_TO] = None
-            raise

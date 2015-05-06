@@ -23,7 +23,7 @@ from fuel.datasets import IterableDataset
 from fuel.transformers import Batch, Mapping
 from fuel.schemes import ConstantScheme
 from blocks.extensions import FinishAfter, Timing, Printing
-from blocks.extensions.saveload import LoadFromDump, Dump
+from blocks.extensions.saveload import Load, Checkpoint
 from blocks.extensions.monitoring import (TrainingDataMonitoring,
                                           DataStreamMonitoring)
 from blocks.main_loop import MainLoop
@@ -63,14 +63,14 @@ def main(save_to, num_batches, continue_=False):
             step_rule=Scale(learning_rate=0.001)),
         get_data_stream(range(100)),
         model=Model(cost),
-        extensions=([LoadFromDump(save_to)] if continue_ else []) +
+        extensions=([Load(save_to)] if continue_ else []) +
         [Timing(),
             FinishAfter(after_n_batches=num_batches),
             DataStreamMonitoring(
                 [cost], get_data_stream(range(100, 200)),
                 prefix="test"),
             TrainingDataMonitoring([cost], after_epoch=True),
-            Dump(save_to),
+            Checkpoint(save_to),
             Printing()])
     main_loop.run()
     return main_loop
