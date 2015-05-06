@@ -1,7 +1,7 @@
 sudo: false
 cache:
   directories:
-    - $TRAVIS_BUILD_DIR/mnist
+    - $TRAVIS_BUILD_DIR/data
 branches:
   only:
     - master
@@ -19,25 +19,21 @@ before_install:
   - ./miniconda.sh -b
   - export PATH=$HOME/miniconda/bin:$PATH
   - conda update -q --yes conda
-  - |
-      # Download MNIST for tests if not loaded from cache
-      if find mnist -empty | read; then
-        mkdir mnist
-        cd mnist
-        curl -O http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz \
-             -O http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz \
-             -O http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz \
-             -O http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz
-        gunzip *-ubyte.gz
-        cd -
-      fi
-  - export FUEL_DATA_PATH=$PWD
+  - export FUEL_DATA_PATH=$TRAVIS_BUILD_DIR/data
 install:
   # Install all Python dependencies
   - conda install -q --yes python=$TRAVIS_PYTHON_VERSION mkl --file req-travis-conda.txt
   - pip install -q -r req-travis-pip.txt
 script:
   - pip install . -r requirements.txt # Tests setup.py
+  - |
+      if [ ! -f $FUEL_DATA_PATH/mnist.hdf5 ]; then
+        cd $FUEL_DATA_PATH
+        fuel-download mnist
+        fuel-convert mnist
+        fuel-download --clear mnist
+        cd -
+      fi
   - # Must export environment variable so that the subprocess is aware of it
   - export THEANO_FLAGS=floatX=$TESTS,optimizer=fast_compile
   - export FUEL_FLOATX=$TESTS

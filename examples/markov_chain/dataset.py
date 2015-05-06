@@ -22,11 +22,12 @@ class MarkovChainDataset(Dataset):
     trans_entropy = trans_prob * numpy.log(trans_prob + 1e-6)
     entropy = equilibrium.dot(trans_entropy).sum()
 
-    sources = ("data",)
+    provides_sources = ("data",)
 
-    def __init__(self, rng, seq_len):
+    def __init__(self, rng, seq_len, **kwargs):
         self.rng = rng
         self.seq_len = seq_len
+        super(MarkovChainDataset, self).__init__(**kwargs)
 
     def open(self):
         return copy.deepcopy(self.rng)

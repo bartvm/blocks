@@ -119,7 +119,6 @@ class VariableFilter(object):
 
         """
         if self.roles:
-            filtered_variables = []
             variables = [var for var in variables
                          if has_roles(var, self.roles, self.each_role)]
         if self.bricks is not None:

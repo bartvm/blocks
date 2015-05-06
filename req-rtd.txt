@@ -7,6 +7,7 @@ git+https://github.com/dwf/picklable_itertools.git#egg=picklable-itertools
 git+https://github.com/Theano/Theano.git#egg=theano
 
 mock
+toolz
 
 sphinx==1.2.2  # rq.filter: ==1.2.2
 sphinxcontrib-napoleon==0.2.11  # rq.filter: ==0.2.11

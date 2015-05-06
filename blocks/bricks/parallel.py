@@ -151,7 +151,7 @@ class Fork(Parallel):
         self.input_dims = None
 
     def _push_allocation_config(self):
-        self.input_dims = [self.input_dim for name in self.output_names]
+        self.input_dims = [self.input_dim for _ in self.output_names]
         super(Fork, self)._push_allocation_config()
 
     @application(inputs=['input_'])
@@ -313,15 +313,20 @@ class Merge(Parallel):
         self.output_dim = output_dim
         super(Merge, self).__init__(
             input_names, input_dims,
-            [output_dim for input_name in input_names], **kwargs
+            [output_dim for _ in input_names], **kwargs
         )
 
+    @application(outputs=['output'])
     def apply(self, *args, **kwargs):
         outputs = super(Merge, self).apply(*args, **kwargs)
         outputs = pack(outputs)
         # Sum is often faster than tensor.sum(outputs, axis=0) for a
         # small number of outputs
         return sum(outputs)
+
+    @apply.property('inputs')
+    def apply_inputs(self):
+        return self.input_names
 
     def _push_allocation_config(self):
         self.output_dims = [self.output_dim for input_name in self.input_names]

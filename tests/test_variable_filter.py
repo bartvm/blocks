@@ -1,9 +1,10 @@
 from nose.tools import raises
 
 from blocks.bricks import Bias, Linear, Sigmoid
+from blocks.bricks.parallel import Merge
 from blocks.filter import VariableFilter
 from blocks.graph import ComputationGraph
-from blocks.roles import BIAS, FILTER, PARAMETER
+from blocks.roles import BIAS, FILTER, PARAMETER, OUTPUT
 
 from theano import tensor
 
@@ -65,6 +66,20 @@ def test_variable_filter():
     # Testing filtering by application
     appli_filter_list = VariableFilter(applications=[brick1.apply])
     assert variables == appli_filter_list(cg.variables)
+
+    input1 = tensor.matrix('input1')
+    input2 = tensor.matrix('input2')
+    merge = Merge(['input1', 'input2'], [5, 6], 2)
+    merged = merge.apply(input1, input2)
+    merge_cg = ComputationGraph(merged)
+    outputs = VariableFilter(
+        roles=[OUTPUT], bricks=[merge])(merge_cg.variables)
+    assert merged in outputs
+    assert len(outputs) == 3
+
+    outputs_application = VariableFilter(
+        roles=[OUTPUT], applications=[merge.apply])(merge_cg.variables)
+    assert outputs_application == [merged]
 
 
 @raises(TypeError)

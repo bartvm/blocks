@@ -31,7 +31,7 @@ def main(save_to, num_epochs, bokeh=False):
     mlp.initialize()
     x = tensor.matrix('features')
     y = tensor.lmatrix('targets')
-    probs = mlp.apply(x)
+    probs = mlp.apply(tensor.flatten(x, outdim=2))
     cost = CategoricalCrossEntropy().apply(y.flatten(), probs)
     error_rate = MisclassificationRate().apply(y.flatten(), probs)
 
@@ -40,8 +40,8 @@ def main(save_to, num_epochs, bokeh=False):
     cost = cost + .00005 * (W1 ** 2).sum() + .00005 * (W2 ** 2).sum()
     cost.name = 'final_cost'
 
-    mnist_train = MNIST("train")
-    mnist_test = MNIST("test")
+    mnist_train = MNIST("train", flatten=('features',))
+    mnist_test = MNIST("test", flatten=('features',))
 
     algorithm = GradientDescent(
         cost=cost, params=cg.parameters,
