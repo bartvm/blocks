@@ -172,12 +172,6 @@ def continue_training(path):
     path : str
         Path to checkpoint.
 
-    Examples
-    --------
-    This function can be used in two ways: in your script where a main
-    loop defined or in a different script. For later options see Notes
-    section.
-
     Notes
     -----
     Python picklers can unpickle objects from global namespace only if
@@ -189,6 +183,12 @@ def continue_training(path):
     AttributeError: 'module' object has no attribute '...'
     ```
     it means that you need to import these objects.
+
+    Examples
+    --------
+    This function can be used in two ways: in your script where a main
+    loop defined or in a different script. For later options see Notes
+    section.
 
     """
     with change_recursion_limit(config.recursion_limit):
