@@ -13,6 +13,9 @@ from theano.compile.sharedvalue import SharedVariable
 from theano.misc import pkl_utils
 from theano.misc.pkl_utils import PersistentNdarrayID
 
+from blocks.config import config
+from blocks.utils import change_recursion_limit
+
 
 BRICK_DELIMITER = '/'
 
@@ -159,3 +162,36 @@ def secure_pickle_dump(object_, path):
         if "temp" in locals():
             os.remove(temp.name)
         raise
+
+
+def continue_training(path):
+    """Continues training using checkpoint.
+
+    Parameters
+    ----------
+    path : str
+        Path to checkpoint.
+
+    Examples
+    --------
+    This function can be used in two ways: in your script where a main
+    loop defined or in a different script. For later options see Notes
+    section.
+
+    Notes
+    -----
+    Python picklers can unpickle objects from global namespace only if
+    they are present in namespace where unpickling happens. Often global
+    functions are needed for mapping, filtering and other data stream
+    operations. In a case if the main loop uses global objects and
+    this function fails with a message like
+    ```
+    AttributeError: 'module' object has no attribute '...'
+    ```
+    it means that you need to import these objects.
+
+    """
+    with change_recursion_limit(config.recursion_limit):
+        with open(path, "rb") as f:
+            main_loop = load(f)
+    main_loop.run()
