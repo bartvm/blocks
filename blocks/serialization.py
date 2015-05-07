@@ -1,7 +1,6 @@
 import os
 import shutil
 import tempfile
-import cPickle
 from collections import defaultdict
 from pickle import HIGHEST_PROTOCOL
 try:

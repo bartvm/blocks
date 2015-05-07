@@ -1,5 +1,3 @@
-import os.path
-
 from theano.misc.pkl_utils import load
 
 from blocks.config import config
