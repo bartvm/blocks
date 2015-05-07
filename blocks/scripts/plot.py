@@ -7,12 +7,11 @@ from six import iteritems
 from collections import OrderedDict
 from functools import reduce
 
-from theano.misc.pkl_utils import load
-
 from blocks.config import config
 from blocks.utils import change_recursion_limit
 from blocks.log import TrainingLog
 from blocks.main_loop import MainLoop
+from blocks.serialization import load
 
 try:
     from pandas import DataFrame
