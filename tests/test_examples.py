@@ -13,10 +13,10 @@ from tests import silence_printing, skip_if_not_available
 
 @silence_printing
 def test_sqrt():
-    save_path = tempfile.mkdtemp()
+    save_path = tempfile.mktemp()
     sqrt_test(save_path, 7)
     main_loop = sqrt_test(save_path, 14, continue_=True)
-    assert main_loop.log[7][SAVED_TO] == save_path
+    assert main_loop.log[7][SAVED_TO] == (save_path,)
 
 
 @silence_printing

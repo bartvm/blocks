@@ -3,7 +3,6 @@ import os.path
 import logging
 
 from blocks.extensions import SimpleExtension, TrainingExtension
-from blocks.dump import load_parameter_values
 from blocks.utils import reraise_as
 from blocks.serialization import secure_pickle_dump, load
 
@@ -49,6 +48,8 @@ class Checkpoint(SimpleExtension):
 
     """
     def __init__(self, path, save_separately=None, **kwargs):
+        if save_separately is None:
+            save_separately = ['log']
         kwargs.setdefault("after_training", True)
         super(Checkpoint, self).__init__(**kwargs)
 
@@ -122,44 +123,16 @@ class Load(TrainingExtension):
         super(Load, self).__init__(**kwargs)
         self.state_path = state_path
 
-    @property
-    def path_to_parameters(self):
-        return os.path.join(self.state_path, 'params.npz')
-
-    @property
-    def path_to_iteration_state(self):
-        return os.path.join(self.state_path, 'iterations_state.pkl')
-
-    @property
-    def path_to_log(self):
-        # The extension is omitted for the log because advanced
-        # log classes might have a better format for storing on the disk
-        # then pickled file. Or alternatively, log will be dump as pure
-        # text file of (time, key, value) triples. Currently log is just
-        # pickled though.
-        return os.path.join(self.state_path, 'log')
-
-    def load_parameters(self):
-        return load_parameter_values(self.path_to_parameters)
-
-    def load_iteration_state(self):
-        with open(self.path_to_iteration_state, "rb") as source:
-            return load(source)
-
-    def load_log(self):
-        with open(self.path_to_log, "rb") as source:
-            return load(source)
-
     def load(self):
-        return (self.load_parameters(),
-                self.load_iteration_state(),
-                self.load_log())
+        with open(self.state_path, "rb") as source:
+            return load(source)
 
     def load_to(self, main_loop):
-        parameters, iteration_state, log = self.load()
-        main_loop.model.set_param_values(parameters)
-        main_loop.iteration_state = iteration_state
-        main_loop.log = log
+        loaded_main_loop = self.load()
+        main_loop.model.set_param_values(
+            loaded_main_loop.model.get_param_values())
+        main_loop.iteration_state = loaded_main_loop.iteration_state
+        main_loop.log = loaded_main_loop.log
 
     def before_training(self):
         if not os.path.exists(self.state_path):
@@ -169,6 +142,6 @@ class Load(TrainingExtension):
                     .format(self.state_path))
         try:
             self.load_to(self.main_loop)
-            self.main_loop.log.current_row[LOADED_FROM] = self.manager.folder
+            self.main_loop.log.current_row[LOADED_FROM] = self.state_path
         except Exception:
             reraise_as("Failed to load the state")
