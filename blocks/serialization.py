@@ -1,14 +1,18 @@
 import os
 import shutil
+import sys
+import pickle
 import tempfile
+import zipfile
 from collections import defaultdict
-from pickle import HIGHEST_PROTOCOL
+from contextlib import closing
+from pickle import (HIGHEST_PROTOCOL, struct, whichmodule, PicklingError,
+                    _extension_registry, EXT1, EXT2, EXT4, GLOBAL, StringType, dispatch_table, TypeType, TupleType, ClassType, FunctionType, BuiltinFunctionType)
 try:
     from pickle import DEFAULT_PROTOCOL
 except ImportError:
     DEFAULT_PROTOCOL = HIGHEST_PROTOCOL
 
-import theano
 from theano.compile.sharedvalue import SharedVariable
 from theano.misc import pkl_utils
 from theano.misc.pkl_utils import PersistentNdarrayID
@@ -18,6 +22,12 @@ from blocks.utils import change_recursion_limit
 
 
 BRICK_DELIMITER = '/'
+MAIN_MODULE_WARNING = """
+WARNING: Main loop depends on the function `%s` in `__main__` namespace.
+
+Because of limitations to pickling, this means that you will not be able to
+resume your model outside of a namespace containing this function. In other
+words, you can only call `continue_training` from within this script."""
 
 
 class PersistentParameterID(PersistentNdarrayID):
@@ -84,7 +94,24 @@ class PersistentParameterID(PersistentNdarrayID):
         return super(PersistentParameterID, self).__call__(obj)
 
 
-def dump(obj, f, protocol=DEFAULT_PROTOCOL,
+class PicklerWithWarning(pickle.Pickler):
+    dispatch = pickle.Pickler.dispatch.copy()
+
+    def save_global(self, obj, name=None, pack=struct.pack):
+        if name is None:
+            name = obj.__name__
+        module = getattr(obj, "__module__", None)
+
+        if module == '__main__':
+            print(MAIN_MODULE_WARNING % name)
+        pickle.Pickler.save_global(self, obj, name, pack)
+    dispatch[ClassType] = save_global
+    dispatch[FunctionType] = save_global
+    dispatch[BuiltinFunctionType] = save_global
+    dispatch[TypeType] = save_global
+
+
+def dump(obj, file_handler, protocol=DEFAULT_PROTOCOL,
          persistent_id=PersistentParameterID):
     """Pickles an object to a zip file using external persistence.
 
@@ -92,7 +119,7 @@ def dump(obj, f, protocol=DEFAULT_PROTOCOL,
     ----------
     obj : object
         The object to pickle.
-    f : file
+    file_handler : file
         The file handle to save the object to.
     protocol : int, optional
         The pickling protocol to use. Unlike Python's built-in pickle, the
@@ -112,7 +139,6 @@ def dump(obj, f, protocol=DEFAULT_PROTOCOL,
     NumPy's :func:`numpy.load` function.
 
     >>> import numpy
-    >>> from theano.misc.pkl_utils import load
     >>> from blocks.bricks import MLP, Identity
     >>> from blocks.initialization import Constant
     >>> mlp = MLP([Identity()], [10, 10], weights_init=Constant(0.),
@@ -132,7 +158,13 @@ def dump(obj, f, protocol=DEFAULT_PROTOCOL,
     <blocks.bricks.MLP object at ...: name=mlp>
 
     """
-    theano.misc.pkl_utils.dump(obj, f, protocol, persistent_id)
+    with closing(zipfile.ZipFile(file_handler, 'w', zipfile.ZIP_DEFLATED,
+                                 allowZip64=True)) as zip_file:
+        def func(f):
+            p = PicklerWithWarning(f, protocol=protocol)
+            p.persistent_id = persistent_id(zip_file)
+            p.dump(obj)
+        pkl_utils.zipadd(func, zip_file, 'pkl')
 
 
 # A thin wrapper around Theano load.
