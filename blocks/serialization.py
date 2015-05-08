@@ -7,7 +7,6 @@ import tempfile
 import zipfile
 from collections import defaultdict
 from contextlib import closing
-from six.types import TypeType, ClassType, FunctionType, BuiltinFunctionType
 from pickle import HIGHEST_PROTOCOL
 try:
     from pickle import DEFAULT_PROTOCOL
@@ -107,15 +106,15 @@ class PicklerWithWarning(pickle.Pickler):
             print(MAIN_MODULE_WARNING % name)
         pickle.Pickler.save_global(self, obj, name, pack)
     if six.PY3:
-        dispatch[ClassType[0]] = save_global
-        dispatch[FunctionType[0]] = save_global
-        dispatch[BuiltinFunctionType[0]] = save_global
-        dispatch[TypeType[0]] = save_global
+        dispatch[six.types.ClassType[0]] = save_global
+        dispatch[six.types.FunctionType[0]] = save_global
+        dispatch[six.types.BuiltinFunctionType[0]] = save_global
+        dispatch[six.types.TypeType[0]] = save_global
     else:
-        dispatch[ClassType] = save_global
-        dispatch[FunctionType] = save_global
-        dispatch[BuiltinFunctionType] = save_global
-        dispatch[TypeType] = save_global
+        dispatch[six.types.ClassType] = save_global
+        dispatch[six.types.FunctionType] = save_global
+        dispatch[six.types.BuiltinFunctionType] = save_global
+        dispatch[six.types.TypeType] = save_global
 
 
 def dump(obj, file_handler, protocol=DEFAULT_PROTOCOL,
