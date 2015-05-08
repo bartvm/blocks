@@ -1,7 +1,7 @@
 import os
 import shutil
 import pickle
-import sys
+import six
 import struct
 import tempfile
 import zipfile
@@ -29,7 +29,6 @@ WARNING: Main loop depends on the function `%s` in `__main__` namespace.
 Because of limitations to pickling, this means that you will not be able to
 resume your model outside of a namespace containing this function. In other
 words, you can only call `continue_training` from within this script."""
-PY3 = sys.version_info[0] >= 3
 
 
 class PersistentParameterID(PersistentNdarrayID):
@@ -107,16 +106,16 @@ class PicklerWithWarning(pickle.Pickler):
         if module == '__main__':
             print(MAIN_MODULE_WARNING % name)
         pickle.Pickler.save_global(self, obj, name, pack)
-    if PY3:
+    if six.PY3:
         dispatch[ClassType[0]] = save_global
         dispatch[FunctionType[0]] = save_global
         dispatch[BuiltinFunctionType[0]] = save_global
         dispatch[TypeType[0]] = save_global
     else:
-        dispatch[ClassType[0]] = save_global
-        dispatch[FunctionType[0]] = save_global
-        dispatch[BuiltinFunctionType[0]] = save_global
-        dispatch[TypeType[0]] = save_global
+        dispatch[ClassType] = save_global
+        dispatch[FunctionType] = save_global
+        dispatch[BuiltinFunctionType] = save_global
+        dispatch[TypeType] = save_global
 
 
 def dump(obj, file_handler, protocol=DEFAULT_PROTOCOL,
