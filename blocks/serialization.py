@@ -2,12 +2,13 @@ import os
 import shutil
 import pickle
 import sys
+import struct
 import tempfile
 import zipfile
 from collections import defaultdict
 from contextlib import closing
-from pickle import (HIGHEST_PROTOCOL, struct, TypeType, ClassType,
-                    FunctionType, BuiltinFunctionType)
+from pickle import (HIGHEST_PROTOCOL, TypeType, ClassType, FunctionType,
+                    BuiltinFunctionType)
 try:
     from pickle import DEFAULT_PROTOCOL
 except ImportError:
