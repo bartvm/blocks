@@ -6,8 +6,8 @@ import tempfile
 import zipfile
 from collections import defaultdict
 from contextlib import closing
-from pickle import (HIGHEST_PROTOCOL, struct, whichmodule, PicklingError,
-                    _extension_registry, EXT1, EXT2, EXT4, GLOBAL, StringType, dispatch_table, TypeType, TupleType, ClassType, FunctionType, BuiltinFunctionType)
+from pickle import (HIGHEST_PROTOCOL, struct, TypeType, ClassType,
+                    FunctionType, BuiltinFunctionType)
 try:
     from pickle import DEFAULT_PROTOCOL
 except ImportError:
