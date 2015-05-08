@@ -7,7 +7,7 @@ import tempfile
 import zipfile
 from collections import defaultdict
 from contextlib import closing
-from types import TypeType, ClassType, FunctionType, BuiltinFunctionType
+from six.types import TypeType, ClassType, FunctionType, BuiltinFunctionType
 from pickle import HIGHEST_PROTOCOL
 try:
     from pickle import DEFAULT_PROTOCOL
