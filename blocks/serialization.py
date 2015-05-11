@@ -112,7 +112,7 @@ class PicklerWithWarning(pickle.Pickler):
     if six.PY3:
         dispatch_table[six.types.FunctionType[0]] = save_global
         dispatch_table[six.types.BuiltinFunctionType[0]] = save_global
-        dispatch_table[six.types.TypeType[0]] = save_global
+        dispatch_table[type] = save_global
     else:
         dispatch[six.types.ClassType] = save_global
         dispatch[six.types.FunctionType] = save_global
