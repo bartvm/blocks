@@ -110,7 +110,6 @@ class PicklerWithWarning(pickle.Pickler):
             print(MAIN_MODULE_WARNING % name)
         pickle.Pickler.save_global(self, obj, name, pack)
     if six.PY3:
-        dispatch_table[six.types.ClassType[0]] = save_global
         dispatch_table[six.types.FunctionType[0]] = save_global
         dispatch_table[six.types.BuiltinFunctionType[0]] = save_global
         dispatch_table[six.types.TypeType[0]] = save_global
