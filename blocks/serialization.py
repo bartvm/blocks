@@ -8,6 +8,7 @@ import zipfile
 from collections import defaultdict
 from contextlib import closing
 from pickle import HIGHEST_PROTOCOL
+from six.moves import copyreg
 try:
     from pickle import DEFAULT_PROTOCOL
 except ImportError:
@@ -98,7 +99,7 @@ class PicklerWithWarning(pickle.Pickler):
     if six.PY2:
         dispatch = pickle.Pickler.dispatch.copy()
     else:
-        dispatch_table = pickle.Pickler.dispatch_table.copy()
+        dispatch_table = copyreg.dispatch_table.copy()
 
     def save_global(self, obj, name=None, pack=struct.pack):
         if name is None:
