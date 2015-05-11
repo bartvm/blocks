@@ -95,7 +95,10 @@ class PersistentParameterID(PersistentNdarrayID):
 
 
 class PicklerWithWarning(pickle.Pickler):
-    dispatch = pickle.Pickler.dispatch.copy()
+    if six.PY2:
+        dispatch = pickle.Pickler.dispatch.copy()
+    else:
+        dispatch_table = pickle.Pickler.dispatch_table.copy()
 
     def save_global(self, obj, name=None, pack=struct.pack):
         if name is None:
@@ -106,10 +109,10 @@ class PicklerWithWarning(pickle.Pickler):
             print(MAIN_MODULE_WARNING % name)
         pickle.Pickler.save_global(self, obj, name, pack)
     if six.PY3:
-        dispatch[six.types.ClassType[0]] = save_global
-        dispatch[six.types.FunctionType[0]] = save_global
-        dispatch[six.types.BuiltinFunctionType[0]] = save_global
-        dispatch[six.types.TypeType[0]] = save_global
+        dispatch_table[six.types.ClassType[0]] = save_global
+        dispatch_table[six.types.FunctionType[0]] = save_global
+        dispatch_table[six.types.BuiltinFunctionType[0]] = save_global
+        dispatch_table[six.types.TypeType[0]] = save_global
     else:
         dispatch[six.types.ClassType] = save_global
         dispatch[six.types.FunctionType] = save_global
