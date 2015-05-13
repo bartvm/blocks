@@ -2,8 +2,8 @@ import os
 import shutil
 import pickle
 import six
-import struct
 import tempfile
+import warnings
 import zipfile
 from collections import defaultdict
 from contextlib import closing
@@ -23,11 +23,11 @@ from blocks.utils import change_recursion_limit
 
 
 BRICK_DELIMITER = '/'
-MAIN_MODULE_WARNING = """
-WARNING: Main loop depends on the function `%s` in `__main__` namespace.
+MAIN_MODULE_WARNING = """WARNING: Main loop depends on the function `{}` in \
+`__main__` namespace.
 
-Because of limitations to pickling, this means that you will not be able to
-resume your model outside of a namespace containing this function. In other
+Because of limitations to pickling, this means that you will not be able to \
+resume your model outside of a namespace containing this function. In other \
 words, you can only call `continue_training` from within this script."""
 
 
@@ -101,18 +101,15 @@ class PicklerWithWarning(pickle.Pickler):
     else:
         dispatch_table = copyreg.dispatch_table.copy()
 
-    def save_global(self, obj, name=None, *args, **kwargs):
-        if name is None:
-            name = obj.__name__
+    def save_global(self, obj, **kwargs):
         module = getattr(obj, "__module__", None)
-
         if module == '__main__':
-            print(MAIN_MODULE_WARNING % name)
-        pickle.Pickler.save_global(self, obj, name, *args, **kwargs)
+            warnings.warn(
+                MAIN_MODULE_WARNING.format(kwargs.get('name', obj.__name__))
+            )
+        pickle.Pickler.save_global(self, obj, **kwargs)
     if six.PY3:
         dispatch_table[six.types.FunctionType] = save_global
-        dispatch_table[six.types.BuiltinFunctionType] = save_global
-        dispatch_table[type] = save_global
     else:
         dispatch[six.types.ClassType] = save_global
         dispatch[six.types.FunctionType] = save_global
