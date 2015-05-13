@@ -1,7 +1,6 @@
 from __future__ import print_function
 import tempfile
-
-from six.moves import cPickle
+from theano.misc.pkl_utils import load
 
 from blocks.config import config
 from blocks.extensions.saveload import SAVED_TO
@@ -14,10 +13,10 @@ from tests import silence_printing, skip_if_not_available
 
 @silence_printing
 def test_sqrt():
-    save_path = tempfile.mkdtemp()
+    save_path = tempfile.mktemp()
     sqrt_test(save_path, 7)
     main_loop = sqrt_test(save_path, 14, continue_=True)
-    assert main_loop.log[7][SAVED_TO] == save_path
+    assert main_loop.log[7][SAVED_TO] == (save_path,)
 
 
 @silence_printing
@@ -26,7 +25,7 @@ def test_mnist():
     with tempfile.NamedTemporaryFile() as f:
         mnist_test(f.name, 1, True)
         with open(f.name, "rb") as source:
-            main_loop = cPickle.load(source)
+            main_loop = load(source)
         main_loop.find_extension("FinishAfter").set_conditions(
             after_n_epochs=2)
         main_loop.run()

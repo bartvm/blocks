@@ -4,7 +4,6 @@ from __future__ import division, print_function
 import fnmatch
 
 from six import iteritems
-from six.moves import cPickle
 from collections import OrderedDict
 from functools import reduce
 
@@ -12,6 +11,7 @@ from blocks.config import config
 from blocks.utils import change_recursion_limit
 from blocks.log import TrainingLog
 from blocks.main_loop import MainLoop
+from blocks.serialization import load
 
 try:
     from pandas import DataFrame
@@ -30,7 +30,7 @@ def load_log(fname):
     """
     with change_recursion_limit(config.recursion_limit):
         with open(fname, 'rb') as f:
-            from_disk = cPickle.load(f)
+            from_disk = load(f)
         # TODO: Load "dumped" experiments
 
     if isinstance(from_disk, TrainingLog):

@@ -3,9 +3,8 @@ import os.path
 import logging
 
 from blocks.extensions import SimpleExtension, TrainingExtension
-from blocks.dump import MainLoopDumpManager
 from blocks.utils import reraise_as
-from blocks.serialization import secure_pickle_dump
+from blocks.serialization import secure_pickle_dump, load
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +48,8 @@ class Checkpoint(SimpleExtension):
 
     """
     def __init__(self, path, save_separately=None, **kwargs):
+        if save_separately is None:
+            save_separately = ['log']
         kwargs.setdefault("after_training", True)
         super(Checkpoint, self).__init__(**kwargs)
 
@@ -103,8 +104,8 @@ class Checkpoint(SimpleExtension):
             raise
 
 
-class LoadFromDump(TrainingExtension):
-    """Loads a dump into the main loop.
+class Load(TrainingExtension):
+    """Loads a saved checkpoint into the main loop.
 
     Makes a `LOADED_FROM` record in the log with the dump path.
 
@@ -119,49 +120,28 @@ class LoadFromDump(TrainingExtension):
 
     """
     def __init__(self, state_path, **kwargs):
-        super(LoadFromDump, self).__init__(**kwargs)
-        self.manager = MainLoopDumpManager(state_path)
+        super(Load, self).__init__(**kwargs)
+        self.state_path = state_path
+
+    def load(self):
+        with open(self.state_path, "rb") as source:
+            return load(source)
+
+    def load_to(self, main_loop):
+        loaded_main_loop = self.load()
+        main_loop.model.set_param_values(
+            loaded_main_loop.model.get_param_values())
+        main_loop.iteration_state = loaded_main_loop.iteration_state
+        main_loop.log = loaded_main_loop.log
 
     def before_training(self):
-        if not os.path.exists(self.manager.folder):
+        if not os.path.exists(self.state_path):
             logger.info("No dump found")
             return
         logger.info("Loading the state from {} into the main loop"
-                    .format(self.manager.folder))
+                    .format(self.state_path))
         try:
-            self.manager.load_to(self.main_loop)
-            self.main_loop.log.current_row[LOADED_FROM] = self.manager.folder
+            self.load_to(self.main_loop)
+            self.main_loop.log.current_row[LOADED_FROM] = self.state_path
         except Exception:
             reraise_as("Failed to load the state")
-
-
-class Dump(SimpleExtension):
-    """Dumps the state of the main loop.
-
-    Makes a `SAVED_TO` record in the log with the dumping destination
-    in the case of success and ``None`` in the case of failure.
-
-    Parameters
-    ----------
-    state_path : str
-        The folder to dump the state to. Will be created it does not
-        exist.
-
-    Notes
-    -----
-    Requires the model to be a Brick or a list of Bricks.
-
-    """
-    def __init__(self, state_path, **kwargs):
-        kwargs.setdefault("after_training", True)
-        super(Dump, self).__init__(**kwargs)
-        self.manager = MainLoopDumpManager(state_path)
-
-    def do(self, callback_name, *args, **kwargs):
-        try:
-            self.main_loop.log.current_row[SAVED_TO] = (
-                self.manager.folder)
-            self.manager.dump(self.main_loop)
-        except Exception:
-            self.main_loop.log.current_row[SAVED_TO] = None
-            raise
