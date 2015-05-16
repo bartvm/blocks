@@ -66,7 +66,7 @@ Running the command
 
 .. code-block:: bash
 
-    $ git remote -v |grep origin
+    $ git remote -v | grep origin
 
 should display two lines. The URLs therein should contain your GitHub username.
 
@@ -134,7 +134,17 @@ the content is. **If it is intended to resolve a specific ticket**, put "Fixes
 number. By doing this, GitHub will know to `automatically close the issue`_
 when your pull request is merged.
 
+Blocks development occurs in two separate branches: The ``master`` branch is the
+development branch. If you want to contribute a new feature or change the
+behavior of Blocks in any way, please make your pull request to this branch.
+
+The ``stable`` branch contains the latest release of Blocks. If you are fixing a
+bug (that is present in the latest release), make a pull request to this branch.
+If the bug is present in both the ``master`` and ``stable`` branch, two separate
+pull requests are in order. The command ``git-cherry-pick_`` could be useful here.
+
 .. _automatically close the issue: https://github.com/blog/1506-closing-issues-via-pull-requests
+.. _git-cherry-pick: https://git-scm.com/docs/git-cherry-pick
 
 Incorporating feedback
 ----------------------
