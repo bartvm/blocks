@@ -9,7 +9,13 @@ try:
     BOKEH_AVAILABLE = True
 except ImportError:
     BOKEH_AVAILABLE = False
-
+try:
+    from IPython import display
+    from IPython.core import pylabtools
+    IPYTHON_AVAILABLE = True
+except ImportError:
+    IPYTHON_AVAILABLE = False
+from matplotlib import pyplot
 
 from blocks.config import config
 from blocks.extensions import SimpleExtension
@@ -147,3 +153,47 @@ class Plot(SimpleExtension):
         self.__dict__.update(state)
         self._startserver()
         curdoc().add(*self.p)
+
+
+class NotebookPlot(SimpleExtension):
+    """Live plot of channels in IPython notebooks.
+
+    Parameters
+    ----------
+    channels : list
+        A list of lists of strings. Each sublist becomes its own figure,
+        the strings refer to the keys in the log to plot.
+
+    Notes
+    -----
+    Figures are plotted side-by-side, so there normally is not enough space
+    for more than 2 figures.
+
+    """
+    def __init__(self, channels, **kwargs):
+        if not IPYTHON_AVAILABLE:
+            raise ImportError
+        kwargs.setdefault('after_epoch', True)
+        kwargs.setdefault('after_training', True)
+        super(NotebookPlot, self).__init__(**kwargs)
+        pylabtools.activate_matplotlib('module://IPython.kernel.zmq.'
+                                       'pylab.backend_inline')
+        self.channels = channels
+        pylabtools.figsize(len(channels) * 6, 4)
+
+    def do(self, which_callback, *args):
+        if which_callback == 'after_training':
+            display.clear_output(wait=True)
+            return
+        log = self.main_loop.log
+        display.clear_output(wait=True)
+        pyplot.clf()
+        for i, channels in enumerate(self.channels):
+            pyplot.subplot(1, len(self.channels), i + 1)
+            for channel in channels:
+                pyplot.plot(*zip(*[(t, entry[channel])
+                                   for t, entry in log.items()
+                                   if channel in entry]))
+            pyplot.legend(channels)
+            pyplot.xlabel("Iterations")
+        display.display(pyplot.gcf())
