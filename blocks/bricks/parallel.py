@@ -58,10 +58,11 @@ class Parallel(Initializable):
     """
     @lazy(allocation=['input_dims', 'input_dims', 'output_dims'])
     def __init__(self, input_names, input_dims, output_dims,
-                 prototype=None, child_prefix=None, **kwargs):
+                 prototype=None, child_prefix=None, use_bias=False,
+                 **kwargs):
         super(Parallel, self).__init__(**kwargs)
         if not prototype:
-            prototype = Linear(use_bias=False)
+            prototype = Linear(use_bias=use_bias)
         if not child_prefix:
             child_prefix = "transform"
 
