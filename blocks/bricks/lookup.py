@@ -20,7 +20,7 @@ class LookupTable(Initializable):
     See :class:`.Initializable` for initialization parameters.
 
     """
-    has_bias = False
+    has_biases = False
 
     @lazy(allocation=['length', 'dim'])
     def __init__(self, length, dim, **kwargs):

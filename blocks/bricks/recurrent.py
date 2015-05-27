@@ -27,7 +27,7 @@ call. Did you forget to declare it in `contexts`?"""
 
 class BaseRecurrent(Brick):
     """Base class for brick with recurrent application method."""
-    has_bias = False
+    has_biases = False
 
     @application
     def initial_state(self, state_name, batch_size, *args, **kwargs):
@@ -606,7 +606,7 @@ class Bidirectional(Initializable):
     See :class:`.Initializable` for initialization parameters.
 
     """
-    has_bias = False
+    has_biases = False
 
     @lazy()
     def __init__(self, prototype, **kwargs):
