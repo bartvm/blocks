@@ -494,7 +494,7 @@ class Rectifier(Activation):
         return tensor.switch(input_ > 0, input_, 0)
 
 
-class Softmax(Activation):
+class Softmax(Brick):
     @application(inputs=['input_'], outputs=['output'])
     def apply(self, input_):
         return tensor.nnet.softmax(input_)
