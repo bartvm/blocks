@@ -7,7 +7,7 @@ from tests import silence_printing, skip_if_not_available
 
 from blocks.log import TrainingLog
 from blocks.main_loop import MainLoop
-from blocks.serialization import pickle_dump
+from blocks.serialization import dump
 
 try:
     from pandas import DataFrame
@@ -34,7 +34,7 @@ def test_load_log():
 
     # test simple TrainingLog pickles
     with tempfile.NamedTemporaryFile() as f:
-        pickle_dump(log, f)
+        dump(log, f)
         f.flush()
 
         log2 = plot.load_log(f.name)
@@ -45,7 +45,7 @@ def test_load_log():
                          algorithm=None, log=log)
 
     with tempfile.NamedTemporaryFile() as f:
-        pickle_dump(main_loop, f)
+        dump(main_loop, f)
         f.flush()
 
         log2 = plot.load_log(f.name)

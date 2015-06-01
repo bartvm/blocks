@@ -2,7 +2,7 @@
 import logging
 from argparse import ArgumentParser
 
-from blocks.scripts import continue_training
+from blocks.serialization import continue_training
 
 if __name__ == "__main__":
     logging.basicConfig()

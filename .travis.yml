@@ -49,7 +49,7 @@ script:
   - |
       if [[ $TESTS == 'blocks-examples' ]]; then
         cd $TRAVIS_BUILD_DIR
-        git clone https://github.com/mila-udem/blocks-examples.git
+        git clone -b custom_pickler https://github.com/dmitriy-serdyuk/blocks-examples.git
         cd blocks-examples
         nose2 tests
       fi

@@ -10,8 +10,9 @@ reasons:
 2. We need the ability to save models in order to share them with others or save
    them for later use or inspection.
 
-These two goals come with differing requirements, which is why Blocks implements
-two serialization methods.
+These two goals come with differing requirements, which is why Blocks
+implements a custom serialization approach that tries to meet both needs in the
+:func:`.dump` and :func:`.load` functions.
 
 Pickling the training loop
 --------------------------
@@ -19,13 +20,13 @@ Pickling the training loop
 .. warning::
 
    Due to the complexity of serializing a Python objects as large as the main
-   loop, pickling will sometimes fail because it exceeds the default maximum
-   recursion depth set in Python. Please make sure that you always have backup
-   of your pickled main loop before resuming training.
+   loop, (un)pickling will sometimes fail because it exceeds the default maximum
+   recursion depth set in Python. Increasing the limit should fix the problem.
 
-The first approach used is to pickle the entire :class:`main loop
-<.MainLoop>`, effectively serializing the exact state of the model as well
-as training. Techncially there are some difficulties with this approach:
+When checkpointing, Blocks pickles the entire :class:`main loop <.MainLoop>`,
+effectively serializing the exact state of the model as well as the training
+state (iteration state, extensions, etc.). Techncially there are some
+difficulties with this approach:
 
 * Some Python objects cannot be pickled e.g. file handles, generators,
   dynamically generated classes, nested classes, etc.
@@ -33,46 +34,30 @@ as training. Techncially there are some difficulties with this approach:
 * We do not want to serialize the training data kept in memory, since this can
   be prohibitively large.
 
-Blocks addresses these problems by using a pickling extension called Dill,
-avoiding certain data structures such as generators and nested classes (see the
-:ref:`developer guidelines <serialization_guidelines>`), and by overriding the
-pickling behavior of datasets.
+Blocks addresses these problems by avoiding certain data structures such as
+generators and nested classes (see the :ref:`developer guidelines
+<serialization_guidelines>`) and overriding the pickling behaviour of some
+objects, making the pickling of the main loop possible.
 
-However, in general you should not rely on this serialization approach for the
-long term saving of your models. Problems that remain are
+However, pickling can be problematic for long-term storage of models, because
 
 * Unpickling depends on the libraries used being unchanged. This means that if
   you updated Blocks, Theano, etc. to a new version where the interface has
-  changed, loading your training progress will fail.
+  changed, loading your training progress could fail.
 * The unpickling of Theano objects can be problematic, especially when
   transferring from GPU to CPU or vice versa.
 * It is not possible on Python 2 to unpickle objects that were pickled in Python
   3.
 
-.. note::
-
-   On the long term, we plan to serialize the log, data stream, and the rest of
-   the main loop separately. This way you can e.g. perform plotting without
-   needing to deserialize the Theano model.
-
 Parameter saving
 ----------------
 
-The second method used by Blocks is intended to be more cross-platform, and a
-safer way of storing models for a longer period of time. This method:
+This is why Blocks intercepts the pickling of all Theano shared variables (which
+includes the parameters), and stores them as separate NPY_ files. The resulting
+file is a ZIP arcive that contains the pickled main loop as well as a collection
+of NumPy arrays. The NumPy arrays (and hence parameters) in the ZIP file can be
+read, across platforms, using the :func:`numpy.load` function, making it
+possible to inspect and load parameter values, even if the unpickling of the
+main loop fails.
 
-* Stores the parameters in a binary NumPy file (``.npz``)
-* Serializes the log
-* Serializes the data stream
-
-When resuming training, the model is reconstructed after which the parameters
-can be reloaded from the NumPy file. The training log and data stream are loaded
-as well, allowing the training to continue. However, this method makes no effort
-to try and store the exact state of training. This means that:
-
-* Training algorithms that are stateful e.g. those that use moving averages or
-  keep any sort of history that is not part of the log (ADADELTA, momentum,
-  L-BFGS, etc.) will reset.
-* Training extensions will be reset as well.
-* You will need to reconstruct the Theano graph before the parameters are
-  reloaded. This means that you will need the original script.
+.. _NPY: http://docs.scipy.org/doc/numpy-dev/neps/npy-format.html
