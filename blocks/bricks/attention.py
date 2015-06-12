@@ -289,8 +289,8 @@ class SequenceContentAttention(GenericSequenceAttention, Initializable):
     match_dim : int
         The dimension of the match vector.
     state_transformer : :class:`.Brick`
-        A prototype for state transformations. If ``None``, the default
-        transformation from :class:`.Parallel` is used.
+        A prototype for state transformations. If ``None``,
+        a linear transformation is used.
     attended_transformer : :class:`.Feedforward`
         The transformation to be applied to the sequence. If ``None`` an
         affine transformation is used.
@@ -310,6 +310,8 @@ class SequenceContentAttention(GenericSequenceAttention, Initializable):
     def __init__(self, match_dim, state_transformer=None,
                  attended_transformer=None, energy_computer=None, **kwargs):
         super(SequenceContentAttention, self).__init__(**kwargs)
+        if not state_transformer:
+            state_transformer = Linear()
         self.match_dim = match_dim
         self.state_transformer = state_transformer
 
