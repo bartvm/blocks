@@ -101,7 +101,7 @@ def test_beam_search():
     results, mask, costs = search.search(
         {inputs: input_vals}, 0, 3 * length, as_arrays=True)
     # Just check sum
-    assert results.sum() == 1116
+    assert results.sum() == 2816
 
     true_costs = simple_generator.cost(
         input_vals, numpy.ones((length, beam_size),
