@@ -68,7 +68,6 @@ class Parallel(Initializable):
         self.input_dims = input_dims
         self.output_dims = output_dims
         self.prototype = prototype
-        assert prototype
 
         self.children = []
         for name in input_names:
@@ -139,21 +138,21 @@ class Fork(Parallel):
         The output dimensions as a list of integers, corresponding to
         `output_names`.
 
-    Notes
-    -----
-    See :class:`.Initializable` for initialization parameters.
-
     See Also
     --------
-    :class:`Parallel` for the rest parameters.
+    :class:`Parallel` for other parameters.
+
+    :class:`.Initializable` for initialization parameters.
 
     """
     @lazy(allocation=['input_dim'])
     def __init__(self, output_names, input_dim,  prototype=None, **kwargs):
-        self.output_names = output_names
-        self.input_dim = input_dim
         if not prototype:
             prototype = Linear()
+
+        self.output_names = output_names
+        self.input_dim = input_dim
+
         kwargs.setdefault('child_prefix', 'fork')
         super(Fork, self).__init__(output_names, prototype=prototype,
                                    **kwargs)
@@ -193,8 +192,7 @@ class Distribute(Fork):
     >>> x = tensor.matrix('x')
     >>> y = tensor.matrix('y')
     >>> z = tensor.matrix('z')
-    >>> distribute = Distribute(prototype=Linear(use_bias=False),
-    ...                         target_names=['x', 'y'], source_name='z',
+    >>> distribute = Distribute(target_names=['x', 'y'], source_name='z',
     ...                         target_dims=[2, 3], source_dim=3,
     ...                         weights_init=Constant(2))
     >>> distribute.initialize()
@@ -233,6 +231,7 @@ class Distribute(Fork):
                  prototype=None, **kwargs):
         if not prototype:
             prototype = Linear(use_bias=False)
+
         self.target_names = target_names
         self.source_name = source_name
         self.target_dims = target_dims
@@ -330,9 +329,9 @@ class Merge(Parallel):
     @lazy(allocation=['input_dims', 'output_dim'])
     def __init__(self, input_names, input_dims, output_dim, prototype=None,
                  **kwargs):
-        self.output_dim = output_dim
         if not prototype:
             prototype = Linear(use_bias=False)
+        self.output_dim = output_dim
         super(Merge, self).__init__(
             input_names, input_dims,
             [output_dim for _ in input_names], prototype, **kwargs
