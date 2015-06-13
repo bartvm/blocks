@@ -33,7 +33,7 @@ from abc import ABCMeta, abstractmethod
 from six import add_metaclass
 from theano import tensor
 
-from blocks.bricks import Initializable, Random, Bias, Linear
+from blocks.bricks import Initializable, Random, Bias
 from blocks.bricks.base import application, Brick, lazy
 from blocks.bricks.parallel import Fork, Merge
 from blocks.bricks.lookup import LookupTable
