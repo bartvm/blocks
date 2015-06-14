@@ -4,7 +4,7 @@ import theano
 from numpy.testing import assert_equal, assert_allclose, assert_raises
 
 from blocks.initialization import Constant, IsotropicGaussian, Sparse
-from blocks.initialization import Uniform, Orthogonal
+from blocks.initialization import Uniform, Orthogonal, GlorotBengio
 
 
 def test_constant():
@@ -120,3 +120,24 @@ def test_orthogonal():
     yield check_orthogonal, rng, (50, 50)
     yield check_orthogonal, rng, (50, 51)
     yield check_orthogonal, rng, (51, 50)
+
+
+def test_glorotbengio():
+    rng = numpy.random.RandomState(1)
+
+    def check_glorotbengio(rng, scale, normal, shape):
+        weights = GlorotBengio(scale=scale, normal=normal) \
+                          .generate(rng, shape)
+        assert weights.shape == shape
+        assert weights.dtype == theano.config.floatX
+        assert_allclose(weights.mean(), 0., atol=1e-2)
+        w_ = numpy.sqrt(scale/float(shape[-1]))
+        if normal:
+            std_ = w_
+        else:
+            std_ = 2. * w_ / numpy.sqrt(12.)
+        assert_allclose(std_, weights.std(), atol=1e-2)
+
+    yield check_glorotbengio, rng, 1, True, (500, 600)
+    yield check_glorotbengio, rng, 1, False, (600, 500)
+    yield check_glorotbengio, rng, 2, True, (700, 300)
