@@ -30,8 +30,6 @@ class BeamSearch(object):
 
     Parameters
     ----------
-    beam_size : int
-        The beam size.
     samples : :class:`~theano.Variable`
         An output of a sampling computation graph built by
         :meth:`~blocks.brick.SequenceGenerator.generate`, the one
@@ -51,9 +49,7 @@ class BeamSearch(object):
     to work).
 
     """
-    def __init__(self, beam_size, samples):
-        self.beam_size = beam_size
-
+    def __init__(self, samples):
         # Extracting information from the sampling computation graph
         cg = ComputationGraph(samples)
         self.inputs = cg.inputs
@@ -78,7 +74,6 @@ class BeamSearch(object):
             for name in self.context_names]
         self.input_states = []
         # Includes only those state names that were actually used
-        # in 'generate'
         self.input_state_names = []
         for name in self.generator.generate.states:
             var = VariableFilter(
@@ -95,13 +90,15 @@ class BeamSearch(object):
             self.inputs, self.contexts, on_unused_input='ignore')
 
     def _compile_initial_state_computer(self):
+        beam_size = tensor.lscalar('beam_size')
         initial_states = [
             self.generator.initial_state(
-                name, self.beam_size,
+                name, beam_size,
                 **dict(equizip(self.context_names, self.contexts)))
             for name in self.state_names]
-        self.initial_state_computer = function(
-            self.contexts, initial_states, on_unused_input='ignore')
+        self.initial_state_computer = function([beam_size] + self.contexts,
+                                               initial_states,
+                                               on_unused_input='ignore')
 
     def _compile_next_state_computer(self):
         next_states = [VariableFilter(bricks=[self.generator],
@@ -166,7 +163,8 @@ class BeamSearch(object):
         `self.state_names`.
 
         """
-        init_states = self.initial_state_computer(*list(contexts.values()))
+        init_states = self.initial_state_computer(self.beam_size,
+                                                  *list(contexts.values()))
         return OrderedDict(equizip(self.state_names, init_states))
 
     def compute_logprobs(self, contexts, states):
@@ -277,6 +275,7 @@ class BeamSearch(object):
             negative log-likelihood.
 
         """
+        self.beam_size = input_values[input_values.keys()[0]].shape[1]
         if not self.compiled:
             self.compile()
 
