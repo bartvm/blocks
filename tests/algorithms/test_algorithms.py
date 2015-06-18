@@ -17,7 +17,7 @@ def test_gradient_descent():
     W_start_value = W.get_value()
     cost = tensor.sum(W ** 2)
 
-    algorithm = GradientDescent(cost=cost, params=[W])
+    algorithm = GradientDescent(cost=cost, parameters=[W])
     algorithm.step_rule.learning_rate.set_value(0.75)
     algorithm.initialize()
     algorithm.process_batch(dict())
@@ -253,8 +253,8 @@ def test_remove_not_finite():
 
 
 class DummyUpdatesStepRule(StepRule):
-    def compute_step(self, param, previous_step):
-        return previous_step + 2, [(param * 10, param * 100)]
+    def compute_step(self, parameter, previous_step):
+        return previous_step + 2, [(parameter * 10, parameter * 100)]
 
 
 def test_restrict():

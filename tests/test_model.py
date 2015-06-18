@@ -18,7 +18,7 @@ def test_model():
     assert model.get_top_bricks() == [mlp1, mlp2]
     # The order of parameters returned is deterministic but
     # not sensible.
-    assert list(model.get_params().items()) == [
+    assert list(model.parameters().items()) == [
         ('/mlp2/linear_0.b', mlp2.linear_transformations[0].b),
         ('/mlp1/linear_1.b', mlp1.linear_transformations[1].b),
         ('/mlp1/linear_0.b', mlp1.linear_transformations[0].b),
@@ -30,17 +30,19 @@ def test_model():
     mlp3 = MLP([Tanh()], [10, 10])
     mlp3.allocate()
     model3 = Model(mlp3.apply(x))
-    param_values = {
+    parameter_values = {
         '/mlp/linear_0.W': 2 * numpy.ones((10, 10),
                                           dtype=theano.config.floatX),
         '/mlp/linear_0.b': 3 * numpy.ones(10, dtype=theano.config.floatX)}
-    model3.set_param_values(param_values)
-    assert numpy.all(mlp3.linear_transformations[0].params[0].get_value() == 2)
-    assert numpy.all(mlp3.linear_transformations[0].params[1].get_value() == 3)
-    got_param_values = model3.get_param_values()
-    assert len(got_param_values) == len(param_values)
-    for name, value in param_values.items():
-        assert_allclose(value, got_param_values[name])
+    model3.set_parameter_values(parameter_values)
+    assert numpy.all(mlp3.linear_transformations[0].parameters[0].get_value()
+                     == 2)
+    assert numpy.all(mlp3.linear_transformations[0].parameters[1].get_value()
+                     == 3)
+    got_parameter_values = model3.get_parameter_values()
+    assert len(got_parameter_values) == len(parameter_values)
+    for name, value in parameter_values.items():
+        assert_allclose(value, got_parameter_values[name])
 
     # Test name conflict handling
     mlp4 = MLP([Tanh()], [10, 10])

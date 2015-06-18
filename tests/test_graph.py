@@ -138,10 +138,10 @@ def test_collect():
     for i, W in enumerate([W1, W2]):
         W.set_value(numpy.ones_like(W.get_value()) * (i + 1))
     new_cg = collect_parameters(cg, cg.shared_variables)
-    collected_params, = new_cg.shared_variables
-    assert numpy.all(collected_params.get_value()[:784 * 100] == 1.)
-    assert numpy.all(collected_params.get_value()[784 * 100:] == 2.)
-    assert collected_params.ndim == 1
+    collected_parameters, = new_cg.shared_variables
+    assert numpy.all(collected_parameters.get_value()[:784 * 100] == 1.)
+    assert numpy.all(collected_parameters.get_value()[784 * 100:] == 2.)
+    assert collected_parameters.ndim == 1
     W1, W2 = VariableFilter(roles=[COLLECTED])(new_cg.variables)
     assert W1.eval().shape == (784, 100)
     assert numpy.all(W1.eval() == 1.)

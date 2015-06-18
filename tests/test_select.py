@@ -12,14 +12,14 @@ class MockBrickTop(Brick):
     def __init__(self, children, **kwargs):
         super(MockBrickTop, self).__init__(**kwargs)
         self.children = children
-        self.params = []
+        self.parameters = []
 
 
 class MockBrickBottom(Brick):
 
     def __init__(self, **kwargs):
         super(MockBrickBottom, self).__init__(**kwargs)
-        self.params = [theano.shared(0, "V"), theano.shared(0, "W")]
+        self.parameters = [theano.shared(0, "V"), theano.shared(0, "W")]
 
 
 def test_path():
@@ -27,7 +27,7 @@ def test_path():
     assert path1.nodes == (Path.BrickName("brick"),)
 
     path2 = Path.parse("/brick.W")
-    assert path2.nodes == (Path.BrickName("brick"), Path.ParamName("W"))
+    assert path2.nodes == (Path.BrickName("brick"), Path.ParameterName("W"))
 
     path3 = Path.parse("/brick1/brick2")
     assert path3.nodes == (Path.BrickName("brick1"), Path.BrickName("brick2"))
@@ -39,13 +39,13 @@ def test_path():
     assert hash(path4) != hash(path2)
 
 
-def test_selector_get_params_uniqueness():
+def test_selector_get_parameters_uniqueness():
     top = MockBrickTop(
         [MockBrickBottom(name="bottom"), MockBrickBottom(name="bottom")],
         name="top")
 
     selector = Selector([top])
-    assert_raises(ValueError, selector.get_params)
+    assert_raises(ValueError, selector.get_parameters)
 
 
 def test_selector():
@@ -68,14 +68,14 @@ def test_selector():
     assert s21.bricks[0] == b2
     assert len(s21.bricks) == 1
 
-    assert s2.select("/t2/b2.V")[0] == b2.params[0]
+    assert s2.select("/t2/b2.V")[0] == b2.parameters[0]
 
-    params = list(s1.get_params().items())
-    assert params[0][0] == "/t1/b1.V"
-    assert params[0][1] == b1.params[0]
-    assert params[1][0] == "/t1/b1.W"
-    assert params[1][1] == b1.params[1]
-    assert params[2][0] == "/t1/b2.V"
-    assert params[2][1] == b2.params[0]
-    assert params[3][0] == "/t1/b2.W"
-    assert params[3][1] == b2.params[1]
+    parameters = list(s1.get_parameters().items())
+    assert parameters[0][0] == "/t1/b1.V"
+    assert parameters[0][1] == b1.parameters[0]
+    assert parameters[1][0] == "/t1/b1.W"
+    assert parameters[1][1] == b1.parameters[1]
+    assert parameters[2][0] == "/t1/b2.V"
+    assert parameters[2][1] == b2.parameters[0]
+    assert parameters[3][0] == "/t1/b2.W"
+    assert parameters[3][1] == b2.parameters[1]

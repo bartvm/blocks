@@ -36,18 +36,19 @@ class Path(object):
 
     """
     separator = "/"
-    param_separator = "."
-    separator_re = re.compile("([{}{}])".format(separator, param_separator))
+    parameter_separator = "."
+    separator_re = re.compile("([{}{}])".format(separator,
+                                                parameter_separator))
 
     class BrickName(str):
 
         def part(self):
             return Path.separator + self
 
-    class ParamName(str):
+    class ParameterName(str):
 
         def part(self):
-            return Path.param_separator + self
+            return Path.parameter_separator + self
 
     def __init__(self, nodes):
         if not isinstance(nodes, (list, tuple)):
@@ -90,8 +91,8 @@ class Path(object):
         for separator, part in equizip(separators, parts):
             if separator == Path.separator:
                 nodes.append(Path.BrickName(part))
-            elif Path.param_separator == Path.param_separator:
-                nodes.append(Path.ParamName(part))
+            elif Path.parameter_separator == Path.parameter_separator:
+                nodes.append(Path.ParameterName(part))
             else:
                 # This can not if separator_re is a correct regexp
                 raise ValueError("Wrong separator {}".format(separator))
@@ -142,8 +143,8 @@ class Selector(object):
         current_bricks = [None]
         for node in path.nodes:
             next_bricks = []
-            if isinstance(node, Path.ParamName):
-                return list(Selector(current_bricks).get_params(node).values())
+            if isinstance(node, Path.ParameterName):
+                return list(Selector(current_bricks).parameters(node).values())
             if isinstance(node, Path.BrickName):
                 for brick in current_bricks:
                     children = brick.children if brick else self.bricks
@@ -155,40 +156,41 @@ class Selector(object):
             current_bricks = next_bricks
         return Selector(current_bricks)
 
-    def get_params(self, param_name=None):
+    def get_parameters(self, parameter_name=None):
         """Returns parameters the selected bricks and their ancestors.
 
         Parameters
         ----------
-        param_name : :class:`Path.ParamName`
-            If given, only parameters with the name `param_name` are
+        param_name : :class:`Path.ParameterName`
+            If given, only parameters with the name `parameter_name` are
             returned.
 
         Returns
         -------
-        params : OrderedDict
-            A dictionary of (`path`, `param`) pairs, where `path` is the
-            string representation of the part to the parameter, `param` is
+        parameters : OrderedDict
+            A dictionary of (`path`, `parameter`) pairs, where `path` is the
+            string representation of the part to the parameter, `parameter` is
             the parameter.
 
         """
         def recursion(brick):
             # TODO path logic should be separate
             result = [(Path([Path.BrickName(brick.name),
-                             Path.ParamName(param.name)]),
-                       param)
-                      for param in brick.params
-                      if not param_name or param.name == param_name]
+                             Path.ParameterName(parameter.name)]),
+                       parameter)
+                      for parameter in brick.parameters
+                      if (not parameter_name or
+                          parameter.name) == parameter_name]
             result = OrderedDict(result)
             for child in brick.children:
-                for path, param in recursion(child).items():
+                for path, parameter in recursion(child).items():
                     new_path = Path([Path.BrickName(brick.name)]) + path
                     if new_path in result:
                         raise ValueError(
                             "Name collision encountered while retrieving " +
                             "parameters." +
                             name_collision_error_message.format(new_path))
-                    result[new_path] = param
+                    result[new_path] = parameter
             return result
         result = dict_union(*[recursion(brick)
                             for brick in self.bricks])

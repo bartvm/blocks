@@ -50,18 +50,18 @@ class AbstractModel(object):
 
     """
     @abstractmethod
-    def get_params(self):
+    def parameters(self):
         """Return the model parameters.
 
         Returns
         -------
-        params : OrderedDict
+        parameters : OrderedDict
             Dictionary of (name, parameter) pairs.
 
         """
         pass
 
-    def get_param_values(self):
+    def get_parameter_values(self):
         """Return the values of model parameters.
 
         The default implementation assumes that parameters are Theano
@@ -69,14 +69,15 @@ class AbstractModel(object):
 
         Returns
         -------
-        param_values : OrderedDict
+        parameter_values : OrderedDict
             Dictionary of (parameter name, :class:`~numpy.ndarray`) pairs.
 
         """
-        return OrderedDict((name, param.get_value())
-                           for name, param in self.get_params().items())
+        return OrderedDict(
+            (name, parameter.get_value())
+            for name, parameter in self.get_parameters().items())
 
-    def set_param_values(self, param_values):
+    def set_parameter_values(self, parameter_values):
         """Set the values of model parameters.
 
         The default implementation assumes that parameters are Theano
@@ -84,22 +85,22 @@ class AbstractModel(object):
 
         Parameters
         ----------
-        param_values : OrderedDict
+        parameter_values : OrderedDict
             Dictionary of (parameter name, :class:`~numpy.ndarray`) pairs.
 
         """
-        params = self.get_params()
+        parameters = self.get_parameters()
 
-        unknown = set(param_values) - set(params)
-        missing = set(params) - set(param_values)
+        unknown = set(parameter_values) - set(parameters)
+        missing = set(parameters) - set(parameter_values)
         if len(unknown):
             logger.error("unknown parameter names: {}\n".format(unknown))
         if len(missing):
             logger.error("missing values for parameters: {}\n".format(missing))
 
-        for name, value in param_values.items():
-            if name in params:
-                params[name].set_value(value)
+        for name, value in parameter_values.items():
+            if name in parameters:
+                parameters[name].set_value(value)
 
     @abstractmethod
     def get_objective(self):
@@ -161,15 +162,18 @@ class Model(AbstractModel, ComputationGraph):
             raise ValueError("top bricks with the same name:"
                              " {}".format(', '.join(repeated_names)))
 
-        brick_param_names = {
-            v: k for k, v in Selector(self.top_bricks).get_params().items()}
-        self.params = []
-        for param in VariableFilter(roles=[PARAMETER])(self.shared_variables):
-            if param in brick_param_names:
-                self.params.append((brick_param_names[param], param))
+        brick_parameter_names = {
+            v: k
+            for k, v in Selector(self.top_bricks).get_parameters().items()}
+        self.parameters = []
+        for parameter in VariableFilter(
+                roles=[PARAMETER])(self.shared_variables):
+            if parameter in brick_parameter_names:
+                self.parameters.append((brick_parameter_names[parameter],
+                                        parameter))
             else:
-                self.params.append((param.name, param))
-        self.params = OrderedDict(self.params)
+                self.parameters.append((parameter.name, parameter))
+        self.parameters = OrderedDict(self.parameters)
 
     def get_objective(self):
         """Return the output variable, if there is a single one.
@@ -182,7 +186,7 @@ class Model(AbstractModel, ComputationGraph):
             return self.outputs[0]
         raise NotImplementedError
 
-    def get_params(self):
+    def parameters(self):
         """Get model parameters.
 
         The parameter names are formed from positions of their owner bricks
@@ -190,7 +194,7 @@ class Model(AbstractModel, ComputationGraph):
         parameters that do not belong to any brick.
 
         """
-        return self.params
+        return self.parameters
 
     def get_top_bricks(self):
         return self.top_bricks
