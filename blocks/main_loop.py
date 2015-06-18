@@ -152,7 +152,7 @@ class MainLoop(object):
             # similarly.
             if not self._model.get_objective() == self.algorithm.cost:
                 logger.warning("different costs for model and algorithm")
-            if not (set(self._model.parameters().values()) ==
+            if not (set(self._model.get_parameters().values()) ==
                     set(self.algorithm.parameters)):
                 logger.warning("different parameters for model and algorithm")
 
