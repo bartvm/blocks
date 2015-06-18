@@ -39,7 +39,7 @@ def test_model():
                      == 2)
     assert numpy.all(mlp3.linear_transformations[0].parameters[1].get_value()
                      == 3)
-    got_parameter_values = model3.parameter_values()
+    got_parameter_values = model3.get_parameter_values()
     assert len(got_parameter_values) == len(parameter_values)
     for name, value in parameter_values.items():
         assert_allclose(value, got_parameter_values[name])
