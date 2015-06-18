@@ -74,6 +74,7 @@ class BeamSearch(object):
             for name in self.context_names]
         self.input_states = []
         # Includes only those state names that were actually used
+        # in 'generate'
         self.input_state_names = []
         for name in self.generator.generate.states:
             var = VariableFilter(
