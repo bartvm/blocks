@@ -154,7 +154,7 @@ class GradientDescent(DifferentiableCostMinimizer):
             steps = step_rule.compute_steps(parameters,
                                             gradients_wr_parameters)
             for parameter in parameters:
-                parameter -= steps[parameters]
+                parameter -= steps[parameter]
 
     Note, that the step is *subtracted, not added*! This is done in order
     to make step rule chaining possible.

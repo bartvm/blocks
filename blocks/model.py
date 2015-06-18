@@ -50,7 +50,7 @@ class AbstractModel(object):
 
     """
     @abstractmethod
-    def parameters(self):
+    def get_parameters(self):
         """Return the model parameters.
 
         Returns
@@ -61,7 +61,7 @@ class AbstractModel(object):
         """
         pass
 
-    def parameter_values(self):
+    def get_parameter_values(self):
         """Return the values of model parameters.
 
         The default implementation assumes that parameters are Theano
@@ -89,7 +89,7 @@ class AbstractModel(object):
             Dictionary of (parameter name, :class:`~numpy.ndarray`) pairs.
 
         """
-        parameters = self.parameters()
+        parameters = self.get_parameters()
 
         unknown = set(parameter_values) - set(parameters)
         missing = set(parameters) - set(parameter_values)
@@ -164,7 +164,7 @@ class Model(AbstractModel, ComputationGraph):
 
         brick_parameter_names = {
             v: k
-            for k, v in Selector(self.top_bricks).parameters().items()}
+            for k, v in Selector(self.top_bricks).get_parameters().items()}
         self.parameters = []
         for parameter in VariableFilter(
                 roles=[PARAMETER])(self.shared_variables):
@@ -186,7 +186,7 @@ class Model(AbstractModel, ComputationGraph):
             return self.outputs[0]
         raise NotImplementedError
 
-    def parameters(self):
+    def get_parameters(self):
         """Get model parameters.
 
         The parameter names are formed from positions of their owner bricks

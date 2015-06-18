@@ -39,13 +39,13 @@ def test_path():
     assert hash(path4) != hash(path2)
 
 
-def test_selector_parameters_uniqueness():
+def test_selector_get_parameters_uniqueness():
     top = MockBrickTop(
         [MockBrickBottom(name="bottom"), MockBrickBottom(name="bottom")],
         name="top")
 
     selector = Selector([top])
-    assert_raises(ValueError, selector.parameters)
+    assert_raises(ValueError, selector.get_parameters)
 
 
 def test_selector():

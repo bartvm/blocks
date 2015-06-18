@@ -115,7 +115,7 @@ def test_attention_recurrent():
     assert glimpses_vals.shape == (input_length, batch_size, attended_dim)
 
     assert (len(ComputationGraph(outputs).shared_variables) ==
-            len(Selector(recurrent).parameters()))
+            len(Selector(recurrent).get_parameters()))
 
     # weights for not masked position must be zero
     assert numpy.all(weight_vals * (1 - attended_mask_vals.T) == 0)

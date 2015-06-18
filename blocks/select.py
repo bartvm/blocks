@@ -144,7 +144,8 @@ class Selector(object):
         for node in path.nodes:
             next_bricks = []
             if isinstance(node, Path.ParameterName):
-                return list(Selector(current_bricks).parameters(node).values())
+                return list(Selector(
+                    current_bricks).get_parameters(node).values())
             if isinstance(node, Path.BrickName):
                 for brick in current_bricks:
                     children = brick.children if brick else self.bricks
@@ -156,7 +157,7 @@ class Selector(object):
             current_bricks = next_bricks
         return Selector(current_bricks)
 
-    def parameters(self, parameter_name=None):
+    def get_parameters(self, parameter_name=None):
         """Returns parameters the selected bricks and their ancestors.
 
         Parameters
