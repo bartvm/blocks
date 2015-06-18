@@ -460,7 +460,7 @@ class Brick(Annotation):
     print_shapes : bool
         ``False`` by default. If ``True`` it logs the shapes of all the
         input and output variables, which can be useful for debugging.
-    params : list of :class:`~tensor.TensorSharedVariable` and ``None``
+    parameters : list of :class:`~tensor.TensorSharedVariable` and ``None``
         After calling the :meth:`allocate` method this attribute will be
         populated with the shared variables storing this brick's
         parameters. Allows for ``None`` so that parameters can always be
@@ -542,12 +542,12 @@ class Brick(Annotation):
         return repr_attrs(self, 'name')
 
     @property
-    def params(self):
-        return self._params
+    def parameters(self):
+        return self._parameters
 
-    @params.setter
-    def params(self, value):
-        self._params = Parameters(self, value)
+    @parameters.setter
+    def parameters(self, value):
+        self._parameters = Parameters(self, value)
 
     @property
     def children(self):
@@ -562,7 +562,7 @@ class Brick(Annotation):
 
         Based on the current configuration of this :class:`Brick` create
         Theano shared variables to store the parameters.  After allocation,
-        parameters are accessible through the :attr:`params` attribute.
+        parameters are accessible through the :attr:`parameters` attribute.
 
         This method calls the :meth:`allocate` method of all children
         first, allowing the :meth:`_allocate` method to override the
@@ -577,7 +577,7 @@ class Brick(Annotation):
 
         Notes
         -----
-        This method sets the :attr:`params` attribute to an empty list.
+        This method sets the :attr:`parameters` attribute to an empty list.
         This is in order to ensure that calls to this method completely
         reset the parameters.
 
@@ -592,7 +592,7 @@ class Brick(Annotation):
             self.push_allocation_config()
         for child in self.children:
             child.allocate()
-        self.params = []
+        self.parameters = []
         self._allocate()
         self.allocated = True
 

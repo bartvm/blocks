@@ -106,7 +106,7 @@ And train!
 >>> main_loop = MainLoop(
 ...     model=Model(cost), data_stream=train_stream,
 ...     algorithm=GradientDescent(
-...         cost=cost, params=ComputationGraph(cost).parameters,
+...         cost=cost, parameters=ComputationGraph(cost).parameters,
 ...         step_rule=Scale(learning_rate=0.1)),
 ...     extensions=[FinishAfter(after_n_epochs=5),
 ...                 DataStreamMonitoring(

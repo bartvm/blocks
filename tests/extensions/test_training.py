@@ -35,7 +35,7 @@ def test_shared_variable_modifier():
     cost.name = 'cost'
 
     step_rule = Scale(0.001)
-    sgd = GradientDescent(cost=cost, params=[W],
+    sgd = GradientDescent(cost=cost, parameters=[W],
                           step_rule=step_rule)
     main_loop = MainLoop(
         model=None, data_stream=dataset.get_example_stream(),
@@ -53,7 +53,7 @@ def test_shared_variable_modifier():
                     numpy.cast[theano.config.floatX](10. / n_batches))
 
 
-def test_shared_variable_modifier_two_params():
+def test_shared_variable_modifier_two_parameters():
     weights = numpy.array([-1, 1], dtype=theano.config.floatX)
     features = [numpy.array(f, dtype=theano.config.floatX)
                 for f in [[1, 2], [3, 4], [5, 6]]]
@@ -68,7 +68,7 @@ def test_shared_variable_modifier_two_params():
     cost.name = 'cost'
 
     step_rule = Scale(0.001)
-    sgd = GradientDescent(cost=cost, params=[W],
+    sgd = GradientDescent(cost=cost, parameters=[W],
                           step_rule=step_rule)
     modifier = SharedVariableModifier(
         step_rule.learning_rate,

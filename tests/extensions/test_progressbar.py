@@ -25,7 +25,7 @@ def setup_mainloop(extension):
     cost = tensor.sum((x-W)**2)
     cost.name = "cost"
 
-    algorithm = GradientDescent(cost=cost, params=[W],
+    algorithm = GradientDescent(cost=cost, parameters=[W],
                                 step_rule=Scale(1e-3))
 
     main_loop = MainLoop(

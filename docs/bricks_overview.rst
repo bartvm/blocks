@@ -76,9 +76,9 @@ When we called :attr:`.Linear.apply`, the brick automatically constructed
 the `shared Theano variables`_ needed to store its parameters. In the lifecycle
 of a brick we refer to this as *allocation*.
 
-    >>> linear.params
+    >>> linear.parameters
     [W, b]
-    >>> linear.params[1].get_value() # doctest: +SKIP
+    >>> linear.parameters[1].get_value() # doctest: +SKIP
     array([ nan,  nan,  nan,  nan,  nan])
 
 By default, all our parameters are set to ``NaN``. To initialize them, simply
@@ -86,7 +86,7 @@ call the :meth:`.Brick.initialize` method. This is the last step in the
 brick lifecycle: *initialization*.
 
     >>> linear.initialize()
-    >>> linear.params[1].get_value() # doctest: +SKIP
+    >>> linear.parameters[1].get_value() # doctest: +SKIP
     array([ 0.01,  0.01,  0.01,  0.01,  0.01])
 
 Keep in mind that at the end of the day, bricks just help you construct a Theano
@@ -136,12 +136,12 @@ implicitly when calling the ``apply`` methods, but it can also be called
 explicitly. Consider the following example:
 
     >>> linear3 = Linear(input_dim=10, output_dim=5)
-    >>> linear3.params
+    >>> linear3.parameters
     Traceback (most recent call last):
         ...
-    AttributeError: 'Linear' object has no attribute 'params'
+    AttributeError: 'Linear' object has no attribute 'parameters'
     >>> linear3.allocate()
-    >>> linear3.params
+    >>> linear3.parameters
     [W, b]
 
 Nested bricks
@@ -174,7 +174,7 @@ automatically pushed the weight matrix and biases initialization
 configuration to its children.
 
     >>> mlp.initialize()
-    >>> mlp.children[1].params[0].get_value() # doctest: +SKIP
+    >>> mlp.children[1].parameters[0].get_value() # doctest: +SKIP
     array([[-0.38312393, -1.7718271 ,  0.78074479, -0.74750996],
            ...
            [ 1.32390416, -0.56375355, -0.24268186, -2.06008577]])
@@ -206,7 +206,7 @@ configuration.
     >>> mlp.push_initialization_config()
     >>> mlp.children[0].weights_init = Constant(0.01)
     >>> mlp.initialize()
-    >>> mlp.children[0].params[0].get_value() # doctest: +SKIP
+    >>> mlp.children[0].parameters[0].get_value() # doctest: +SKIP
     array([[ 0.01,  0.01,  0.01,  0.01,  0.01,  0.01,  0.01,  0.01],
            ...
            [ 0.01,  0.01,  0.01,  0.01,  0.01,  0.01,  0.01,  0.01]])

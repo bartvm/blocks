@@ -156,7 +156,7 @@ class Selector(object):
             current_bricks = next_bricks
         return Selector(current_bricks)
 
-    def get_parameters(self, parameter_name=None):
+    def parameters(self, parameter_name=None):
         """Returns parameters the selected bricks and their ancestors.
 
         Parameters

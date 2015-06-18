@@ -180,7 +180,7 @@ The training algorithm we will use is straightforward SGD with a fixed
 learning rate.
 
 >>> from blocks.algorithms import GradientDescent, Scale
->>> algorithm = GradientDescent(cost=cost, params=cg.parameters,
+>>> algorithm = GradientDescent(cost=cost, parameters=cg.parameters,
 ...                             step_rule=Scale(learning_rate=0.1))
 
 During training we will want to monitor the performance of our model on

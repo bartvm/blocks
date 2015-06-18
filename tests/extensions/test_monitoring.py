@@ -37,7 +37,7 @@ def test_training_data_monitoring():
 
     main_loop = MainLoop(
         model=None, data_stream=dataset.get_example_stream(),
-        algorithm=GradientDescent(cost=cost, params=[W],
+        algorithm=GradientDescent(cost=cost, parameters=[W],
                                   step_rule=Scale(0.001)),
         extensions=[
             FinishAfter(after_n_epochs=1),

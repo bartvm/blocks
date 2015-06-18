@@ -61,7 +61,7 @@ class AbstractModel(object):
         """
         pass
 
-    def get_parameter_values(self):
+    def parameter_values(self):
         """Return the values of model parameters.
 
         The default implementation assumes that parameters are Theano
@@ -75,7 +75,7 @@ class AbstractModel(object):
         """
         return OrderedDict(
             (name, parameter.get_value())
-            for name, parameter in self.get_parameters().items())
+            for name, parameter in self.parameters().items())
 
     def set_parameter_values(self, parameter_values):
         """Set the values of model parameters.
@@ -89,7 +89,7 @@ class AbstractModel(object):
             Dictionary of (parameter name, :class:`~numpy.ndarray`) pairs.
 
         """
-        parameters = self.get_parameters()
+        parameters = self.parameters()
 
         unknown = set(parameter_values) - set(parameters)
         missing = set(parameters) - set(parameter_values)
@@ -164,7 +164,7 @@ class Model(AbstractModel, ComputationGraph):
 
         brick_parameter_names = {
             v: k
-            for k, v in Selector(self.top_bricks).get_parameters().items()}
+            for k, v in Selector(self.top_bricks).parameters().items()}
         self.parameters = []
         for parameter in VariableFilter(
                 roles=[PARAMETER])(self.shared_variables):

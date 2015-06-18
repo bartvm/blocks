@@ -152,9 +152,9 @@ class MainLoop(object):
             # similarly.
             if not self._model.get_objective() == self.algorithm.cost:
                 logger.warning("different costs for model and algorithm")
-            if not (set(self._model.get_params().values()) ==
-                    set(self.algorithm.params)):
-                logger.warning("different params for model and algorithm")
+            if not (set(self._model.parameters().values()) ==
+                    set(self.algorithm.parameters)):
+                logger.warning("different parameters for model and algorithm")
 
         with change_recursion_limit(config.recursion_limit):
             self.original_sigint_handler = signal.signal(

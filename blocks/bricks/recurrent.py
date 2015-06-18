@@ -284,7 +284,7 @@ class SimpleRecurrent(BaseRecurrent, Initializable):
 
     @property
     def W(self):
-        return self.params[0]
+        return self.parameters[0]
 
     def get_dim(self, name):
         if name == 'mask':
@@ -295,11 +295,12 @@ class SimpleRecurrent(BaseRecurrent, Initializable):
         return super(SimpleRecurrent, self).get_dim(name)
 
     def _allocate(self):
-        self.params.append(shared_floatx_nans((self.dim, self.dim), name="W"))
-        add_role(self.params[0], WEIGHT)
-        self.params.append(shared_floatx_zeros((self.dim,),
-                                               name="initial_state"))
-        add_role(self.params[1], INITIAL_STATE)
+        self.parameters.append(shared_floatx_nans((self.dim, self.dim),
+                                                  name="W"))
+        add_role(self.parameters[0], WEIGHT)
+        self.parameters.append(shared_floatx_zeros((self.dim,),
+                                                   name="initial_state"))
+        add_role(self.parameters[1], INITIAL_STATE)
 
     def _initialize(self):
         self.weights_init.initialize(self.W, self.rng)
@@ -328,9 +329,9 @@ class SimpleRecurrent(BaseRecurrent, Initializable):
                            (1 - mask[:, None]) * states)
         return next_states
 
-    @application(outputs=apply.states)
-    def initial_states(self, batch_size, *args, **kwargs):
-        return tensor.repeat(self.params[1][None, :], batch_size, 0)
+    @application
+    def initial_state(self, state_name, batch_size, *args, **kwargs):
+        return tensor.repeat(self.parameters[1][None, :], batch_size, 0)
 
 
 class LSTM(BaseRecurrent, Initializable):
@@ -410,12 +411,12 @@ class LSTM(BaseRecurrent, Initializable):
         add_role(self.initial_state_, INITIAL_STATE)
         add_role(self.initial_cells, INITIAL_STATE)
 
-        self.params = [
+        self.parameters = [
             self.W_state, self.W_cell_to_in, self.W_cell_to_forget,
             self.W_cell_to_out, self.initial_state_, self.initial_cells]
 
     def _initialize(self):
-        for weights in self.params[:4]:
+        for weights in self.parameters[:4]:
             self.weights_init.initialize(weights, self.rng)
 
     @recurrent(sequences=['inputs', 'mask'], states=['states', 'cells'],
@@ -521,11 +522,11 @@ class GatedRecurrent(BaseRecurrent, Initializable):
 
     @property
     def state_to_state(self):
-        return self.params[0]
+        return self.parameters[0]
 
     @property
     def state_to_gates(self):
-        return self.params[1]
+        return self.parameters[1]
 
     def get_dim(self, name):
         if name == 'mask':
@@ -537,16 +538,16 @@ class GatedRecurrent(BaseRecurrent, Initializable):
         return super(GatedRecurrent, self).get_dim(name)
 
     def _allocate(self):
-        self.params.append(shared_floatx_nans((self.dim, self.dim),
-                           name='state_to_state'))
-        self.params.append(shared_floatx_nans((self.dim, 2 * self.dim),
-                           name='state_to_gates'))
-        self.params.append(shared_floatx_zeros((self.dim,),
-                           name="initial_state"))
+        self.parameters.append(shared_floatx_nans((self.dim, self.dim),
+                               name='state_to_state'))
+        self.parameters.append(shared_floatx_nans((self.dim, 2 * self.dim),
+                               name='state_to_gates'))
+        self.parameters.append(shared_floatx_zeros((self.dim,),
+                               name="initial_state"))
         for i in range(2):
-            if self.params[i]:
-                add_role(self.params[i], WEIGHT)
-        add_role(self.params[2], INITIAL_STATE)
+            if self.parameters[i]:
+                add_role(self.parameters[i], WEIGHT)
+        add_role(self.parameters[2], INITIAL_STATE)
 
     def _initialize(self):
         self.weights_init.initialize(self.state_to_state, self.rng)
@@ -597,9 +598,15 @@ class GatedRecurrent(BaseRecurrent, Initializable):
                            (1 - mask[:, None]) * states)
         return next_states
 
+<<<<<<< HEAD
     @application(outputs=apply.states)
     def initial_states(self, batch_size, *args, **kwargs):
         return [tensor.repeat(self.params[2][None, :], batch_size, 0)]
+=======
+    @application
+    def initial_state(self, state_name, batch_size, *args, **kwargs):
+        return tensor.repeat(self.parameters[2][None, :], batch_size, 0)
+>>>>>>> more replacements
 
 
 class Bidirectional(Initializable):

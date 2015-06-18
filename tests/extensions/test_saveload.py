@@ -43,7 +43,7 @@ def test_load():
 
     main_loop = MainLoop(
         data_stream=data_stream,
-        algorithm=GradientDescent(cost=cost, params=[W]),
+        algorithm=GradientDescent(cost=cost, parameters=[W]),
         extensions=[FinishAfter(after_n_batches=5),
                     Checkpoint('myweirdmodel.picklebarrel')]
     )
@@ -55,7 +55,7 @@ def test_load():
     main_loop = MainLoop(
         model=Model(cost),
         data_stream=data_stream,
-        algorithm=GradientDescent(cost=cost, params=[W]),
+        algorithm=GradientDescent(cost=cost, parameters=[W]),
         extensions=[Load('myweirdmodel.picklebarrel',
                          load_iteration_state=True, load_log=True)]
     )
@@ -67,7 +67,7 @@ def test_load():
     main_loop = MainLoop(
         model=Model(cost),
         data_stream=data_stream,
-        algorithm=GradientDescent(cost=cost, params=[W]),
+        algorithm=GradientDescent(cost=cost, parameters=[W]),
         extensions=[Load('mynonexisting.picklebarrel',
                          load_iteration_state=True, load_log=True)]
     )

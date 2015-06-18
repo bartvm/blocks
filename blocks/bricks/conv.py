@@ -57,7 +57,7 @@ class Convolutional(Initializable):
         W = shared_floatx_nans((self.num_filters, self.num_channels) +
                                self.filter_size, name='W')
         add_role(W, FILTER)
-        self.params.append(W)
+        self.parameters.append(W)
         self.add_auxiliary_variable(W.norm(2), name='W_norm')
         if self.use_bias:
             if self.tied_biases:
@@ -66,15 +66,15 @@ class Convolutional(Initializable):
                 b = shared_floatx_nans(self.get_dim('output'), name='b')
             add_role(b, BIAS)
 
-            self.params.append(b)
+            self.parameters.append(b)
             self.add_auxiliary_variable(b.norm(2), name='b_norm')
 
     def _initialize(self):
         if self.use_bias:
-            W, b = self.params
+            W, b = self.parameters
             self.biases_init.initialize(b, self.rng)
         else:
-            W, = self.params
+            W, = self.parameters
         self.weights_init.initialize(W, self.rng)
 
     @application(inputs=['input_'], outputs=['output'])
@@ -100,9 +100,9 @@ class Convolutional(Initializable):
 
         """
         if self.use_bias:
-            W, b = self.params
+            W, b = self.parameters
         else:
-            W, = self.params
+            W, = self.parameters
 
         output = conv2d(
             input_, W,
