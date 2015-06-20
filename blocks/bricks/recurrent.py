@@ -741,7 +741,6 @@ class RecurrentStack(BaseRecurrent, Initializable):
         only the `sequences` of the bottom layer appear in the `sequences`
         of the apply of this class. In this case the default fork
         used internally between layers has a bias (see fork_prototype.)
-
         An external code can inspect the `sequences` attribute of the
         apply method of this class to decide which arguments it need
         (and in what order.) With `skip_connections` you can control
@@ -884,24 +883,11 @@ class RecurrentStack(BaseRecurrent, Initializable):
         `@recurrent` method should have `iterate=False` (or unset) to
         indicate that the iteration over all steps is done externally.
 
-        Parameters
-        ----------
-        See docstring of the class for arguments appearing in
-        self.apply.sequences, self.apply.states, self.apply.contexts
-        All arguments values are of type :class:`~tensor.TensorVariable`.
-
-        In addition the `iterate`, `reverse`, `return_initial_states` or
-        any other argument defined in `recurrent_apply` wrapper.
-
-        Returns
-        -------
-        The outputs of all transitions as defined in `self.apply.outputs`
-        All return values are of type :class:`~tensor.TensorVariable`.
-
         """
         nargs = len(args)
-        assert nargs <= len(self.apply.sequences)
-        kwargs.update(zip(self.apply.sequences[:nargs], args))
+        args_names = self.apply.sequences + self.apply.contexts
+        assert nargs <= len(args_names)
+        kwargs.update(zip(args_names[:nargs], args))
 
         if kwargs.get("reverse", False):
             raise NotImplementedError
@@ -969,18 +955,18 @@ class RecurrentStack(BaseRecurrent, Initializable):
         low_memory : bool
             Use the slow, but also memory efficient, implementation of
             this code.
-
-        See docstring of the class for arguments appearing in
-        self.apply.sequences, self.apply.states, self.apply.contexts
-        All arguments values are of type :class:`~tensor.TensorVariable`.
-
-        In addition the `iterate`, `reverse`, `return_initial_states` or
-        any other argument defined in `recurrent_apply` wrapper.
+        sequences, states, contexts : :class:`~tensor.TensorVariable`
+            See docstring of the class for arguments appearing in the
+            lists
+            self.apply.sequences, self.apply.states, self.apply.contexts
+        iterate, reverse, return_initial_states : bool
+            or any other argument defined in `recurrent_apply` wrapper.
 
         Returns
         -------
-        The outputs of all transitions as defined in `self.apply.outputs`
-        All return values are of type :class:`~tensor.TensorVariable`.
+        outputs : (list of) :class:`~tensor.TensorVariable`
+            The outputs of all transitions as defined in
+            `self.apply.outputs`
 
         """
         if kwargs.pop('low_memory', False):
