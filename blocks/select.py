@@ -169,9 +169,9 @@ class Selector(object):
         Returns
         -------
         parameters : OrderedDict
-            A dictionary of (`path`, `parameter`) pairs, where `path` is the
-            string representation of the part to the parameter, `parameter`
-            is the parameter.
+            A dictionary of (`path`, `parameter`) pairs, where `path` is
+            the string representation of the part to the parameter,
+            `parameter` is the parameter.
 
         """
         def recursion(brick):
