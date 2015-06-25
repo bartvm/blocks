@@ -50,7 +50,7 @@ class AbstractModel(object):
 
     """
     @abstractmethod
-    def get_parameters(self):
+    def get_parameter_dict(self):
         """Return the model parameters.
 
         Returns
@@ -75,7 +75,7 @@ class AbstractModel(object):
         """
         return OrderedDict(
             (name, parameter.get_value())
-            for name, parameter in self.parameters().items())
+            for name, parameter in self.get_parameter_dict().items())
 
     def set_parameter_values(self, parameter_values):
         """Set the values of model parameters.
@@ -89,7 +89,7 @@ class AbstractModel(object):
             Dictionary of (parameter name, :class:`~numpy.ndarray`) pairs.
 
         """
-        parameters = self.get_parameters()
+        parameters = self.get_parameter_dict()
 
         unknown = set(parameter_values) - set(parameters)
         missing = set(parameters) - set(parameter_values)
@@ -164,7 +164,7 @@ class Model(AbstractModel, ComputationGraph):
 
         brick_parameter_names = {
             v: k
-            for k, v in Selector(self.top_bricks).get_parameters().items()}
+            for k, v in Selector(self.top_bricks).get_parameter_dict().items()}
         self.parameters = []
         for parameter in VariableFilter(
                 roles=[PARAMETER])(self.shared_variables):
@@ -186,7 +186,7 @@ class Model(AbstractModel, ComputationGraph):
             return self.outputs[0]
         raise NotImplementedError
 
-    def get_parameters(self):
+    def get_parameter_dict(self):
         """Get model parameters.
 
         The parameter names are formed from positions of their owner bricks
