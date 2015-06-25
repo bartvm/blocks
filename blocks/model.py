@@ -14,9 +14,7 @@ from itertools import chain
 from six import add_metaclass
 
 from blocks.graph import ComputationGraph
-from blocks.select import Selector
-from blocks.filter import VariableFilter, get_brick
-from blocks.roles import PARAMETER
+from blocks.filter import get_brick
 
 logger = logging.getLogger()
 
