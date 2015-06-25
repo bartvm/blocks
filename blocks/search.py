@@ -30,8 +30,6 @@ class BeamSearch(object):
 
     Parameters
     ----------
-    beam_size : int
-        The beam size.
     samples : :class:`~theano.Variable`
         An output of a sampling computation graph built by
         :meth:`~blocks.brick.SequenceGenerator.generate`, the one
@@ -51,12 +49,10 @@ class BeamSearch(object):
     to work).
 
     """
-    def __init__(self, beam_size, samples):
-        self.beam_size = beam_size
-
+    def __init__(self, samples):
         # Extracting information from the sampling computation graph
-        cg = ComputationGraph(samples)
-        self.inputs = cg.inputs
+        self.cg = ComputationGraph(samples)
+        self.inputs = self.cg.inputs
         self.generator = get_brick(samples)
         if not isinstance(self.generator, BaseSequenceGenerator):
             raise ValueError
@@ -74,7 +70,7 @@ class BeamSearch(object):
         self.contexts = [
             VariableFilter(bricks=[self.generator],
                            name=name,
-                           roles=[INPUT])(self.inner_cg)[0]
+                           roles=[INPUT])(self.CG)[0]
             for name in self.context_names]
         self.input_states = []
         # Includes only those state names that were actually used
@@ -95,10 +91,10 @@ class BeamSearch(object):
             self.inputs, self.contexts, on_unused_input='ignore')
 
     def _compile_initial_state_computer(self):
-        # TODO: should be now extractable from the computation graph
-        initial_states = self.generator.initial_states(
-                self.beam_size, as_dict=True,
-                **dict(equizip(self.context_names, self.contexts)))
+        initial_states = VariableFilter(
+                            applications=[self.generator.initial_states],
+                            roles=[OUTPUT])(self.cg)
+        initial_states = OrderedDict([(v.tag.name, v) for v in initial_states])
         self.initial_state_computer = function(
             self.contexts, initial_states, on_unused_input='ignore')
 
@@ -303,7 +299,7 @@ class BeamSearch(object):
             # The `i == 0` is required because at the first step the beam
             # size is effectively only 1.
             (indexes, outputs), chosen_costs = self._smallest(
-                next_costs, self.beam_size, only_first_row=i == 0)
+                next_costs, self.batch_size, only_first_row=i == 0)
 
             # Rearrange everything
             for name in states:

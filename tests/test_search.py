@@ -97,7 +97,7 @@ def test_beam_search():
     input_vals = numpy.tile(rng.randint(alphabet_size, size=(length,)),
                             (beam_size, 1)).T
 
-    search = BeamSearch(10, samples)
+    search = BeamSearch(samples)
     results, mask, costs = search.search(
         {inputs: input_vals}, 0, 3 * length, as_arrays=True)
     # Just check sum
