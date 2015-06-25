@@ -181,6 +181,9 @@ class Model(AbstractModel, ComputationGraph):
         parameters that do not belong to any brick.
 
         """
+        if (len(set(parameter.name for parameter in self.parameters)) !=
+                len(self.parameters)):
+            raise ValueError("parameters should have different names")
         parameter_dict = OrderedDict()
         for parameter in self.parameters:
             parameter_dict[parameter.name] = parameter
