@@ -162,7 +162,7 @@ class Selector(object):
 
         Parameters
         ----------
-        param_name : :class:`Path.ParameterName`
+        parameter_name : :class:`Path.ParameterName`
             If given, only parameters with the name `parameter_name` are
             returned.
 

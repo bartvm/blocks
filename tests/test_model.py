@@ -35,10 +35,10 @@ def test_model():
                                           dtype=theano.config.floatX),
         '/mlp/linear_0.b': 3 * numpy.ones(10, dtype=theano.config.floatX)}
     model3.set_parameter_values(parameter_values)
-    assert numpy.all(mlp3.linear_transformations[0].parameters[0].get_value()
-                     == 2)
-    assert numpy.all(mlp3.linear_transformations[0].parameters[1].get_value()
-                     == 3)
+    assert numpy.all(
+        mlp3.linear_transformations[0].parameters[0].get_value() == 2)
+    assert numpy.all(
+        mlp3.linear_transformations[0].parameters[1].get_value() == 3)
     got_parameter_values = model3.get_parameter_values()
     assert len(got_parameter_values) == len(parameter_values)
     for name, value in parameter_values.items():
