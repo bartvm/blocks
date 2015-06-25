@@ -75,7 +75,7 @@ class AbstractModel(object):
         """
         return OrderedDict(
             (name, parameter.get_value())
-            for name, parameter in self.get_parameter_dict().items())
+            for name, parameter in self.get_parameters().items())
 
     def set_parameter_values(self, parameter_values):
         """Set the values of model parameters.
@@ -164,7 +164,7 @@ class Model(AbstractModel, ComputationGraph):
 
         brick_parameter_names = {
             v: k
-            for k, v in Selector(self.top_bricks).get_parameter_dict().items()}
+            for k, v in Selector(self.top_bricks).get_parameters().items()}
         self.parameters = []
         for parameter in VariableFilter(
                 roles=[PARAMETER])(self.shared_variables):
