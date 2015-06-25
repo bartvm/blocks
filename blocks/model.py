@@ -181,7 +181,7 @@ class Model(AbstractModel, ComputationGraph):
         parameters that do not belong to any brick.
 
         """
-        return self.parameters
+        return OrderedDict(self.parameters)
 
     def get_top_bricks(self):
         return self.top_bricks
