@@ -18,7 +18,7 @@ def test_model():
     assert model.get_top_bricks() == [mlp1, mlp2]
     # The order of parameters returned is deterministic but
     # not sensible.
-    assert list(model.get_parameters().items()) == [
+    assert list(model.get_parameter_dict().items()) == [
         ('/mlp2/linear_0.b', mlp2.linear_transformations[0].b),
         ('/mlp1/linear_1.b', mlp1.linear_transformations[1].b),
         ('/mlp1/linear_0.b', mlp1.linear_transformations[0].b),
