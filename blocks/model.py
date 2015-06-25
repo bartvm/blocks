@@ -162,19 +162,6 @@ class Model(AbstractModel, ComputationGraph):
             raise ValueError("top bricks with the same name:"
                              " {}".format(', '.join(repeated_names)))
 
-        brick_parameter_names = {
-            v: k
-            for k, v in Selector(self.top_bricks).get_parameters().items()}
-        self.parameters = []
-        for parameter in VariableFilter(
-                roles=[PARAMETER])(self.shared_variables):
-            if parameter in brick_parameter_names:
-                self.parameters.append((brick_parameter_names[parameter],
-                                        parameter))
-            else:
-                self.parameters.append((parameter.name, parameter))
-        self.parameters = OrderedDict(self.parameters)
-
     def get_objective(self):
         """Return the output variable, if there is a single one.
 
