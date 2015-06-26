@@ -10,6 +10,7 @@ from blocks.bricks.sequence_generators import BaseSequenceGenerator
 from blocks.filter import VariableFilter, get_application_call, get_brick
 from blocks.graph import ComputationGraph
 from blocks.roles import INPUT, OUTPUT
+from blocks.utils import unpack
 
 
 class BeamSearch(object):
@@ -91,11 +92,11 @@ class BeamSearch(object):
                             applications=[self.generator.initial_states],
                             roles=[OUTPUT])(self.cg)
         outputs = OrderedDict([(v.tag.name, v) for v in initial_states])
-        beam_size = VariableFilter(
+        beam_size = unpack(VariableFilter(
                             applications=[self.generator.initial_states],
-                            name='batch_size')(self.cg)[0]
-        for i, name in enumerate(self.context_names):
-            outputs[name] = self.contexts[i]
+                            name='batch_size')(self.cg))
+        for name, context in equizip(self.context_names, self.contexts):
+            outputs[name] = context
         outputs['beam_size'] = beam_size
         self.initial_state_and_context_computer = function(
             self.inputs, outputs, on_unused_input='ignore')
