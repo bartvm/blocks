@@ -86,17 +86,19 @@ class BeamSearch(object):
 
         self.compiled = False
 
-    def _compile_context_computer(self):
-        self.context_computer = function(
-            self.inputs, self.contexts, on_unused_input='ignore')
-
-    def _compile_initial_state_computer(self):
+    def _compile_initial_state_and_context_computer(self):
         initial_states = VariableFilter(
                             applications=[self.generator.initial_states],
                             roles=[OUTPUT])(self.cg)
-        initial_states = OrderedDict([(v.tag.name, v) for v in initial_states])
-        self.initial_state_computer = function(
-            self.contexts, initial_states, on_unused_input='ignore')
+        outputs = OrderedDict([(v.tag.name, v) for v in initial_states])
+        beam_size = VariableFilter(
+                            applications=[self.generator.initial_states],
+                            name='batch_size')(self.cg)[0]
+        for i, name in enumerate(self.context_names):
+            outputs[name] = self.contexts[i]
+        outputs['beam_size'] = beam_size
+        self.initial_state_and_context_computer = function(
+            self.inputs, outputs, on_unused_input='ignore')
 
     def _compile_next_state_computer(self):
         next_states = [VariableFilter(bricks=[self.generator],
@@ -123,14 +125,13 @@ class BeamSearch(object):
 
     def compile(self):
         """Compile all Theano functions used."""
-        self._compile_context_computer()
-        self._compile_initial_state_computer()
+        self._compile_initial_state_and_context_computer()
         self._compile_next_state_computer()
         self._compile_logprobs_computer()
         self.compiled = True
 
-    def compute_contexts(self, inputs):
-        """Computes contexts from inputs.
+    def compute_initial_states_and_contexts(self, inputs):
+        """Computes initial states and contexts from inputs.
 
         Parameters
         ----------
@@ -139,29 +140,18 @@ class BeamSearch(object):
 
         Returns
         -------
-        A {name: :class:`numpy.ndarray`} dictionary of contexts ordered
-        like `self.context_names`.
-
-        """
-        contexts = self.context_computer(*[inputs[var]
-                                           for var in self.inputs])
-        return OrderedDict(equizip(self.context_names, contexts))
-
-    def compute_initial_states(self, contexts):
-        """Computes initial states.
-
-        Parameters
-        ----------
-        contexts : dict
-            A {name: :class:`numpy.ndarray`} dictionary of contexts.
-
-        Returns
-        -------
-        A {name: :class:`numpy.ndarray`} dictionary of states ordered like
+        A tuple containing a {name: :class:`numpy.ndarray`} dictionary of
+        contexts ordered like `self.context_names` and a
+        {name: :class:`numpy.ndarray`} dictionary of states ordered like
         `self.state_names`.
 
         """
-        return self.initial_state_computer(*list(contexts.values()))
+        outputs = self.initial_state_and_context_computer(
+            *[inputs[var] for var in self.inputs])
+        contexts = OrderedDict((n, outputs.pop(n)) for n in self.context_names)
+        self.beam_size = outputs.pop('beam_size')
+        initial_states = outputs
+        return contexts, initial_states
 
     def compute_logprobs(self, contexts, states):
         """Compute log probabilities of all possible outputs.
@@ -274,8 +264,8 @@ class BeamSearch(object):
         if not self.compiled:
             self.compile()
 
-        contexts = self.compute_contexts(input_values)
-        states = self.compute_initial_states(contexts)
+        contexts, states = self.compute_initial_states_and_contexts(
+            input_values)
 
         # This array will store all generated outputs, including those from
         # previous step and those from already finished sequences.
@@ -299,7 +289,7 @@ class BeamSearch(object):
             # The `i == 0` is required because at the first step the beam
             # size is effectively only 1.
             (indexes, outputs), chosen_costs = self._smallest(
-                next_costs, self.batch_size, only_first_row=i == 0)
+                next_costs, self.beam_size, only_first_row=i == 0)
 
             # Rearrange everything
             for name in states:
