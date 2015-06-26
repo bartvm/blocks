@@ -70,7 +70,7 @@ class BeamSearch(object):
         self.contexts = [
             VariableFilter(bricks=[self.generator],
                            name=name,
-                           roles=[INPUT])(self.CG)[0]
+                           roles=[INPUT])(self.inner_cg)[0]
             for name in self.context_names]
         self.input_states = []
         # Includes only those state names that were actually used
