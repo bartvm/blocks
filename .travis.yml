@@ -52,7 +52,7 @@ script:
   - |
       if [[ $TESTS == 'blocks-examples' ]]; then
         cd $TRAVIS_BUILD_DIR
-        git clone -b ccw https://github.com/Thrandis/blocks-examples.git
+        git clone https://github.com/mila-udem/blocks-examples.git
         cd blocks-examples
         nose2 tests
       fi
