@@ -178,6 +178,10 @@ class GradientDescent(DifferentiableCostMinimizer):
         sub-expressions and would like Theano to use that information
         to compute parameter gradients. Only makes sense when `gradients`
         is `None`.
+    consider_constant : list, optional
+        A passthrough to `theano.tensor.grad`'s `consider_constant`
+        argument.  A list of expressions through which gradients will not
+        be backpropagated. Only makes sense when `gradients` is `None`.
 
     Attributes
     ----------
@@ -188,7 +192,7 @@ class GradientDescent(DifferentiableCostMinimizer):
 
     """
     def __init__(self, step_rule=None, gradients=None, known_grads=None,
-                 **kwargs):
+                 consider_constant=None, **kwargs):
         if gradients:
             kwargs.setdefault("parameters", gradients.keys())
         super(GradientDescent, self).__init__(**kwargs)
@@ -205,6 +209,9 @@ class GradientDescent(DifferentiableCostMinimizer):
             if known_grads:
                 raise ValueError("known_grads has no effect when gradients "
                                  "are passed in")
+            if consider_constant is not None:
+                raise ValueError("consider_constant has no effect when "
+                                 "gradients are passed in")
         self.step_rule = step_rule if step_rule else Scale()
 
         self.total_gradient_norm = named_copy(l2_norm(self.gradients.values()),
