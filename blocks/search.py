@@ -150,9 +150,9 @@ class BeamSearch(object):
         outputs = self.initial_state_and_context_computer(
             *[inputs[var] for var in self.inputs])
         contexts = OrderedDict((n, outputs.pop(n)) for n in self.context_names)
-        self.beam_size = outputs.pop('beam_size')
+        beam_size = outputs.pop('beam_size')
         initial_states = outputs
-        return contexts, initial_states
+        return contexts, initial_states, beam_size
 
     def compute_logprobs(self, contexts, states):
         """Compute log probabilities of all possible outputs.
@@ -265,7 +265,7 @@ class BeamSearch(object):
         if not self.compiled:
             self.compile()
 
-        contexts, states = self.compute_initial_states_and_contexts(
+        contexts, states, beam_size = self.compute_initial_states_and_contexts(
             input_values)
 
         # This array will store all generated outputs, including those from
@@ -290,7 +290,7 @@ class BeamSearch(object):
             # The `i == 0` is required because at the first step the beam
             # size is effectively only 1.
             (indexes, outputs), chosen_costs = self._smallest(
-                next_costs, self.beam_size, only_first_row=i == 0)
+                next_costs, beam_size, only_first_row=i == 0)
 
             # Rearrange everything
             for name in states:
