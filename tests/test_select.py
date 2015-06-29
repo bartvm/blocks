@@ -70,7 +70,7 @@ def test_selector():
 
     assert s2.select("/t2/b2.V")[0] == b2.parameters[0]
 
-    parameters = list(s1.parameters().items())
+    parameters = list(s1.get_parameters().items())
     assert parameters[0][0] == "/t1/b1.V"
     assert parameters[0][1] == b1.parameters[0]
     assert parameters[1][0] == "/t1/b1.W"
