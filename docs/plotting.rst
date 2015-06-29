@@ -3,7 +3,7 @@ Live plotting
 
 .. note::
 
-   The live plotting functionality is part of ``blocks-extras_``, which must be
+   The live plotting functionality is part of ``blocks-extras``, which must be
    separately installed.
 
 Plots often give a clearer image of your training progress than textual logs.
