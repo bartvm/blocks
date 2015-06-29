@@ -14,7 +14,9 @@ from itertools import chain
 from six import add_metaclass
 
 from blocks.graph import ComputationGraph
-from blocks.filter import get_brick
+from blocks.select import Selector
+from blocks.filter import VariableFilter, get_brick
+from blocks.roles import PARAMETER
 
 logger = logging.getLogger()
 
@@ -73,7 +75,7 @@ class AbstractModel(object):
         """
         return OrderedDict(
             (name, parameter.get_value())
-            for name, parameter in self.get_parameters().items())
+            for name, parameter in self.get_parameter_dict().items())
 
     def set_parameter_values(self, parameter_values):
         """Set the values of model parameters.
@@ -179,13 +181,18 @@ class Model(AbstractModel, ComputationGraph):
         parameters that do not belong to any brick.
 
         """
-        if (len(set(parameter.name for parameter in self.parameters)) !=
-                len(self.parameters)):
-            raise ValueError("parameters should have different names")
-        parameter_dict = OrderedDict()
-        for parameter in self.parameters:
-            parameter_dict[parameter.name] = parameter
-        return parameter_dict
+        brick_parameter_names = {
+            v: k for k, v in Selector(
+                self.top_bricks).get_parameters().items()}
+        parameter_list = []
+        for parameter in VariableFilter(roles=[PARAMETER])(
+                self.shared_variables):
+            if parameter in brick_parameter_names:
+                parameter_list.append((brick_parameter_names[parameter],
+                                       parameter))
+            else:
+                parameter_list.append((parameter.name, parameter))
+        return OrderedDict(parameter_list)
 
     def get_top_bricks(self):
         return self.top_bricks
