@@ -176,12 +176,12 @@ class Selector(object):
         """
         def recursion(brick):
             # TODO path logic should be separate
-            result = [(Path([Path.BrickName(brick.name),
-                             Path.ParameterName(parameter.name)]),
-                       parameter)
-                      for parameter in brick.parameters
-                      if (not parameter_name or
-                          parameter.name) == parameter_name]
+            result = [
+                (Path([Path.BrickName(brick.name),
+                       Path.ParameterName(parameter.name)]),
+                 parameter)
+                for parameter in brick.parameters
+                if not parameter_name or parameter.name == parameter_name]
             result = OrderedDict(result)
             for child in brick.children:
                 for path, parameter in recursion(child).items():
