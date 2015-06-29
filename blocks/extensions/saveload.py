@@ -144,7 +144,7 @@ class Load(TrainingExtension):
         self.load_log = load_log
 
     def load_to(self, main_loop):
-        main_loop.model.set_param_values(load_parameter_values(self.path))
+        main_loop.model.set_parameter_values(load_parameter_values(self.path))
         if self.load_iteration_state or self.load_log:
             with open(self.path, "rb") as source:
                 loaded_main_loop = load(source)
