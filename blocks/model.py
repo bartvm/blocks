@@ -15,8 +15,7 @@ from six import add_metaclass
 
 from blocks.graph import ComputationGraph
 from blocks.select import Selector
-from blocks.filter import VariableFilter, get_brick
-from blocks.roles import PARAMETER
+from blocks.filter import get_brick
 
 logger = logging.getLogger()
 
@@ -161,6 +160,17 @@ class Model(AbstractModel, ComputationGraph):
         if repeated_names:
             raise ValueError("top bricks with the same name:"
                              " {}".format(', '.join(repeated_names)))
+        brick_parameter_names = {
+            v: k for k, v in Selector(
+                self.top_bricks).get_parameters().items()}
+        parameter_list = []
+        for parameter in self.parameters:
+            if parameter in brick_parameter_names:
+                parameter_list.append((brick_parameter_names[parameter],
+                                       parameter))
+            else:
+                parameter_list.append((parameter.name, parameter))
+        self._parameter_dict = OrderedDict(parameter_list)
 
     def get_objective(self):
         """Return the output variable, if there is a single one.
@@ -181,18 +191,7 @@ class Model(AbstractModel, ComputationGraph):
         parameters that do not belong to any brick.
 
         """
-        brick_parameter_names = {
-            v: k for k, v in Selector(
-                self.top_bricks).get_parameters().items()}
-        parameter_list = []
-        for parameter in VariableFilter(roles=[PARAMETER])(
-                self.shared_variables):
-            if parameter in brick_parameter_names:
-                parameter_list.append((brick_parameter_names[parameter],
-                                       parameter))
-            else:
-                parameter_list.append((parameter.name, parameter))
-        return OrderedDict(parameter_list)
+        return self._parameter_dict
 
     def get_top_bricks(self):
         return self.top_bricks
