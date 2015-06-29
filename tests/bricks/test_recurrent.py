@@ -12,7 +12,8 @@ from blocks.bricks.base import application
 from blocks.bricks import Tanh
 from blocks.bricks.recurrent import (
     recurrent, BaseRecurrent, GatedRecurrent,
-    SimpleRecurrent, Bidirectional, LSTM, RecurrentStack)
+    SimpleRecurrent, Bidirectional, LSTM,
+    RecurrentStack, RECURRENTSTACK_SEPARATOR)
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal
 from blocks.filter import get_application_call, VariableFilter
 from blocks.graph import ComputationGraph
@@ -266,7 +267,7 @@ class TestRecurrentStack(unittest.TestCase):
         kwargs = OrderedDict()
         for d in range(depth):
             if d > 0:
-                suffix = '_' + str(d)
+                suffix = RECURRENTSTACK_SEPARATOR + str(d)
             else:
                 suffix = ''
             if d == 0 or skip_connections:
@@ -348,7 +349,7 @@ class TestRecurrentStack(unittest.TestCase):
 
         for d in range(depth):
             if d > 0:
-                suffix = '_' + str(d)
+                suffix = RECURRENTSTACK_SEPARATOR + str(d)
             else:
                 suffix = ''
             if d == 0 or skip_connections:

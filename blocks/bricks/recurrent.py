@@ -651,6 +651,8 @@ class Bidirectional(Initializable):
     def apply_delegate(self):
         return self.children[0].apply
 
+RECURRENTSTACK_SEPARATOR = '#'
+
 
 class RecurrentStack(BaseRecurrent, Initializable):
     u"""Stack of recurrent networks.
@@ -672,9 +674,9 @@ class RecurrentStack(BaseRecurrent, Initializable):
     In order to avoid conflict, the names of the arguments appearing in
     the `states` and `outputs` attributes of the apply method of each
     layers are renamed. The names of the bottom layer are used as-is and
-    a suffix of the form '_<n>' is added to the names from other layers,
-    where '<n>' is the number of the layer starting from 1
-    (for first layer above bottom.)
+    a suffix of the form '#<n>' is added to the names from other layers,
+    where '<n>' is the number of the layer starting from 1, used for first
+    layer above bottom.
 
     The `contexts` of all layers are merged into a single list of unique
     names, and no suffix is added. Different layers with the same context
@@ -767,7 +769,7 @@ class RecurrentStack(BaseRecurrent, Initializable):
             return "mask"
         if level == 0:
             return name
-        return name + '_' + str(level)
+        return name + RECURRENTSTACK_SEPARATOR + str(level)
 
     @staticmethod
     def suffixes(names, level):
@@ -777,9 +779,9 @@ class RecurrentStack(BaseRecurrent, Initializable):
     @staticmethod
     def split_suffix(name):
         # Target name with suffix to the correct layer
-        name_level = name.split('_')
-        if name_level[-1].isdigit():
-            name = '_'.join(name_level[:-1])
+        name_level = name.split(RECURRENTSTACK_SEPARATOR)
+        if len(name_level) == 2 and name_level[-1].isdigit():
+            name = RECURRENTSTACK_SEPARATOR.join(name_level[:-1])
             level = int(name_level[-1])
         else:
             # It must be from bottom layer
@@ -794,7 +796,7 @@ class RecurrentStack(BaseRecurrent, Initializable):
         self.skip_connections = skip_connections
 
         for level, transition in enumerate(transitions):
-            transition.name += '_' + str(level)
+            transition.name += RECURRENTSTACK_SEPARATOR + str(level)
         self.transitions = transitions
 
         if fork_prototype is None:
@@ -955,18 +957,26 @@ class RecurrentStack(BaseRecurrent, Initializable):
         low_memory : bool
             Use the slow, but also memory efficient, implementation of
             this code.
-        sequences, states, contexts : :class:`~tensor.TensorVariable`
-            See docstring of the class for arguments appearing in the
-            lists
-            self.apply.sequences, self.apply.states, self.apply.contexts
-        iterate, reverse, return_initial_states : bool
-            or any other argument defined in `recurrent_apply` wrapper.
+        *args : :class:`~tensor.TensorVariable`, optional
+            Positional argumentes in the order in which they appear in
+            `self.apply.sequences` followed by `self.apply.contexts`.
+        **kwargs : :class:`~tensor.TensorVariable`
+            Named argument defined in `self.apply.sequences`,
+            `self.apply.states` or `self.apply.contexts`
 
         Returns
         -------
         outputs : (list of) :class:`~tensor.TensorVariable`
             The outputs of all transitions as defined in
             `self.apply.outputs`
+
+        See Also
+        --------
+        See docstring of this class for arguments appearing in the lists
+        `self.apply.sequences`, `self.apply.states`, `self.apply.contexts`.
+        See :func:`~blocks.brick.recurrent.recurrent` : for all other
+        parameters such as `iterate` and `return_initial_states` however
+        `reverse` is currently not implemented.
 
         """
         if kwargs.pop('low_memory', False):
