@@ -1,5 +1,6 @@
 import numpy
 import theano
+import warnings
 from numpy.testing import assert_allclose
 from theano import tensor
 from theano.sandbox.rng_mrg import MRG_RandomStreams
@@ -9,7 +10,7 @@ from blocks.bricks.cost import SquaredError
 from blocks.filter import VariableFilter
 from blocks.graph import apply_noise, collect_parameters, ComputationGraph
 from blocks.initialization import Constant
-from blocks.roles import COLLECTED, PARAMETER
+from blocks.roles import add_role, COLLECTED, PARAMETER, AUXILIARY
 from tests.bricks.test_bricks import TestBrick
 
 
@@ -101,6 +102,30 @@ def test_replace_multiple_inputs():
     cg = ComputationGraph([y, z]).replace({x: 0.5 * x})
     assert_allclose(cg.outputs[0].eval({x: 1.0}), 1.0)
     assert_allclose(cg.outputs[1].eval({x: 1.0}), 1.5)
+
+
+def test_replace_variable_not_in_graph():
+    # Test if warning appears when variable is not in graph
+    with warnings.catch_warnings(record=True) as w:
+        x = tensor.scalar()
+        y = x + 1
+        z = tensor.scalar()
+        cg = ComputationGraph([y])
+        cg.replace([(y, 2 * y), (z, 2 * z)])
+        assert len(w) == 1
+        assert "not a part of" in str(w[-1].message)
+
+
+def test_replace_variable_is_auxiliary():
+    # Test if warning appears when variable is an AUXILIARY variable
+    with warnings.catch_warnings(record=True) as w:
+        x = tensor.scalar()
+        y = x + 1
+        add_role(y, AUXILIARY)
+        cg = ComputationGraph([y])
+        cg.replace([(y, 2 * y)])
+        assert len(w) == 1
+        assert "auxiliary" in str(w[-1].message)
 
 
 def test_apply_noise():

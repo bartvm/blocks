@@ -17,6 +17,7 @@ from blocks.roles import (add_role, has_roles, AUXILIARY, PARAMETER, DROPOUT,
                           COLLECTED, COLLECTOR)
 from blocks.utils import (is_graph_input, is_shared_variable, dict_union,
                           shared_floatx_zeros, shared_like)
+import warnings
 
 logger = logging.getLogger(__name__)
 
@@ -196,8 +197,6 @@ class ComputationGraph(object):
         # Due to theano specifics we have to make one replacement in time
         replacements = OrderedDict(replacements)
 
-        apply_nodes_sorted = theano.gof.graph.io_toposort(
-            self.inputs, self.outputs)
         outputs_cur = self.outputs
 
         # `replacements` with previous replacements applied. We have to track
@@ -205,18 +204,26 @@ class ComputationGraph(object):
         replacement_keys_cur = []
         replacement_vals_cur = []
         # Sort `replacements` in topological order
-        for node in apply_nodes_sorted:
-            for input_ in node.inputs:
-                if input_ in replacements:
-                    if input_ not in replacement_keys_cur:
-                        replacement_keys_cur.append(input_)
-                        replacement_vals_cur.append(replacements[input_])
+        # variables in self.variables are in topological order
+        remaining_replacements = replacements.copy()
+        for variable in self.variables:
+            if variable in replacements:
+                if has_roles(variable, [AUXILIARY]):
+                    warnings.warn(
+                        "replace method was asked to replace a variable ({}) "
+                        "that is an auxiliary variable.".format(variable))
+                replacement_keys_cur.append(variable)
+                # self.variables should not contain duplicates,
+                # otherwise pop() may fail.
+                replacement_vals_cur.append(
+                    remaining_replacements.pop(variable))
 
-        # Add outputs of the computation graph
-        for output in self.outputs:
-            if output in replacements:
-                replacement_keys_cur.append(output)
-                replacement_vals_cur.append(replacements[output])
+        # if remaining_replacements is not empty
+        if remaining_replacements:
+            warnings.warn(
+                "replace method was asked to replace a variable(s) ({}) "
+                "that is not a part of the computational "
+                "graph.".format(str(remaining_replacements.keys())))
 
         # Replace step-by-step in topological order
         while replacement_keys_cur:
