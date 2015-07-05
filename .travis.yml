@@ -35,7 +35,6 @@ install:
   - pip install -q -r req-travis-pip.txt
 script:
   - pip install -e . -r requirements.txt # Tests setup.py
-  - pip install -q git+git://github.com/mila-udem/blocks-extras.git#egg=blocks.extras[plot]
   - curl https://raw.githubusercontent.com/mila-udem/fuel/master/.travis-data.sh | bash -s -- mnist
   - # Must export environment variable so that the subprocess is aware of it
   - export THEANO_FLAGS=floatX=$FLOATX,optimizer=fast_compile
@@ -53,6 +52,7 @@ script:
       fi
   - |
       if [[ $TESTS == 'blocks-examples' ]]; then
+        pip install -q git+git://github.com/mila-udem/blocks-extras.git#egg=blocks.extras[plot]
         cd $TRAVIS_BUILD_DIR
         git clone https://github.com/mila-udem/blocks-examples.git
         cd blocks-examples
