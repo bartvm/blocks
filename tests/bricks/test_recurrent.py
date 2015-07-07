@@ -402,6 +402,13 @@ class TestRecurrentStack(unittest.TestCase):
             assert_allclose(h_val[d][1:], res[d * 2], rtol=1e-4)
             assert_allclose(c_val[d][1:], res[d * 2 + 1], rtol=1e-4)
 
+        # Also test that initial state is a parameter
+        for h in results:
+            initial_states = VariableFilter(roles=[INITIAL_STATE])(
+                ComputationGraph(h))
+            assert all(is_shared_variable(initial_state)
+                       for initial_state in initial_states)
+
     def test_many_steps(self):
         self.do_many_steps(self.stack0)
         self.do_many_steps(self.stack0, low_memory=True)

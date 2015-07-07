@@ -856,6 +856,8 @@ class RecurrentStack(BaseRecurrent, Initializable):
             setattr(self.low_memory_apply, property_,
                     getattr(self.apply, property_))
 
+        self.initial_states.outputs = self.apply.states
+
     def normal_inputs(self, level):
         return [name for name in self.transitions[level].apply.sequences
                 if name != 'mask']
@@ -997,8 +999,9 @@ class RecurrentStack(BaseRecurrent, Initializable):
         return transition.get_dim(name)
 
     @application
-    def initial_state(self, state_name, batch_size, *args, **kwargs):
-        state_name, level = self.split_suffix(state_name)
-        transition = self.transitions[level]
-        return transition.initial_state(state_name, batch_size,
-                                        *args, **kwargs)
+    def initial_states(self, batch_size, *args, **kwargs):
+        results = []
+        for transition in self.transitions:
+            results += transition.initial_states(batch_size, *args,
+                                                 as_list=True, **kwargs)
+        return results
