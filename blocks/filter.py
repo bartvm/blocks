@@ -38,7 +38,6 @@ def get_application_call(var):
 
 
 class VariableFilter(object):
-
     """Filters Theano variables based on a range of criteria.
 
     Parameters
@@ -93,7 +92,6 @@ class VariableFilter(object):
     [b]
 
     """
-
     def __init__(self, roles=None, bricks=None, each_role=False, name=None,
                  name_regex=None, theano_name=None, theano_name_regex=None,
                  applications=None):
