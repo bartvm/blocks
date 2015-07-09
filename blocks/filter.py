@@ -148,11 +148,11 @@ class VariableFilter(object):
                          re.match(self.name_regex, var.tag.name)]
         if self.theano_name:
             variables = [var for var in variables
-                         if hasattr(var, 'name') and
+                         if (var.name is not None) and
                          self.theano_name == var.name]
         if self.theano_name_regex:
             variables = [var for var in variables
-                         if hasattr(var, 'name') and
+                         if (var.name is not None) and
                          re.match(self.theano_name_regex, var.name)]
         if self.applications:
             variables = [var for var in variables
