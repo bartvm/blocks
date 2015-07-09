@@ -93,7 +93,8 @@ class VariableFilter(object):
 
     """
     def __init__(self, roles=None, bricks=None, each_role=False, name=None,
-                 name_regex=None, applications=None):
+                 name_regex=None, theano_name=None, theano_name_regex=None,
+                 applications=None):
         if bricks is not None and not all(
             isinstance(brick, Brick) or issubclass(brick, Brick)
                 for brick in bricks):
@@ -108,6 +109,8 @@ class VariableFilter(object):
         self.each_role = each_role
         self.name = name
         self.name_regex = name_regex
+        self.theano_name = theano_name
+        self.theano_name_regex = theano_name_regex
         self.applications = applications
 
     def __call__(self, variables):
@@ -143,6 +146,14 @@ class VariableFilter(object):
             variables = [var for var in variables
                          if hasattr(var.tag, 'name') and
                          re.match(self.name_regex, var.tag.name)]
+        if self.theano_name:
+            variables = [var for var in variables
+                         if hasattr(var, 'name') and
+                         self.theano_name == var.name]
+        if self.theano_name_regex:
+            variables = [var for var in variables
+                         if hasattr(var, 'name') and
+                         re.match(self.theano_name_regex, var.name)]
         if self.applications:
             variables = [var for var in variables
                          if get_application_call(var) and
