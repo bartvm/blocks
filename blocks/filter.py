@@ -109,8 +109,8 @@ class VariableFilter(object):
         self.each_role = each_role
         self.name = name
         self.name_regex = name_regex
-        self.theano_name = name
-        self.theano_name_regex = name_regex
+        self.theano_name = theano_name
+        self.theano_name_regex = theano_name_regex
         self.applications = applications
 
     def __call__(self, variables):
