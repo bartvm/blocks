@@ -61,11 +61,11 @@ def test_variable_filter():
 
     # Testing filtering by theano name
     theano_name_filter = VariableFilter(theano_name='h2_activation')
-    assert [cg.variables[10]] == theano_name_filter(cg.variables)
+    assert [cg.variables[9]] == theano_name_filter(cg.variables)
 
     # Testing filtering by theano name regex
     theano_name_filter_regex = VariableFilter(theano_name_regex='h2_ac.?tion')
-    assert [cg.variables[10]] == theano_name_filter_regex(cg.variables)
+    assert [cg.variables[9]] == theano_name_filter_regex(cg.variables)
 
     # Testing filtering by application
     appli_filter = VariableFilter(applications=[brick1.apply])
