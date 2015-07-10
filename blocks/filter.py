@@ -58,6 +58,12 @@ class VariableFilter(object):
     name_regex : str, optional
         A regular expression for the variable name. The Blocks name (i.e.
         `x.tag.name`) is used.
+    theano_name : str, optional
+        The variable name. The Theano name (i.e.
+        `x.name`) is used.
+    theano_name_regex : str, optional
+        A regular expression for the variable name. The Theano name (i.e.
+        `x.name`) is used.
     applications : list of :class:`.Application`, optional
         Matches a variable that was produced by any of the applications
         given.
