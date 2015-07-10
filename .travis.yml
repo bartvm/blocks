@@ -33,12 +33,16 @@ install:
   # Install all Python dependencies
   - conda install -q --yes python=$TRAVIS_PYTHON_VERSION mkl --file req-travis-conda.txt
   - pip install -q -r req-travis-pip.txt
+  - pip install -q git+git://github.com/mila-udem/blocks-extras.git 
+  - conda install -q --yes bokeh
+  - conda install -q --yes pandas
 script:
   - pip install -e . -r requirements.txt # Tests setup.py
   - curl https://raw.githubusercontent.com/mila-udem/fuel/master/.travis-data.sh | bash -s -- mnist
   - # Must export environment variable so that the subprocess is aware of it
   - export THEANO_FLAGS=floatX=$FLOATX,optimizer=fast_compile
   - export FUEL_FLOATX=$FLOATX
+  - bokeh-server & #start bokeh-server
   - "if [[ $DB == 'sqlite' ]]; then echo 'log_backend: sqlite' > ~/.blocksrc; fi"
   - # Running nose2 within coverage makes imports count towards coverage
   - function fail { export FAILED=1; }
