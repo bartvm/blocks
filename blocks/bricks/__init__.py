@@ -499,6 +499,31 @@ class Softmax(Activation):
     def apply(self, input_):
         return tensor.nnet.softmax(input_)
 
+    @application(inputs=['input_'], outputs=['output'])
+    def log_probabilities(self, input_):
+        """Normalize log-probabilities.
+
+        Converts unnormalized log-probabilities (exponents of which do not
+        sum to one) into actual log-probabilities (exponents of which sum
+        to one).
+
+        Parameters
+        ----------
+        input_ : :class:`~theano.Variable`
+            A matrix, each row contains unnormalized log-probabilities of a
+            distribution.
+
+        Returns
+        -------
+        output : :class:`~theano.Variable`
+            A matrix with normalized log-probabilities for each
+            distribution from `input_`.
+
+        """
+        shifted = input_ - input_.max(axis=1).dimshuffle(0, 'x')
+        return shifted - tensor.log(
+            tensor.exp(shifted).sum(axis=1).dimshuffle(0, 'x'))
+
     @application
     def categorical_cross_entropy(self, y, x):
         """Return computationally stable softmax cost.
@@ -510,8 +535,8 @@ class Softmax(Activation):
             axis represents one distribution. In the vector case, each
             element represents the position of the '1' in a one hot-vector.
         x : :class:`~tensor.TensorVariable`
-            Each slice along axis represents energies of a distribution,
-            that is pre-softmax values.
+            Each slice along axis represents unnormalized log-probabilities
+            of a distribution, that is pre-softmax values.
 
         Returns
         -------
@@ -519,15 +544,14 @@ class Softmax(Activation):
             The cross entropy between y and x.
 
         """
-        x = x - x.max(axis=1).dimshuffle(0, 'x')
-        log_prob = x - tensor.log(tensor.exp(x).sum(axis=1).dimshuffle(0, 'x'))
+        x = self.log_probabilities(x)
         if y.ndim == x.ndim - 1:
-            flat_log_prob = log_prob.flatten()
+            flat_log_prob = x.flatten()
             range_ = tensor.arange(y.shape[0])
             flat_indices = y + range_ * x.shape[1]
             cost = -tensor.mean(flat_log_prob[flat_indices])
         elif y.ndim == x.ndim:
-            cost = -tensor.mean((log_prob * y).sum(axis=1))
+            cost = -tensor.mean((x * y).sum(axis=1))
         else:
             raise TypeError('rank mismatch between x and y')
         return cost
