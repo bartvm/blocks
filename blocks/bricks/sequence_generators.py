@@ -248,7 +248,8 @@ class BaseSequenceGenerator(Initializable):
 
         # Prepare input for the iterative part
         states = dict_subset(kwargs, self._state_names, must_have=False)
-        contexts = dict_subset(kwargs, self._context_names)
+        # masks in context are optional (e.g. `attended_mask`)
+        contexts = dict_subset(kwargs, self._context_names, must_have=False)
         feedback = self.readout.feedback(outputs)
         inputs = self.fork.apply(feedback, as_dict=True)
 
@@ -297,7 +298,8 @@ class BaseSequenceGenerator(Initializable):
 
         """
         states = dict_subset(kwargs, self._state_names)
-        contexts = dict_subset(kwargs, self._context_names)
+        # masks in context are optional (e.g. `attended_mask`)
+        contexts = dict_subset(kwargs, self._context_names, must_have=False)
         glimpses = dict_subset(kwargs, self._glimpse_names)
 
         next_glimpses = self.transition.take_glimpses(

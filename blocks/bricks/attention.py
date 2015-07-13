@@ -605,8 +605,11 @@ class AttentionRecurrent(AbstractAttentionRecurrent, Initializable):
             kwargs.pop(self.preprocessed_attended_name, None),
             kwargs.pop(self.attended_mask_name, None),
             **dict_union(states, glimpses_needed))
-        if kwargs:
-            raise ValueError("extra args to take_glimpses: {}".format(kwargs))
+        # The following check is too excessive.
+        # there could be context information which is needed by the transition
+        # apply, but is also passed to this method.
+        # if kwargs:
+        #     raise ValueError("extra args to take_glimpses: {}".format(kwargs))
         return result
 
     @take_glimpses.property('outputs')
@@ -634,13 +637,15 @@ class AttentionRecurrent(AbstractAttentionRecurrent, Initializable):
             Current states computed by `self.transition`.
 
         """
-        # Masks are not mandatory, that's why 'must_have=False'
-        sequences = dict_subset(kwargs, self._sequence_names,
-                                pop=True, must_have=False)
+        # make sure we are not popping the mask
+        normal_inputs = [name for name in self._sequence_names
+                         if 'mask' not in name]
+        sequences = dict_subset(kwargs, normal_inputs, pop=True)
         glimpses = dict_subset(kwargs, self._glimpse_names, pop=True)
         if self.add_contexts:
             kwargs.pop(self.attended_name)
-            kwargs.pop(self.attended_mask_name)
+            # attended_mask_name can be optional
+            kwargs.pop(self.attended_mask_name, None)
 
         sequences.update(self.distribute.apply(
             as_dict=True, **dict_subset(dict_union(sequences, glimpses),
