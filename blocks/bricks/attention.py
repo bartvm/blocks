@@ -605,11 +605,8 @@ class AttentionRecurrent(AbstractAttentionRecurrent, Initializable):
             kwargs.pop(self.preprocessed_attended_name, None),
             kwargs.pop(self.attended_mask_name, None),
             **dict_union(states, glimpses_needed))
-        # The following check is too excessive.
-        # there could be context information which is needed by the transition
-        # apply, but is also passed to this method.
-        # if kwargs:
-        #     raise ValueError("extra args to take_glimpses: {}".format(kwargs))
+        # At this point kwargs may contain additional items.
+        # e.g. AttentionRecurrent.transition.apply.contexts
         return result
 
     @take_glimpses.property('outputs')

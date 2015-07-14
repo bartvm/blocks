@@ -262,9 +262,15 @@ class DatasetEvaluator(object):
         if self.theano_buffer.accumulation_updates:
             updates = OrderedDict()
             updates.update(self.theano_buffer.accumulation_updates)
-            if self.updates:
-                updates.update(self.updates)
             inputs += self.theano_buffer.inputs
+        if self.updates:
+            # Handle the case in which we dont have any theano variables
+            # to evaluate but we do have MonitoredQuantity
+            # that may require an update of their own
+            if updates is None:
+                updates = self.updates
+            else:
+                updates.update(self.updates)
         inputs += self.monitored_quantities_buffer.inputs
         outputs = self.monitored_quantities_buffer.requires
 
