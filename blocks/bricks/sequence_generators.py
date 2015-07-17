@@ -230,7 +230,7 @@ class BaseSequenceGenerator(Initializable):
 
         # Add auxiliary variable for per sequence element cost
         application_call.add_auxiliary_variable(
-            (costs.sum() / mask.sum()) if mask is not None else costs.sum(),
+            (costs.sum() / mask.sum()) if mask is not None else costs.mean(),
             name='per_sequence_element')
         return cost
 
