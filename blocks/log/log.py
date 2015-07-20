@@ -1,5 +1,4 @@
 """The event-based main loop of Blocks."""
-import sqlite3
 from abc import ABCMeta
 from collections import defaultdict
 from numbers import Integral
@@ -66,12 +65,12 @@ class TrainingLogBase(object):
 
     @property
     def b_uuid(self):
-        """Return a buffered version of the UUID bytes.
+        """Return a hexadecimal version of the UUID bytes.
 
-        This is necessary to store bytes in an SQLite database.
+        This is necessary to store ids in an SQLite database.
 
         """
-        return sqlite3.Binary(self.uuid.bytes)
+        return self.uuid.hex
 
     def resume(self):
         """Resume a log by setting a new random UUID.
