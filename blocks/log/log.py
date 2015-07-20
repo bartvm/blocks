@@ -64,7 +64,7 @@ class TrainingLogBase(object):
             })
 
     @property
-    def b_uuid(self):
+    def h_uuid(self):
         """Return a hexadecimal version of the UUID bytes.
 
         This is necessary to store ids in an SQLite database.
@@ -79,7 +79,7 @@ class TrainingLogBase(object):
         copies the status of the old log into the new log.
 
         """
-        old_uuid = self.b_uuid
+        old_uuid = self.h_uuid
         old_status = dict(self.status)
         self.uuid = uuid4()
         self.status.update(old_status)

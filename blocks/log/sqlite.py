@@ -167,13 +167,13 @@ class SQLiteLog(TrainingLogBase, Mapping):
     def __iter__(self):
         return map(itemgetter(0), self.conn.execute(
             ANCESTORS_QUERY + "SELECT DISTINCT time FROM entries "
-            "WHERE uuid IN ancestors ORDER BY time ASC", (self.b_uuid,)
+            "WHERE uuid IN ancestors ORDER BY time ASC", (self.h_uuid,)
         ))
 
     def __len__(self):
         return self.conn.execute(
             ANCESTORS_QUERY + "SELECT COUNT(DISTINCT time) FROM entries "
-            "WHERE uuid IN ancestors ORDER BY time ASC", (self.b_uuid,)
+            "WHERE uuid IN ancestors ORDER BY time ASC", (self.h_uuid,)
         ).fetchone()[0]
 
 
@@ -184,7 +184,7 @@ class SQLiteStatus(MutableMapping):
     def __getitem__(self, key):
         row = self.log.conn.execute(
             "SELECT value FROM status WHERE uuid = ? AND key = ?",
-            (self.log.b_uuid, key)
+            (self.log.h_uuid, key)
         ).fetchone()
         return _get_row(row, key)
 
@@ -193,25 +193,25 @@ class SQLiteStatus(MutableMapping):
         with self.log.conn:
             self.log.conn.execute(
                 "INSERT OR REPLACE INTO status VALUES (?, ?, ?)",
-                (self.log.b_uuid, key, value)
+                (self.log.h_uuid, key, value)
             )
 
     def __delitem__(self, key):
         with self.log.conn:
             self.log.conn.execute(
                 "DELETE FROM status WHERE uuid = ? AND key = ?",
-                (self.log.b_uuid, key)
+                (self.log.h_uuid, key)
             )
 
     def __len__(self):
         return self.log.conn.execute(
             "SELECT COUNT(*) FROM status WHERE uuid = ?",
-            (self.log.b_uuid,)
+            (self.log.h_uuid,)
         ).fetchone()[0]
 
     def __iter__(self):
         return map(itemgetter(0), self.log.conn.execute(
-            "SELECT key FROM status WHERE uuid = ?", (self.log.b_uuid,)
+            "SELECT key FROM status WHERE uuid = ?", (self.log.h_uuid,)
         ))
 
 
@@ -237,7 +237,7 @@ class SQLiteEntry(MutableMapping):
             # JOIN statement should sort things so that the latest is returned
             "JOIN ancestors ON entries.uuid = ancestors.parent "
             "WHERE uuid IN ancestors AND time = ? AND key = ?",
-            (self.log.b_uuid, self.time, key)
+            (self.log.h_uuid, self.time, key)
         ).fetchone()
         return _get_row(row, key)
 
@@ -246,26 +246,26 @@ class SQLiteEntry(MutableMapping):
         with self.log.conn:
             self.log.conn.execute(
                 "INSERT OR REPLACE INTO entries VALUES (?, ?, ?, ?)",
-                (self.log.b_uuid, self.time, key, value)
+                (self.log.h_uuid, self.time, key, value)
             )
 
     def __delitem__(self, key):
         with self.log.conn:
             self.log.conn.execute(
                 "DELETE FROM entries WHERE uuid = ? AND time = ? AND key = ?",
-                (self.log.b_uuid, self.time, key)
+                (self.log.h_uuid, self.time, key)
             )
 
     def __len__(self):
         return self.log.conn.execute(
             ANCESTORS_QUERY + "SELECT COUNT(*) FROM entries "
             "WHERE uuid IN ancestors AND time = ?",
-            (self.log.b_uuid, self.time,)
+            (self.log.h_uuid, self.time,)
         ).fetchone()[0]
 
     def __iter__(self):
         return map(itemgetter(0), self.log.conn.execute(
             ANCESTORS_QUERY + "SELECT key FROM entries "
             "WHERE uuid IN ancestors AND time = ?",
-            (self.log.b_uuid, self.time,)
+            (self.log.h_uuid, self.time,)
         ))
