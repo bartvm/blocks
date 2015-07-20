@@ -3,6 +3,7 @@ from operator import getitem
 from numpy.testing import assert_raises
 
 from blocks.log import TrainingLog
+from blocks.serialization import load, dump
 
 
 def test_training_log():
@@ -21,3 +22,14 @@ def test_training_log():
 
     # test iteration
     assert len(list(log)) == 2
+
+
+def test_pickle_log():
+    log1 = TrainingLog()
+    dump(log1, "log1.pkl")
+    log2 = load("log1.pkl")
+    dump(log2, "log2.pkl")
+    load("log2.pkl")  # loading an unresumed log works
+    log2.resume()
+    dump(log2, "log3.pkl")
+    load("log3.pkl")  # loading a resumed log does not work
