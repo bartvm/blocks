@@ -121,14 +121,14 @@ class SQLiteLog(TrainingLogBase, Mapping):
         sqlite3.register_adapter(numpy.ndarray, adapt_ndarray)
         with self.conn:
             self.conn.execute("""CREATE TABLE IF NOT EXISTS entries (
-                                   uuid BLOB NOT NULL,
+                                   uuid TEXT NOT NULL,
                                    time INT NOT NULL,
                                    "key" TEXT NOT NULL,
                                    value,
                                    PRIMARY KEY(uuid, time, "key")
                                  );""")
             self.conn.execute("""CREATE TABLE IF NOT EXISTS status (
-                                   uuid BLOB NOT NULL,
+                                   uuid TEXT NOT NULL,
                                    "key" text NOT NULL,
                                    value,
                                    PRIMARY KEY(uuid, "key")
