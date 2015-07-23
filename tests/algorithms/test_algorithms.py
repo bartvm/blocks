@@ -38,6 +38,25 @@ def test_gradient_descent_with_gradients():
     assert_allclose(W.get_value(), -0.5 * W_start_value)
 
 
+def test_gradient_descent_spurious_sources():
+    W = shared_floatx(numpy.array([[1, 2], [3, 4]]))
+    W_start_value = W.get_value()
+    cost = tensor.sum(W ** 2)
+
+    algorithm = GradientDescent(cost=cost, parameters=[W])
+    algorithm.step_rule.learning_rate.set_value(0.75)
+    algorithm.initialize()
+    assert_raises(lambda:
+                  algorithm.process_batch(dict(example_id='test')))
+
+    algorithm = GradientDescent(cost=cost, parameters=[W],
+                                on_unused_sources='ignore')
+    algorithm.step_rule.learning_rate.set_value(0.75)
+    algorithm.initialize()
+    algorithm.process_batch(dict(example_id='test'))
+    assert_allclose(W.get_value(), -0.5 * W_start_value)
+
+
 def test_basic_momentum():
     a = shared_floatx([3, 4])
     cost = (a ** 2).sum()

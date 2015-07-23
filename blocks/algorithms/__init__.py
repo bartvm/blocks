@@ -139,7 +139,14 @@ variable_mismatch_error = """
 Blocks tried to match the sources ({sources}) of the training dataset to \
 the names of the Theano variables ({variables}), but failed to do so. \
 If you want to train on a subset of the sources that your dataset provides, \
-pass the `sources` keyword argument to its constructor. """
+pass the `sources` keyword argument to its constructor. Or pass \
+on_unused_sources='warn' or on_unused_sources='ignore' to \
+the GradientDescent algorithm."""
+
+source_missing_error = """
+
+Blocks didn't find all the sources ({sources}) of the training dataset \
+that match the names of the Theano variables ({variables})."""
 
 
 class GradientDescent(DifferentiableCostMinimizer):
@@ -182,6 +189,8 @@ class GradientDescent(DifferentiableCostMinimizer):
         A passthrough to `theano.tensor.grad`'s `consider_constant`
         argument.  A list of expressions through which gradients will not
         be backpropagated. Only makes sense when `gradients` is `None`.
+    on_unused_sources : str, one of 'raise' (default), 'ignore', 'warn'
+        Controls behavior when not all sources are used.
 
     Attributes
     ----------
@@ -192,7 +201,9 @@ class GradientDescent(DifferentiableCostMinimizer):
 
     """
     def __init__(self, step_rule=None, gradients=None, known_grads=None,
-                 consider_constant=None, **kwargs):
+                 consider_constant=None,
+                 on_unused_sources='raise',
+                 **kwargs):
         if gradients:
             kwargs.setdefault("parameters", gradients.keys())
         super(GradientDescent, self).__init__(**kwargs)
@@ -220,6 +231,7 @@ class GradientDescent(DifferentiableCostMinimizer):
             self.step_rule.compute_steps(self.gradients))
         self.total_step_norm = named_copy(l2_norm(self.steps.values()),
                                           "total_step_norm")
+        self.on_unused_sources = on_unused_sources
 
     def initialize(self):
         logger.info("Initializing the training algorithm")
@@ -233,12 +245,35 @@ class GradientDescent(DifferentiableCostMinimizer):
         self._function = theano.function(self.inputs, [], updates=all_updates)
         logger.info("The training algorithm is initialized")
 
-    def process_batch(self, batch):
-        if not set(batch.keys()) == set([v.name for v in self.inputs]):
-            raise ValueError("mismatch of variable names and data sources" +
-                             variable_mismatch_error.format(
+    def _validate_source_names(self, batch):
+        in_names = [v.name for v in self.inputs]
+
+        if not set(in_names).issubset(set(batch.keys())):
+            raise ValueError("Didn't find all sources: " +
+                             source_missing_error.format(
                                  sources=batch.keys(),
-                                 variables=[v.name for v in self.inputs]))
+                                 variables=in_names))
+        if not set(batch.keys()).issubset(set(in_names)):
+            if self.on_unused_sources == 'ignore':
+                pass
+            elif self.on_unused_sources == 'warn':
+                if not hasattr(self, '_unused_source_warned'):
+                    logger.warn(variable_mismatch_error.format(
+                        sources=batch.keys(),
+                        variables=in_names))
+                self._unused_source_warned = True
+            elif self.on_unused_sources == 'raise':
+                raise ValueError(
+                    "mismatch of variable names and data sources" +
+                    variable_mismatch_error.format(
+                        sources=batch.keys(),
+                        variables=in_names))
+            else:
+                raise ValueError("Wrong value of on_unused_sources: {}."
+                                 .format(self.on_unused_sources))
+
+    def process_batch(self, batch):
+        self._validate_source_names(batch)
         ordered_batch = [batch[v.name] for v in self.inputs]
         self._function(*ordered_batch)
 
