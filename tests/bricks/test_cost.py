@@ -16,7 +16,7 @@ def test_softmax_vector():
     softmax_out = Softmax().apply(x)
     cost = CategoricalCrossEntropy().apply(y, softmax_out)
 
-    cost_stable = Softmax().categorical_cross_entropy(y, x)
+    cost_stable = Softmax().categorical_cross_entropy(y, x).mean()
 
     softmax_cost_func = function([x, y], cost)
     softmax_cost_stable_func = function([x, y], cost_stable)
@@ -40,7 +40,7 @@ def test_softmax_matrix():
     softmax_out = Softmax().apply(x)
     cost = CategoricalCrossEntropy().apply(y, softmax_out)
 
-    cost_stable = Softmax().categorical_cross_entropy(y, x)
+    cost_stable = Softmax().categorical_cross_entropy(y, x).mean()
 
     softmax_cost_func = function([x, y], cost)
     softmax_cost_stable_func = function([x, y], cost_stable)

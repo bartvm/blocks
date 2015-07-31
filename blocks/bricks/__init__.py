@@ -524,7 +524,7 @@ class Softmax(Activation):
         return shifted - tensor.log(
             tensor.exp(shifted).sum(axis=1).dimshuffle(0, 'x'))
 
-    @application
+    @application(inputs=['y', 'x'], outputs=['output'])
     def categorical_cross_entropy(self, y, x):
         """Return computationally stable softmax cost.
 
@@ -549,9 +549,9 @@ class Softmax(Activation):
             flat_log_prob = x.flatten()
             range_ = tensor.arange(y.shape[0])
             flat_indices = y + range_ * x.shape[1]
-            cost = -tensor.mean(flat_log_prob[flat_indices])
+            cost = -flat_log_prob[flat_indices]
         elif y.ndim == x.ndim:
-            cost = -tensor.mean((x * y).sum(axis=1))
+            cost = -(x * y).sum(axis=1)
         else:
             raise TypeError('rank mismatch between x and y')
         return cost
