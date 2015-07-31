@@ -526,22 +526,22 @@ class Softmax(Activation):
 
     @application(inputs=['y', 'x'], outputs=['output'])
     def categorical_cross_entropy(self, y, x):
-        """Return computationally stable softmax cost.
+        """Computationally stable cross-entropy for pre-softmax values.
 
         Parameters
         ----------
         y : :class:`~tensor.TensorVariable`
             In the case of a matrix argument, each slice along
-            axis represents one distribution. In the vector case, each
+            axis 0 represents one distribution. In the vector case, each
             element represents the position of the '1' in a one hot-vector.
         x : :class:`~tensor.TensorVariable`
-            Each slice along axis represents unnormalized log-probabilities
+            Each slice along axis 0 represents unnormalized log-probabilities
             of a distribution, that is pre-softmax values.
 
         Returns
         -------
         cost : :class:`~tensor.TensorVariable`
-            The cross entropy between y and x.
+            A vector of cross-entropies between distributions y and x.
 
         """
         x = self.log_probabilities(x)
