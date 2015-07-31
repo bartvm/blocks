@@ -244,12 +244,20 @@ class ComputationGraph(object):
 
         return ComputationGraph(outputs_cur)
 
-    def get_theano_function(self, additional_updates=None):
-        """Create Theano function from the graph contained."""
+    def get_theano_function(self, additional_updates=None, **kwargs):
+        r"""Create Theano function from the graph contained.
+
+        Parameters
+        ----------
+        \*\*kwargs : dict
+            key word arguments to theano.function.
+            Useful for specifying specific compilation modes or profiling.
+        """
         updates = self.updates
         if additional_updates:
             updates = dict_union(updates, OrderedDict(additional_updates))
-        return theano.function(self.inputs, self.outputs, updates=updates)
+        return theano.function(self.inputs, self.outputs, updates=updates,
+                               **kwargs)
 
     def get_snapshot(self, data):
         """Evaluate all role-carrying Theano variables on given data.
