@@ -44,7 +44,7 @@ class WithExtraDims(Brick):
         self.apply.outputs = self.application_method.outputs
 
     @application
-    def apply(self, extra_ndim, *args, **kwargs):
+    def apply(self, *args, **kwargs):
         """Wraps the applicationd method with reshapes.
 
         Parameters
@@ -53,6 +53,11 @@ class WithExtraDims(Brick):
             The number of extra dimensions.
 
         """
+        # extra_ndim is a mandatory parameter, but in order not to
+        # confuse with positional inputs, it has to be extracted from
+        # **kwargs
+        extra_ndim = kwargs.pop('extra_ndim')
+
         inputs = dict(zip(self.apply.inputs, args))
         inputs.update(dict_subset(kwargs, self.apply.inputs,
                                   must_have=False))

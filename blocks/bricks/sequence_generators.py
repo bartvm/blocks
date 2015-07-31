@@ -33,13 +33,14 @@ from abc import ABCMeta, abstractmethod
 from six import add_metaclass
 from theano import tensor
 
-from blocks.bricks import Initializable, Random, Bias
+from blocks.bricks import Initializable, Random, Bias, Softmax
 from blocks.bricks.base import application, Brick, lazy
 from blocks.bricks.parallel import Fork, Merge
 from blocks.bricks.lookup import LookupTable
 from blocks.bricks.recurrent import recurrent
 from blocks.bricks.attention import (
     AbstractAttentionRecurrent, AttentionRecurrent)
+from blocks.bricks.wrappers import WithExtraDims
 from blocks.roles import add_role, COST
 from blocks.utils import dict_union, dict_subset
 
@@ -664,14 +665,15 @@ class SoftmaxEmitter(AbstractEmitter, Initializable, Random):
 
     """
     def __init__(self, initial_output=0, **kwargs):
-        self.initial_output = initial_output
         super(SoftmaxEmitter, self).__init__(**kwargs)
+        self.initial_output = initial_output
+        self.softmax = WithExtraDims(Softmax().apply)
+        self.cross_entropy = WithExtraDims(Softmax().categorical_cross_entropy)
+        self.children = [self.softmax, self.cross_entropy]
 
     @application
     def probs(self, readouts):
-        shape = readouts.shape
-        return tensor.nnet.softmax(readouts.reshape(
-            (tensor.prod(shape[:-1]), shape[-1]))).reshape(shape)
+        return self.softmax.apply(readouts, extra_ndim=readouts.ndim - 2)
 
     @application
     def emit(self, readouts):
@@ -686,13 +688,8 @@ class SoftmaxEmitter(AbstractEmitter, Initializable, Random):
         # WARNING: unfortunately this application method works
         # just fine when `readouts` and `outputs` have
         # different dimensions. Be careful!
-        probs = self.probs(readouts)
-        max_output = probs.shape[-1]
-        flat_outputs = outputs.flatten()
-        num_outputs = flat_outputs.shape[0]
-        return -tensor.log(
-            probs.flatten()[max_output * tensor.arange(num_outputs) +
-                            flat_outputs].reshape(outputs.shape))
+        return self.cross_entropy.apply(
+            outputs, readouts, extra_ndim=readouts.ndim - 2)
 
     @application
     def initial_outputs(self, batch_size):

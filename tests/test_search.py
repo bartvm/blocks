@@ -104,9 +104,9 @@ def test_beam_search():
     assert results.sum() == 2816
 
     true_costs = simple_generator.cost(
-        input_vals, numpy.ones((length, beam_size),
-                               dtype=theano.config.floatX),
-        results, mask).eval()
+        tensor.as_tensor_variable(input_vals),
+        numpy.ones((length, beam_size), dtype=theano.config.floatX),
+        tensor.as_tensor_variable(results), mask).eval()
     true_costs = (true_costs * mask).sum(axis=0)
     assert_allclose(costs.sum(axis=0), true_costs, rtol=1e-5)
 

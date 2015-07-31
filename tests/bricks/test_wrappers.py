@@ -15,7 +15,7 @@ def test_with_extra_dims_ndim_gt_2():
                    biases_init=Constant(0))
     wrapper = WithExtraDims(brick.apply)
     wrapper.initialize()
-    f = theano.function([X], wrapper.apply(2, X))
+    f = theano.function([X], wrapper.apply(X, extra_ndim=2))
     assert_allclose(
         f(numpy.ones(shape=(2, 2, 2, 3), dtype=theano.config.floatX)),
         3 * numpy.ones(shape=(2, 2, 2, 4), dtype=theano.config.floatX))
@@ -27,7 +27,7 @@ def test_with_extra_dims_ndim_leq_2():
                    biases_init=Constant(0))
     wrapper = WithExtraDims(brick.apply)
     wrapper.initialize()
-    f = theano.function([X], wrapper.apply(0, X))
+    f = theano.function([X], wrapper.apply(X, extra_ndim=0))
     assert_allclose(
         f(numpy.ones(shape=(2, 3), dtype=theano.config.floatX)),
         3 * numpy.ones(shape=(2, 4), dtype=theano.config.floatX))
@@ -46,7 +46,7 @@ def test_with_extra_dims_cross_entropy_2d():
     y = tensor.lvector('y')
     brick = Softmax()
     wrapper = WithExtraDims(brick.categorical_cross_entropy)
-    f = theano.function([y, x], [wrapper.apply(0, y, x)])
+    f = theano.function([y, x], [wrapper.apply(y, x, extra_ndim=0)])
     assert_allclose(
         f([0, 1, 2, 3],
            [[1, 2, 1, 2], [1, 2, 3, 4],
@@ -60,7 +60,7 @@ def test_with_extra_dims_cross_entropy_3d():
     y = tensor.lmatrix('y')
     brick = Softmax()
     wrapper = WithExtraDims(brick.categorical_cross_entropy)
-    f = theano.function([y, x], [wrapper.apply(1, y, x)])
+    f = theano.function([y, x], [wrapper.apply(y, x, extra_ndim=1)])
     assert_allclose(
         f([[0, 1], [2, 3]],
           [[[1, 2, 1, 2], [1, 2, 3, 4]],
