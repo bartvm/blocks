@@ -2,25 +2,26 @@ Create your own brick
 =====================
 
 This tutorial explains how to create a custom brick, which is useful if you
-want to factorize a specific sequence of operations (which can be made of
-bricks themselves) into a single operation so that you can easily reuse it.
+want to factorize a specific several combined operations (which can be made of
+bricks themselves) into a single higher-level operation so that you can easily
+reuse it.
 
 The first part of this tutorial lists the requirements and optional components
 that a brick should/can implement while the second part describes the
 construction of a simple toy brick.
 
 This tutorial assumes that you are already familiar with
-:doc:`bricks <bricks_overview>`.
+:doc:`bricks <bricks_overview>` and how to use them from a user point of view.
 
 
 Bricks ingredients and recipe
 -----------------------------
 
 All the bricks in blocks inherit directly or indirectly from the
-:class:`.Brick`. However there is already a rich inheritance hierarchy of
+:class:`.Brick`. There is already a rich inheritance hierarchy of
 bricks implemented in blocks and thus, you should consider which brick level
-you wish to inherit from. Bear it mind that multiple inheritance is often
-possible and advocated whenever it makes sense.
+to inherit from. Bear it mind that multiple inheritance is often possible and
+advocated whenever it makes sense.
 
 Here are examples of possible bricks to inherit from:
 
@@ -31,6 +32,8 @@ Here are examples of possible bricks to inherit from:
   one output.
 * :class:`.Linear`: a linear transformation with optional bias. Inherits from
   :class:`.Initializable` and :class:`.Feedforward`.
+* :class:`.BaseRecurrent`: the base class for recurrent bricks. Check the
+  :doc:`tutorial about rnns</rnn>` for more information.
 * many mores!
 
 Let's say that you want to create a brick from scracth, simply inheriting
@@ -40,17 +43,23 @@ methods (strictly speaking, all these methods are optional):
 * :meth:`.Brick.__init__`: you should pass by argument the attributes of your
   brick. It is also in this method that you should create the potential
   "children bricks" that belongs to your brick (in that case, you have to put
-  the children bricks into ``self.children``. The initialiazation of the
+  the children bricks into ``self.children``). The initialiazation of the
   attributes can be lazy as described later in the tutorial.
 * :meth:`you_decide_which_name`: you need to implement a method that actually
   implements the operation of the brick, taking as arguments the inputs
   of the brick and returning its outputs. It can have any name and for simple
   bricks is often named ``apply``. You should decorate it with the
-  :func:`.application` decorator, as explained in the next section.
-* :meth:`.Brick._allocate`: you should implement this method if your brick
-  needs to allocate its parameters.
-* :meth:`.Brick._initialize`: you should implement this method if you need to
-  initialize parameters of your brick.
+  :func:`.application` decorator, as explained in the next section. If you
+  design a recurrent brick, you should instead decorate it with the
+  :func:`.recurrent` decorator as explained in the
+  :doc:`tutorial about rnns</rnn>`.
+* :meth:`.Brick._allocate`: you should implement this method to allocate the
+  shared variables (often representing parameters) of the brick. In blocks,
+  by convention, the built-in bricks allocate their shared variables with nan
+  values and we recommand you to do the same.
+* :meth:`.Brick._initialize`: you should implement this method to initialize
+  the shared variables of your brick. This method is called after the
+  allocation.
 * :meth:`.Brick._push_allocation_config`: you should consider overwriting
   this method if you want to allocate the children bricks in a specific way.
 * :meth:`.Brick._push_initialization_config`: you should consider
@@ -67,9 +76,9 @@ identify the particular methods to overwrite and the attributes to define.
 you_decide_which_name method
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :meth:`you_decide_which_name` method described above is probably the most
+The :meth:`you_decide_which_name` method listed above is probably the most
 important method of your brick because it is the one that actually takes
-theano tensors as inputs, process them and return tensor outputs. You should
+theano tensors as inputs, process them and return output tensors. You should
 decorate it with the :func:`.application` decorator, which names variables
 and register auxiliary variables of the operation you implement.
 It is used as followed (:meth:`you_decide_which_name` is named :meth:`apply`):
@@ -81,7 +90,8 @@ It is used as followed (:meth:`you_decide_which_name` is named :meth:`apply`):
     ...         return something
 
 In the case above, it will automatically label the theano tensor variable
-input1 to ``Foo_apply_input1``, idem for input2 and the output of the method.
+``input1`` to ``Foo_apply_input1``, idem for ``input2`` and the output of the
+method.
 
 Under the hood, the ``@application`` decorator creates an object of class
 :class:`.Application`, named ``apply``, which becomes an attribute of the
@@ -101,7 +111,7 @@ you should define them with the apply.property decorator:
     ...         return self.fancy_name
 
 You can also annotate specific variables by passing ``application_call`` as
-agurment of your ``apply`` function, as shown in this example:
+argument of your ``apply`` function, as shown in this example:
 
     >>> class Foo(Brick): # doctest: +SKIP
     ...     @application
@@ -133,6 +143,21 @@ brick.
 Example
 -------
 
+.. doctest::
+   :hide:
+
+    >>> import numpy
+    >>>
+    >>> import theano
+    >>> from theano import tensor
+    >>>
+    >>> from blocks.bricks import Initializable, Linear
+    >>> from blocks.bricks.base import lazy, application
+    >>> from blocks.bricks.parallel import Parallel
+    >>> from blocks.initialization import Constant
+    >>> from blocks.roles import add_role, WEIGHT
+    >>> from blocks.utils import shared_floatx_nans
+
 For the sake of the tutorial, let's consider a toy operation that takes two
 batch inputs and multiply them respectively by two matrices, resulting in two
 outputs.
@@ -146,7 +171,8 @@ representing the matrices to multiply the inputs with and thus, inheriting from
 :class:`.Initializable` makes perfectly sense as we will let the user decide
 which initialization scheme to use.
 
-    >>> class ParallelLinear(Initializable): # doctest: +SKIP
+
+    >>> class ParallelLinear(Initializable):
     ...     r"""Two linear transformations without biases.
     ...
     ...     Brick which applies two linear (affine) transformations by
@@ -219,14 +245,33 @@ which initialization scheme to use.
     ...             return self.output_dim2
     ...         super(ParallelLinear, self).get_dim(name)
 
+You can test the brick as follows:
+
+   >>> input_dim1, input_dim2, output_dim1, output_dim2 = 10, 5, 2, 1
+   >>> batch_size1, batch_size2 = 1, 2
+   >>>
+   >>> x1_mat = 3 * numpy.ones((batch_size1, input_dim1),
+   ...                                   dtype=theano.config.floatX)
+   >>> x2_mat = 4 * numpy.ones((batch_size2, input_dim2),
+   ...                                   dtype=theano.config.floatX)
+   >>>
+   >>> x1 = theano.tensor.matrix('x1')
+   >>> x2 = theano.tensor.matrix('x2')
+   >>> parallel1 = ParallelLinear(input_dim1, input_dim2, output_dim1,
+   ...                    output_dim2, weights_init=Constant(2))
+   >>> parallel1.initialize()
+   >>> output1, output2 = parallel1.apply(x1, x2)
+   >>>
+   >>> f1 = theano.function([x1, x2], [output1, output2])
+   >>> f1(x1_mat, x2_mat) # doctest: +ELLIPSIS
+   [array([[ 60.,  60.]]...), array([[ 40.],
+          [ 40.]]...)]
 
 One can also create the brick using :class:`Linear` children bricks, which
-gives a more compact version:
 
-    >>> from blocks.bricks import Linear # doctest: +SKIP
-    >>> class ParallelLinear2(Initializable): # doctest: +SKIP
+    >>> class ParallelLinear2(Initializable):
     ...     def __init__(self, input_dim1, input_dim2, output_dim1, output_dim2,
-    ...                  **kwargs): ...
+    ...                  **kwargs):
     ...         super(ParallelLinear2, self).__init__(**kwargs)
     ...         self.linear1 = Linear(input_dim1, output_dim1,
     ...                               use_bias=False, **kwargs)
@@ -247,3 +292,36 @@ gives a more compact version:
     ...         if name in ['input2_', 'output2']:
     ...             return self.linear2.get_dim(name)
     ...         super(ParallelLinear2, self).get_dim(name)
+
+You can test this new version as follows:
+
+   >>> parallel2 = ParallelLinear2(input_dim1, input_dim2, output_dim1,
+   ...                    output_dim2, weights_init=Constant(2))
+   >>> parallel2.initialize()
+   >>> output1, output2 = parallel2.apply(x1, x2)
+   >>>
+   >>> f2 = theano.function([x1, x2], [output1, output2])
+   >>> f2(x1_mat, x2_mat) # doctest: +ELLIPSIS
+   [array([[ 60.,  60.]]...), array([[ 40.],
+          [ 40.]]...)]
+
+Actually it was not even necessary to create a custom brick for this particular
+operation as blocks always have a brick, called :class:``Parallel``, that
+applies the same brick to several inputs. In our case the brick we want to
+apply to our two inputs is a :class:``Linear`` brick with no bias:
+
+   >>> parallel3 = Parallel(
+   ...     prototype=Linear(use_bias=False),
+   ...     input_names=['input1_', 'input2_'],
+   ...     input_dims=[input_dim1, input_dim2],
+   ...     output_dims=[output_dim1, output_dim2], weights_init=Constant(2))
+   >>> parallel3.initialize()
+   >>>
+   >>> output1, output2 = parallel3.apply(x1, x2)
+   >>>
+   >>> f3 = theano.function([x1, x2], [output1, output2])
+   >>> f3(x1_mat, x2_mat) # doctest: +ELLIPSIS
+   [array([[ 60.,  60.]]...), array([[ 40.],
+          [ 40.]]...)]
+
+
