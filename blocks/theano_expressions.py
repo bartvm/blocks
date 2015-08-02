@@ -14,11 +14,9 @@ def l2_norm(tensors):
         The tensors.
 
     """
-    flattened = [tensor.as_tensor_variable(t).flatten() for t in tensors]
-    flattened = [(t if t.ndim > 0 else t.dimshuffle('x'))
-                 for t in flattened]
-    joined = tensor.join(0, *flattened)
-    return tensor.sqrt(tensor.sqr(joined).sum())
+    summed = [tensor.sqr(tensor.as_tensor_variable(t)).sum() for t in tensors]
+    joined = tensor.stack(*summed)
+    return tensor.sqrt(joined.sum())
 
 
 def hessian_times_vector(gradient, parameter, vector, r_op=False):
