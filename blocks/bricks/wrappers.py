@@ -82,7 +82,7 @@ class WithExtraDims(Brick):
         for output in pack(outputs):
             shape, ndim = output.shape, output.ndim
             new_shape = tensor.join(
-                0, extra_dims, (shape[0] / tensor.prod(extra_dims))[None],
+                0, extra_dims, (shape[0] // tensor.prod(extra_dims))[None],
                 shape[1:])
             reshaped_outputs.append(
                 output.reshape(new_shape, ndim=ndim + extra_ndim))
