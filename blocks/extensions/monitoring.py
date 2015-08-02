@@ -6,7 +6,7 @@ from blocks.algorithms import DifferentiableCostMinimizer
 from blocks.monitoring.evaluators import AggregationBuffer, DatasetEvaluator
 
 PREFIX_SEPARATOR = '_'
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class MonitoringExtension(TrainingExtension):

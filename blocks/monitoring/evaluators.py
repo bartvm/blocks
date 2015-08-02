@@ -11,7 +11,7 @@ from blocks.monitoring.aggregation import (_DataIndependent, Mean,
 from blocks.graph import ComputationGraph
 from blocks.utils import reraise_as
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class MonitoredQuantityBuffer(object):

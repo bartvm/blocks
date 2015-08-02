@@ -17,7 +17,7 @@ from blocks.utils import (pack, shared_floatx_nans, shared_floatx_zeros,
                           dict_union, dict_subset, is_shared_variable)
 from blocks.bricks.parallel import Fork
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 unknown_scan_input = """
 

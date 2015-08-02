@@ -17,7 +17,7 @@ from blocks.graph import ComputationGraph
 from blocks.select import Selector
 from blocks.filter import get_brick
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 multiple_message = """
 
