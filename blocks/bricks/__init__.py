@@ -535,8 +535,9 @@ class Softmax(Activation):
             axis 0 represents one distribution. In the vector case, each
             element represents the position of the '1' in a one hot-vector.
         x : :class:`~tensor.TensorVariable`
-            Each slice along axis 0 represents unnormalized log-probabilities
-            of a distribution, that is pre-softmax values.
+            Each slice along axis 0 represents unnormalized
+            log-probabilities of a distribution, that is pre-softmax
+            values.
 
         Returns
         -------
