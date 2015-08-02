@@ -11,7 +11,7 @@ from picklable_itertools.extras import equizip
 from blocks.config import config
 from blocks.bricks.base import application, _Brick, Brick, lazy
 from blocks.roles import add_role, WEIGHT, BIAS
-from blocks.utils import pack, shared_floatx_nans
+from blocks.utils import pack, shared_floatx_nans, named_copy
 
 logger = logging.getLogger(__name__)
 
@@ -525,7 +525,7 @@ class Softmax(Activation):
             tensor.exp(shifted).sum(axis=1).dimshuffle(0, 'x'))
 
     @application(inputs=['y', 'x'], outputs=['output'])
-    def categorical_cross_entropy(self, y, x):
+    def categorical_cross_entropy(self, application_call, y, x):
         """Computationally stable cross-entropy for pre-softmax values.
 
         Parameters
@@ -546,11 +546,10 @@ class Softmax(Activation):
 
         """
         x = self.log_probabilities(x)
+        application_call.add_auxiliary_variable(
+            named_copy(x, 'log_probabilities'))
         if y.ndim == x.ndim - 1:
-            flat_log_prob = x.flatten()
-            range_ = tensor.arange(y.shape[0])
-            flat_indices = y + range_ * x.shape[1]
-            cost = -flat_log_prob[flat_indices]
+            cost = -x[tensor.arange(y.shape[0]), y]
         elif y.ndim == x.ndim:
             cost = -(x * y).sum(axis=1)
         else:
