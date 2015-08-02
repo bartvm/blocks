@@ -90,8 +90,8 @@ def test_sparse():
 def test_orthogonal():
     rng = numpy.random.RandomState(1)
 
-    def check_orthogonal(rng, shape):
-        W = Orthogonal().generate(rng, shape)
+    def check_orthogonal(rng, shape, scale=1.0):
+        W = Orthogonal(scale).generate(rng, shape)
 
         assert W.shape == shape
 
@@ -108,12 +108,12 @@ def test_orthogonal():
         assert WTW.shape == (shape[1], shape[1])
 
         # Diagonals ~= 1. ?
-        assert_allclose(numpy.diag(WWT), 1., atol=atol)
-        assert_allclose(numpy.diag(WTW), 1., atol=atol)
+        assert_allclose(numpy.diag(WWT), scale ** 2, atol=atol)
+        assert_allclose(numpy.diag(WTW), scale ** 2, atol=atol)
 
         # Non-diagonal ~= 0. ?
-        WWT_residum = WWT-numpy.eye(shape[0])
-        WTW_residum = WTW-numpy.eye(shape[1])
+        WWT_residum = WWT - numpy.eye(shape[0]) * scale ** 2
+        WTW_residum = WTW - numpy.eye(shape[1]) * scale ** 2
 
         assert_allclose(WWT_residum, 0., atol=atol)
         assert_allclose(WTW_residum, 0., atol=atol)
@@ -121,3 +121,6 @@ def test_orthogonal():
     yield check_orthogonal, rng, (50, 50)
     yield check_orthogonal, rng, (50, 51)
     yield check_orthogonal, rng, (51, 50)
+    yield check_orthogonal, rng, (50, 50), .5
+    yield check_orthogonal, rng, (50, 51), .5
+    yield check_orthogonal, rng, (51, 50), .5
