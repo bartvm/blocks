@@ -33,14 +33,13 @@ from abc import ABCMeta, abstractmethod
 from six import add_metaclass
 from theano import tensor
 
-from blocks.bricks import Initializable, Random, Bias, Softmax
+from blocks.bricks import Initializable, Random, Bias, SoftmaxWithExtraDims
 from blocks.bricks.base import application, Brick, lazy
 from blocks.bricks.parallel import Fork, Merge
 from blocks.bricks.lookup import LookupTable
 from blocks.bricks.recurrent import recurrent
 from blocks.bricks.attention import (
     AbstractAttentionRecurrent, AttentionRecurrent)
-from blocks.bricks.wrappers import WithExtraDims
 from blocks.roles import add_role, COST
 from blocks.utils import dict_union, dict_subset
 
@@ -667,9 +666,8 @@ class SoftmaxEmitter(AbstractEmitter, Initializable, Random):
     def __init__(self, initial_output=0, **kwargs):
         super(SoftmaxEmitter, self).__init__(**kwargs)
         self.initial_output = initial_output
-        self.softmax = WithExtraDims(Softmax().apply)
-        self.cross_entropy = WithExtraDims(Softmax().categorical_cross_entropy)
-        self.children = [self.softmax, self.cross_entropy]
+        self.softmax = SoftmaxWithExtraDims()
+        self.children = [self.softmax]
 
     @application
     def probs(self, readouts):
@@ -688,7 +686,7 @@ class SoftmaxEmitter(AbstractEmitter, Initializable, Random):
         # WARNING: unfortunately this application method works
         # just fine when `readouts` and `outputs` have
         # different dimensions. Be careful!
-        return self.cross_entropy.apply(
+        return self.softmax.categorical_cross_entropy(
             outputs, readouts, extra_ndim=readouts.ndim - 2)
 
     @application

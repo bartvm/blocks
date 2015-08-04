@@ -10,6 +10,7 @@ from picklable_itertools.extras import equizip
 
 from blocks.config import config
 from blocks.bricks.base import application, _Brick, Brick, lazy
+from blocks.bricks.wrappers import WithExtraDims
 from blocks.roles import add_role, WEIGHT, BIAS
 from blocks.utils import pack, shared_floatx_nans, named_copy
 
@@ -494,7 +495,7 @@ class Rectifier(Activation):
         return tensor.switch(input_ > 0, input_, 0)
 
 
-class Softmax(Activation):
+class Softmax(Brick):
     @application(inputs=['input_'], outputs=['output'])
     def apply(self, input_):
         return tensor.nnet.softmax(input_)
@@ -555,6 +556,11 @@ class Softmax(Activation):
         else:
             raise TypeError('rank mismatch between x and y')
         return cost
+
+
+@add_metaclass(WithExtraDims)
+class SoftmaxWithExtraDims(Softmax):
+    pass
 
 
 class Sequence(Brick):

@@ -2,20 +2,30 @@ import numpy
 import theano
 from numpy.testing import assert_allclose
 from six.moves import cPickle
+from six import add_metaclass
 from theano import tensor
-
 from blocks.bricks import Linear, Softmax
 from blocks.bricks.wrappers import WithExtraDims, WithAxesSwapped
 from blocks.initialization import Constant
 
 
+@add_metaclass(WithExtraDims)
+class LinearWithExtraDims(Linear):
+    pass
+
+
+@add_metaclass(WithExtraDims)
+class SoftmaxWithExtraDims(Softmax):
+    pass
+
+
 def test_with_extra_dims_ndim_gt_2():
     X = tensor.tensor4('X')
-    brick = Linear(input_dim=3, output_dim=4, weights_init=Constant(1),
-                   biases_init=Constant(0))
-    wrapper = WithExtraDims(brick.apply)
-    wrapper.initialize()
-    f = theano.function([X], wrapper.apply(X, extra_ndim=2))
+    brick = LinearWithExtraDims(
+        input_dim=3, output_dim=4,
+        weights_init=Constant(1), biases_init=Constant(0))
+    brick.initialize()
+    f = theano.function([X], brick.apply(X, extra_ndim=2))
     assert_allclose(
         f(numpy.ones(shape=(2, 2, 2, 3), dtype=theano.config.floatX)),
         3 * numpy.ones(shape=(2, 2, 2, 4), dtype=theano.config.floatX))
@@ -23,30 +33,30 @@ def test_with_extra_dims_ndim_gt_2():
 
 def test_with_extra_dims_ndim_leq_2():
     X = tensor.matrix('X')
-    brick = Linear(input_dim=3, output_dim=4, weights_init=Constant(1),
-                   biases_init=Constant(0))
-    wrapper = WithExtraDims(brick.apply)
-    wrapper.initialize()
-    f = theano.function([X], wrapper.apply(X, extra_ndim=0))
+    brick = LinearWithExtraDims(
+        input_dim=3, output_dim=4,
+        weights_init=Constant(1), biases_init=Constant(0))
+    brick.initialize()
+    f = theano.function([X], brick.apply(X, extra_ndim=0))
     assert_allclose(
         f(numpy.ones(shape=(2, 3), dtype=theano.config.floatX)),
         3 * numpy.ones(shape=(2, 4), dtype=theano.config.floatX))
 
 
 def test_with_extra_dims_is_serializable():
-    brick = Linear(input_dim=3, output_dim=4, weights_init=Constant(1),
-                   biases_init=Constant(0))
-    wrapper = WithExtraDims(brick.apply)
-    wrapper.initialize()
-    cPickle.loads(cPickle.dumps(wrapper))
+    brick = LinearWithExtraDims(
+        input_dim=3, output_dim=4,
+        weights_init=Constant(1), biases_init=Constant(0))
+    brick.initialize()
+    cPickle.loads(cPickle.dumps(brick))
 
 
 def test_with_extra_dims_cross_entropy_2d():
     x = tensor.matrix('x')
     y = tensor.lvector('y')
-    brick = Softmax()
-    wrapper = WithExtraDims(brick.categorical_cross_entropy)
-    f = theano.function([y, x], [wrapper.apply(y, x, extra_ndim=0)])
+    brick = SoftmaxWithExtraDims()
+    f = theano.function(
+        [y, x], [brick.categorical_cross_entropy(y, x, extra_ndim=0)])
     assert_allclose(
         f([0, 1, 2, 3],
           [[1, 2, 1, 2], [1, 2, 3, 4],
@@ -58,9 +68,9 @@ def test_with_extra_dims_cross_entropy_2d():
 def test_with_extra_dims_cross_entropy_3d():
     x = tensor.tensor3('x')
     y = tensor.lmatrix('y')
-    brick = Softmax()
-    wrapper = WithExtraDims(brick.categorical_cross_entropy)
-    f = theano.function([y, x], [wrapper.apply(y, x, extra_ndim=1)])
+    brick = SoftmaxWithExtraDims()
+    f = theano.function(
+        [y, x], [brick.categorical_cross_entropy(y, x, extra_ndim=1)])
     assert_allclose(
         f([[0, 1], [2, 3]],
           [[[1, 2, 1, 2], [1, 2, 3, 4]],
