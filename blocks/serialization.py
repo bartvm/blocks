@@ -24,6 +24,9 @@ ones are:
       'parameters' file is the one used by :func:`numpy.savez`, i.e.  a zip
       file of numpy arrays.
 
+    - Pickling of the whole object in fact can be bypassed if pickling of
+      some parts and parameters is sufficient.
+
     - The :func:`dump` strives to catch situations when the user tries
       to pickle a function or a class not defined in the global namespace
       and give a meaningful warning.
@@ -114,6 +117,21 @@ defaultdict(<type 'dict'>, {})
 Loading parameters saved by :func:`dump` with :func:`load_parameters`
 ensures that their heirarchical names are compatible with
 :class:`~blocks.model.Model` and :class:`~blocks.select.Selector` classes.
+
+Finally, as promised, pickling of the whole object in its entirety can
+be skipped if you are fine with just having the parameters and/or parts
+saved:
+
+>>> with open('main_loop.tar', 'w') as dst:
+...     dump(main_loop, dst,
+...          pickle_separately=[(main_loop.log, 'log')],
+...          parameters=main_loop.model.parameters,
+...          pickle_whole=False)
+>>> tarball = tarfile.open('main_loop.tar', 'r')
+>>> tarball.getnames()
+['parameters', 'log']
+>>> tarball.close()
+
 
 """
 import os
@@ -208,7 +226,7 @@ class PersistentID(object):
 
 def dump(object_, file_,
          parameters=None, pickle_separately=None,
-         dont_pickle_whole=False, use_cpickle=True, **kwargs):
+         pickle_whole=True, use_cpickle=True, **kwargs):
     """Pickles an object saving some of its parts separately.
 
     Parameters
@@ -225,7 +243,7 @@ def dump(object_, file_,
         separately. The keys are the objects, the values will be used
         to form persistent ids and as field names in the resulting zip
         file.
-    dont_pickle_whole : bool, optional
+    pickle_whole : bool, optional
         When ``False``, the whole object is not pickled, only its
         components are.
 
@@ -235,7 +253,7 @@ def dump(object_, file_,
     # TODO: check name collision with 'pkl' and 'parameters'
     with closing(tarfile.TarFile(fileobj=file_, mode='w')) as tar_file:
         external_objects = {}
-        def save_parameters(f):
+        def _save_parameters(f):
             # TODO: how exactly should get_value be called?
             renamer = Renamer()
             named_parameters = {renamer(p): p for p in parameters}
@@ -247,17 +265,18 @@ def dump(object_, file_,
                 external_objects[id(array_)] = _mangle_parameter_name(
                     type(array_), name)
         if parameters:
-            taradd(save_parameters, tar_file, 'parameters')
+            taradd(_save_parameters, tar_file, 'parameters')
         if pickle_separately:
             for component, name in pickle_separately:
-                def pickle_separately(f):
+                def _pickle_separately(f):
                     pickle.dump(component, f)
-                taradd(pickle_separately, tar_file, name)
-        def pickle_whole(f):
+                taradd(_pickle_separately, tar_file, name)
+        def _pickle_whole(f):
             p = pickle.Pickler(f, **kwargs)
             p.persistent_id = PersistentID(external_objects)
             p.dump(object_)
-        taradd(pickle_whole, tar_file, 'pkl')
+        if pickle_whole:
+            taradd(_pickle_whole, tar_file, 'pkl')
 
 
 def secure_dump(object_, path, dump_function=dump, **kwargs):
