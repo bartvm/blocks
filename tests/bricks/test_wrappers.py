@@ -2,21 +2,18 @@ import numpy
 import theano
 from numpy.testing import assert_allclose
 from six.moves import cPickle
-from six import add_metaclass
 from theano import tensor
 from blocks.bricks import Linear, Softmax
 from blocks.bricks.wrappers import WithExtraDims, WithAxesSwapped
 from blocks.initialization import Constant
 
 
-@add_metaclass(WithExtraDims)
 class LinearWithExtraDims(Linear):
-    pass
+    decorators = [WithExtraDims()]
 
 
-@add_metaclass(WithExtraDims)
 class SoftmaxWithExtraDims(Softmax):
-    pass
+    decorators = [WithExtraDims()]
 
 
 def test_with_extra_dims_ndim_gt_2():

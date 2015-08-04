@@ -558,9 +558,8 @@ class Softmax(Brick):
         return cost
 
 
-@add_metaclass(WithExtraDims)
 class SoftmaxWithExtraDims(Softmax):
-    pass
+    decorators = [WithExtraDims()]
 
 
 class Sequence(Brick):

@@ -370,8 +370,21 @@ def rename_function(function, new_name):
 
 
 class _Brick(ABCMeta):
-    """Metaclass which attaches brick instances to the applications."""
+    """Metaclass which attaches brick instances to the applications.
+
+    In addition picklability of :class:`Application` objects is ensured.
+    This means that :class:`Application` objects can not be added to a
+    brick class after it is created. To allow adding application methods
+    programatically, the following hook is supported: the class namespace
+    is searched for `decorators` attribute, which can contain a
+    list of functions to be applied to the namespace of the class being
+    created. These functions can arbitratily modify this namespace.
+
+    """
     def __new__(mcs, name, bases, namespace):
+        decorators = namespace.get('decorators', [])
+        for decorator in decorators:
+            decorator(mcs, name, bases, namespace)
         for attr in list(namespace.values()):
             if (isinstance(attr, Application) and
                     hasattr(attr, '_application_function')):
