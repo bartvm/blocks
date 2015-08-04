@@ -521,9 +521,9 @@ class Softmax(Brick):
             distribution from `input_`.
 
         """
-        shifted = input_ - input_.max(axis=1).dimshuffle(0, 'x')
+        shifted = input_ - input_.max(axis=1, keepdims=True)
         return shifted - tensor.log(
-            tensor.exp(shifted).sum(axis=1).dimshuffle(0, 'x'))
+            tensor.exp(shifted).sum(axis=1, keepdims=True))
 
     @application(inputs=['y', 'x'], outputs=['output'])
     def categorical_cross_entropy(self, application_call, y, x):
