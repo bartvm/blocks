@@ -7,7 +7,7 @@ from blocks.bricks.base import (
 from blocks.utils import dict_subset, pack
 
 _wrapped_class_doc = \
-"""A wrapped brick class.
+    """A wrapped brick class.
 
 This brick was automatically constructed by wrapping :class:`.{0}` with
 :class:`.{1}`.
@@ -23,7 +23,7 @@ See Also
 """
 
 _wrapped_application_doc = \
-"""{0}
+    """{0}
 
 See Also
 --------
@@ -33,7 +33,7 @@ See Also
 """
 
 _with_extra_dims_application_prefix = \
-"""Wraps the application method with reshapes.
+    """Wraps the application method with reshapes.
 
 Parameters
 ----------
