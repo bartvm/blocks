@@ -182,8 +182,9 @@ class Feedforward(Brick):
 class Linear(Initializable, Feedforward):
     r"""A linear transformation with optional bias.
 
-    Linear brick which applies a linear (affine) transformation by
-    multiplying the input with a weight matrix. Optionally a bias is added.
+    Brick which applies a linear (affine) transformation by multiplying
+    the input with a weight matrix. By default, a bias term is added
+    (see :class:`Initializable` for information on disabling this).
 
     Parameters
     ----------
