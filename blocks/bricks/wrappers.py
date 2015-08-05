@@ -6,10 +6,11 @@ from blocks.bricks.base import (
     application, Application, rename_function)
 from blocks.utils import dict_subset, pack
 
-_wrapped_class_doc = """A wrapped brick class.
+_wrapped_class_doc = \
+"""A wrapped brick class.
 
 This brick was automatically constructed by wrapping :class:`.{0}` with
-:class:`.{1}` (inheriting from {0} and changing the metaclass to {1}).
+:class:`.{1}`.
 
 See Also
 --------
@@ -21,17 +22,23 @@ See Also
 
 """
 
-_wrapped_application_doc = """Wraps the application method with reshapes.
+_wrapped_application_doc = \
+"""{0}
+
+See Also
+--------
+:meth:`{1}.{2}`
+    For documentation of the wrapped application method.
+
+"""
+
+_with_extra_dims_application_prefix = \
+"""Wraps the application method with reshapes.
 
 Parameters
 ----------
 extra_ndim : int, optional
     The number of extra dimensions. Default is zero.
-
-See Also
---------
-:meth:`{0}.{1}`
-    For documentation of the wrapped application method.
 
 """
 
@@ -40,9 +47,9 @@ See Also
 class BrickWrapper(object):
     """Base class for wrapper metaclasses.
 
-    Sometimes one wants to add to a brick capability to handle
+    Sometimes one wants to extend a brick with the capability to handle
     inputs different from what it was designed to handle. A typical
-    example are inputs with more dimensions that was foreseed at
+    example are inputs with more dimensions that was foreseen at
     the development stage. One way to proceed in such a situation
     is to write a decorator that wraps all application methods of
     the brick class by some additional logic before and after
@@ -157,6 +164,7 @@ class WithExtraDims(BrickWrapper):
 
         apply = application(rename_function(apply, wrapped.application_name))
         apply.__doc__ = _wrapped_application_doc.format(
+            _with_extra_dims_application_prefix,
             wrapped.brick.__name__, wrapped.application_name)
         apply_delegate = apply.delegate(
             rename_function(apply_delegate,

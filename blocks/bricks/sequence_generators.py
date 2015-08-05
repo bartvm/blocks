@@ -33,7 +33,7 @@ from abc import ABCMeta, abstractmethod
 from six import add_metaclass
 from theano import tensor
 
-from blocks.bricks import Initializable, Random, Bias, SoftmaxWithExtraDims
+from blocks.bricks import Initializable, Random, Bias, NDimensionalSoftmax
 from blocks.bricks.base import application, Brick, lazy
 from blocks.bricks.parallel import Fork, Merge
 from blocks.bricks.lookup import LookupTable
@@ -666,7 +666,7 @@ class SoftmaxEmitter(AbstractEmitter, Initializable, Random):
     def __init__(self, initial_output=0, **kwargs):
         super(SoftmaxEmitter, self).__init__(**kwargs)
         self.initial_output = initial_output
-        self.softmax = SoftmaxWithExtraDims()
+        self.softmax = NDimensionalSoftmax()
         self.children = [self.softmax]
 
     @application

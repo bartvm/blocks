@@ -496,8 +496,29 @@ class Rectifier(Activation):
 
 
 class Softmax(Brick):
+    """A softmax brick.
+
+    Works with 2-dimensional inputs only. If you need more,
+    see :class:`NDimensionalSoftmax`.
+
+    """
     @application(inputs=['input_'], outputs=['output'])
     def apply(self, input_):
+        """Standard softmax.
+
+        Parameters
+        ----------
+        input_ : :class:`~theano.Variable`
+            A matrix, each row contains unnormalized log-probabilities of a
+            distribution.
+
+        Returns
+        -------
+        output_ : :class:`~theano.Variable`
+            A matrix with probabilities in each row for each distribution
+            from `input_`.
+
+        """
         return tensor.nnet.softmax(input_)
 
     @application(inputs=['input_'], outputs=['output'])
@@ -517,7 +538,7 @@ class Softmax(Brick):
         Returns
         -------
         output : :class:`~theano.Variable`
-            A matrix with normalized log-probabilities for each
+            A matrix with normalized log-probabilities in each row for each
             distribution from `input_`.
 
         """
@@ -532,18 +553,19 @@ class Softmax(Brick):
         Parameters
         ----------
         y : :class:`~tensor.TensorVariable`
-            In the case of a matrix argument, each slice along
-            axis 0 represents one distribution. In the vector case, each
-            element represents the position of the '1' in a one hot-vector.
+            In the case of a matrix argument, each row represents a
+            probabilility distribution. In the vector case, each element
+            represents a distribution by specifying the position of 1 in a
+            1-hot vector.
         x : :class:`~tensor.TensorVariable`
-            Each slice along axis 0 represents unnormalized
-            log-probabilities of a distribution, that is pre-softmax
-            values.
+            A matrix, each row contains unnormalized probabilities of a
+            distribution.
 
         Returns
         -------
         cost : :class:`~tensor.TensorVariable`
-            A vector of cross-entropies between distributions y and x.
+            A vector of cross-entropies between respective distributions
+            from y and x.
 
         """
         x = self.log_probabilities(x)
@@ -558,7 +580,7 @@ class Softmax(Brick):
         return cost
 
 
-class SoftmaxWithExtraDims(Softmax):
+class NDimensionalSoftmax(Softmax):
     decorators = [WithExtraDims()]
 
 
