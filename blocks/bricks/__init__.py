@@ -513,6 +513,8 @@ class Softmax(Activation):
         x : :class:`~tensor.TensorVariable`
             Each slice along axis represents energies of a distribution,
             that is pre-softmax values.
+        average : bool
+            Whether to compute the mean cost, or return individual costs
 
         Returns
         -------
@@ -532,6 +534,90 @@ class Softmax(Activation):
         else:
             raise TypeError('rank mismatch between x and y')
         return cost
+
+
+class LinearActivationDocumentation(_Brick):
+    """Dynamically adds documentation to LinearActivation descendants.
+
+    Notes
+    -----
+    See http://bugs.python.org/issue12773.
+
+    """
+    def __new__(cls, name, bases, classdict):
+        classdict['__doc__'] = \
+            """Linear transformation followed by elementwise application of \
+            {0} function.""".format(name[6:].lower())
+        if 'apply' in classdict:
+            classdict['apply'].__doc__ = \
+                """Apply the linear transformation, then {0} activation.
+
+                Parameters
+                ----------
+                input_ : :class:`~tensor.TensorVariable`
+                    Input tensor.
+
+                Returns
+                -------
+                output : :class:`~tensor.TensorVariable`
+                    Liearly transformetd and activated input.
+
+                """.format(name[6:].lower())
+        return super(LinearActivationDocumentation, cls).__new__(cls, name,
+                                                                 bases,
+                                                                 classdict)
+
+
+@add_metaclass(LinearActivationDocumentation)
+class LinearActivation(Initializable, Feedforward):
+    """Base class that adds documentation and has all the logic."""
+    @lazy(allocation=['input_dim', 'output_dim'])
+    def __init__(self, input_dim, output_dim, activation, **kwargs):
+        super(LinearActivation, self).__init__(**kwargs)
+        self.linear = Linear()
+        self.activation = activation
+        self.children = [self.linear,
+                         self.activation]
+
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+
+    @property
+    def input_dim(self):
+        return self.linear.input_dim
+
+    @input_dim.setter
+    def input_dim(self, value):
+        self.linear.input_dim = value
+
+    @property
+    def output_dim(self):
+        return self.linear.output_dim
+
+    @output_dim.setter
+    def output_dim(self, value):
+        self.linear.output_dim = value
+
+    @application(inputs=['input_'], outputs=['output'])
+    def apply(self, input_):
+        pre_activation = self.linear.apply(input_)
+        output = self.activation.apply(pre_activation)
+        return output
+
+
+class LinearTanh(LinearActivation):
+    def __init__(self, **kwargs):
+        super(LinearTanh, self).__init__(activation=Tanh(), **kwargs)
+
+
+class LinearRectifier(LinearActivation):
+    def __init__(self, **kwargs):
+        super(LinearRectifier, self).__init__(activation=Rectifier(), **kwargs)
+
+
+class LinearLogistic(LinearActivation):
+    def __init__(self, **kwargs):
+        super(LinearLogistic, self).__init__(activation=Logistic(), **kwargs)
 
 
 class Sequence(Brick):

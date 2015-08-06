@@ -5,11 +5,12 @@ from numpy.testing import assert_allclose, assert_raises
 from theano import tensor
 
 from blocks.bricks import (Identity, Linear, Maxout, LinearMaxout, MLP, Tanh,
-                           Sequence, Random)
+                           Sequence, Random, LinearTanh,
+                           LinearRectifier)
 from blocks.bricks.base import application, Brick, lazy, NoneAllocation
 from blocks.bricks.parallel import Parallel, Fork
 from blocks.filter import get_application_call, get_brick
-from blocks.initialization import Constant
+from blocks.initialization import Constant, IsotropicGaussian
 from blocks.utils import shared_floatx
 
 
@@ -291,6 +292,36 @@ def test_linear():
     linear.initialize()
     x_val = numpy.ones((4, 16), dtype=theano.config.floatX)
     assert_allclose(y.eval({x: x_val}), x_val.dot(2 * numpy.ones((16, 8))))
+
+
+def test_linear_activation():
+    x = tensor.matrix()
+    linear_tanh = LinearTanh(weights_init=Constant(2),
+                             biases_init=Constant(1))
+    linear_tanh.input_dim = 16
+    linear_tanh.output_dim = 8
+
+    linear_tanh.initialize()
+    y = linear_tanh.apply(x)
+    x_val = numpy.ones((4, 16), dtype=theano.config.floatX)
+    assert_allclose(
+        y.eval({x: x_val}),
+        (numpy.tanh(x_val.dot(2 * numpy.ones((16, 8))) +
+                    numpy.ones((4, 8))).reshape(4, 8)))
+
+    linear_rect = LinearRectifier(weights_init=IsotropicGaussian(),
+                                  biases_init=Constant(0.1))
+    linear_rect.input_dim = 16
+    linear_rect.output_dim = 8
+
+    linear_rect.initialize()
+    y_rect = linear_rect.apply(x)
+    assert_allclose(
+        y_rect.eval({x: x_val}),
+        numpy.maximum(
+            (x_val.dot(linear_rect.linear.parameters[0].get_value()) +
+             linear_rect.linear.parameters[1].get_value()),
+            0))
 
 
 def test_linear_maxout():
