@@ -573,7 +573,8 @@ class Softmax(Brick):
         application_call.add_auxiliary_variable(
             named_copy(x, 'log_probabilities'))
         if y.ndim == x.ndim - 1:
-            cost = -x[tensor.arange(y.shape[0]), y]
+            indices = tensor.arange(y.shape[0]) * x.shape[1] + y
+            cost = -x.flatten()[indices]
         elif y.ndim == x.ndim:
             cost = -(x * y).sum(axis=1)
         else:
