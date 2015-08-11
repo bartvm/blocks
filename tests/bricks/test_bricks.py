@@ -306,6 +306,13 @@ def test_linear_maxout():
         y.eval({x: x_val}),
         (x_val.dot(2 * numpy.ones((16, 24))) +
             numpy.ones((4, 24))).reshape(4, 8, 3).max(2))
+    assert linear_maxout.linear.name == 'linear'
+    assert linear_maxout.maxout.name == 'maxout'
+    linear_maxout = LinearMaxout(input_dim=16, output_dim=8, num_pieces=3,
+                                 weights_init=Constant(2),
+                                 biases_init=Constant(1), name='baz')
+    assert linear_maxout.linear.name == 'baz_linear'
+    assert linear_maxout.maxout.name == 'baz_maxout'
 
 
 def test_maxout():
@@ -339,14 +346,19 @@ def test_mlp():
         numpy.tanh(x_val.dot(numpy.ones((16, 8))) + numpy.ones((2, 8))).dot(
             numpy.ones((8, 4))) + numpy.ones((2, 4)),
         y.eval({x: x_val}), rtol=1e-06)
+    for linear in mlp.linear_transformations:
+        assert linear.name.startswith('linear_')
 
-    mlp = MLP(activations=[None], weights_init=Constant(1), use_bias=False)
+    mlp = MLP(activations=[None], weights_init=Constant(1), use_bias=False,
+              name='foobar')
     mlp.dims = [16, 8]
     y = mlp.apply(x)
     mlp.initialize()
     assert_allclose(x_val.dot(numpy.ones((16, 8))),
                     y.eval({x: x_val}), rtol=1e-06)
     assert mlp.rng == mlp.linear_transformations[0].rng
+    for linear in mlp.linear_transformations:
+        assert linear.name.startswith('foobar_linear_')
 
 
 def test_mlp_apply():

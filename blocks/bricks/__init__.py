@@ -390,8 +390,12 @@ class LinearMaxout(Initializable, Feedforward):
     @lazy(allocation=['input_dim', 'output_dim', 'num_pieces'])
     def __init__(self, input_dim, output_dim, num_pieces, **kwargs):
         super(LinearMaxout, self).__init__(**kwargs)
-        self.linear = Linear()
-        self.maxout = Maxout()
+        linear_kwargs, maxout_kwargs = {}, {}
+        if 'name' in kwargs:
+            linear_kwargs['name'] = '_'.join([kwargs['name'], 'linear'])
+            maxout_kwargs['name'] = '_'.join([kwargs['name'], 'maxout'])
+        self.linear = Linear(**linear_kwargs)
+        self.maxout = Maxout(**maxout_kwargs)
         self.children = [self.linear,
                          self.maxout]
 
@@ -686,8 +690,9 @@ class MLP(Sequence, Initializable, Feedforward):
     @lazy(allocation=['dims'])
     def __init__(self, activations, dims, **kwargs):
         self.activations = activations
-
-        self.linear_transformations = [Linear(name='linear_{}'.format(i))
+        linear_prefix = (kwargs['name'] + '_') if 'name' in kwargs else ''
+        self.linear_transformations = [Linear(name=(linear_prefix +
+                                                    'linear_{}'.format(i)))
                                        for i in range(len(activations))]
         # Interleave the transformations and activations
         application_methods = []
