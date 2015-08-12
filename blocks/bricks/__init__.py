@@ -491,7 +491,7 @@ class Logistic(Activation):
 
 
 class Softplus(Activation):
-    """ Softplus brick
+    r""" Softplus brick.
 
     The softplus is defined as :math:`\zeta(x) = \log(1+e^x)`.
 
