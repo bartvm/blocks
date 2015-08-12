@@ -490,6 +490,12 @@ class Logistic(Activation):
         return tensor.nnet.sigmoid(input_)
 
 
+class Softplus(Activation):
+    @application(inputs=['input_'], outputs=['output'])
+    def apply(self, input_):
+        return tensor.nnet.softplus(input_)
+
+
 class Rectifier(Activation):
     @application(inputs=['input_'], outputs=['output'])
     def apply(self, input_):
