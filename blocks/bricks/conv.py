@@ -36,6 +36,11 @@ class Convolutional(Initializable):
     border_mode : {'valid', 'full'}, optional
         The border mode to use, see :func:`scipy.signal.convolve2d` for
         details. Defaults to 'valid'.
+    tied_biases : bool
+        If ``True``, it indicates that the biases of every filter in this layer 
+        should be shared amongst all applications of that filter. Setting this 
+        to false will untie the biases, yielding a separate bias for every 
+        location at which the filter is applied. Defaults to ``False``.
 
     """
     @lazy(allocation=['filter_size', 'num_filters', 'num_channels'])
