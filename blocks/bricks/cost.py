@@ -11,7 +11,7 @@ from blocks.bricks.base import application, Brick
 class Cost(Brick):
     @abstractmethod
     @application
-    def apply(self, y, y_hat):
+    def apply(self, *args, **kwargs):
         pass
 
 
@@ -23,12 +23,12 @@ class CostMatrix(Cost):
 
     """
     @application(outputs=["cost"])
-    def apply(self, y, y_hat):
-        return self.cost_matrix(y, y_hat).sum(axis=1).mean()
+    def apply(self, *args, **kwargs):
+        return self.cost_matrix(*args, **kwargs).sum(axis=1).mean()
 
     @abstractmethod
     @application
-    def cost_matrix(self, y, y_hat):
+    def cost_matrix(self, *args, **kwargs):
         pass
 
 
