@@ -158,20 +158,45 @@ class Selector(object):
         return Selector(current_bricks)
 
     def get_parameters(self, parameter_name=None):
-        """Returns parameters the selected bricks and their ancestors.
+        r"""Returns parameters from selected bricks and their descendants.
 
         Parameters
         ----------
-        parameter_name : :class:`Path.ParameterName`
-            If given, only parameters with the name `parameter_name` are
-            returned.
+        parameter_name : :class:`Path.ParameterName`, optional
+            If given, only parameters with the assigned variable name
+            `parameter_name` are returned.
 
         Returns
         -------
         parameters : OrderedDict
             A dictionary of (`path`, `parameter`) pairs, where `path` is
-            the string representation of the part to the parameter,
-            `parameter` is the parameter.
+            a string representation of the path in the brick hierarchy
+            to the parameter (i.e. the slash-delimited path to the brick
+            that owns the parameter, followed by a dot, followed by the
+            parameter's name), and `parameter` is the Theano variable
+            representing the parameter.
+
+        Examples
+        --------
+        >>> from blocks.bricks import MLP, Tanh
+        >>> from blocks.initialization import Constant, Uniform
+        >>> mlp = MLP([Tanh(), Tanh(), Tanh()], [5, 7, 11, 2],
+        ...           weights_init=Uniform(width=0.01),
+        ...           biases_init=Constant(0))
+        >>> mlp.initialize()
+        >>> selector = Selector([mlp])
+        >>> selector.get_parameters()  # doctest: +NORMALIZE_WHITESPACE
+        OrderedDict([('/mlp/linear_0.W', W), ('/mlp/linear_0.b', b),
+        ('/mlp/linear_1.W', W), ('/mlp/linear_1.b', b),
+        ('/mlp/linear_2.W', W), ('/mlp/linear_2.b', b)])
+
+        Or, select just the weights of the MLP by passing the parameter
+        name `W`:
+
+        >>> w_select = Selector([mlp])
+        >>> w_select.get_parameters('W')  # doctest: +NORMALIZE_WHITESPACE
+        OrderedDict([('/mlp/linear_0.W', W), ('/mlp/linear_1.W', W),
+        ('/mlp/linear_2.W', W)])
 
         """
         def recursion(brick):
