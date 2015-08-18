@@ -236,7 +236,6 @@ class GradientDescent(DifferentiableCostMinimizer):
     def initialize(self, **kwargs):
         logger.info("Initializing the training algorithm")
         all_updates = self.updates
-        profile = kwargs.get('profile', None)
         # Note: the gradients are computed in the same order in which
         # the parameters were given. Keep it like that to ensure
         # reproducibility.
