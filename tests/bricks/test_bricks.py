@@ -1,11 +1,11 @@
 import numpy
 import six
 import theano
-from numpy.testing import assert_allclose, assert_raises
+from numpy.testing import assert_allclose, assert_raises, assert_equal
 from theano import tensor
 
 from blocks.bricks import (Identity, Linear, Maxout, LinearMaxout, MLP, Tanh,
-                           Sequence, Random)
+                           Sequence, Random, Concatenate)
 from blocks.bricks.base import application, Brick, lazy, NoneAllocation
 from blocks.bricks.parallel import Parallel, Fork
 from blocks.filter import get_application_call, get_brick
@@ -459,3 +459,14 @@ def test_linear_nan_allocation():
     b2 = linear.parameters[1].get_value()
     numpy.testing.assert_equal(w1, w2)
     numpy.testing.assert_equal(b1, b2)
+
+
+def test_concatenate():
+    x, y, z = tensor.matrix(), tensor.matrix(), tensor.matrix()
+    out = Concatenate(axis=0).apply(x, y, z)
+    out_value = out.eval({x: [[1, 2]],
+                          y: [[3, 4], [5, 6]],
+                          z: [[7, 8], [9, 10], [11, 12]]})
+    assert_equal(numpy.arange(1, 13).reshape(6, 2), out_value)
+    assert_raises(ValueError, Concatenate(axis=0).apply, x, y,
+                  tensor.vector())

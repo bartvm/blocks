@@ -623,6 +623,44 @@ class Sequence(Brick):
         return self.application_methods[-1].outputs
 
 
+class Concatenate(Brick):
+    """Merges several variables by concatenating them.
+
+    Parameters
+    ----------
+    axis : int
+        Axis along which to concatenate inputs.
+
+    Notes
+    -----
+    This is a very straightforward wrapping of a Theano operation without
+    parameters of its own. It's mainly useful in conjunction with the
+    :class:`~blocks.filter.VariableFilter`.
+
+    Examples
+    --------
+    >>> from theano import tensor
+    >>> a = tensor.matrix('a')
+    >>> b = tensor.matrix('b')
+    >>> concat_brick = Concatenate(axis=1)
+    >>> c = concat_brick.apply(a, b)
+    >>> c.eval({a: [[1, 2], [5, 6]], b: [[3, 4], [7, 8]]})
+    array([[ 1.,  2.,  3.,  4.],
+           [ 5.,  6.,  7.,  8.]])
+
+    """
+    def __init__(self, axis, **kwargs):
+        self.axis = axis
+        super(Concatenate, self).__init__(**kwargs)
+
+    @application(outputs=['output'])
+    def apply(self, *args):
+        if len(set(arg.ndim for arg in args)) != 1:
+            raise ValueError('inputs must have same number of dimensions')
+        output = tensor.concatenate(args, axis=self.axis)
+        return output
+
+
 class FeedforwardSequence(Sequence, Feedforward):
     """A sequence where the first and last bricks are feedforward.
 
