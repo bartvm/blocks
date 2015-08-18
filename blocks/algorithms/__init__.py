@@ -233,16 +233,18 @@ class GradientDescent(DifferentiableCostMinimizer):
                                           "total_step_norm")
         self.on_unused_sources = on_unused_sources
 
-    def initialize(self):
+    def initialize(self, **kwargs):
         logger.info("Initializing the training algorithm")
         all_updates = self.updates
+        profile = kwargs.get('profile', None)
         # Note: the gradients are computed in the same order in which
         # the parameters were given. Keep it like that to ensure
         # reproducibility.
         for parameter in self.parameters:
             all_updates.append((parameter, parameter - self.steps[parameter]))
         all_updates += self.step_rule_updates
-        self._function = theano.function(self.inputs, [], updates=all_updates)
+        self._function = theano.function(self.inputs, [], updates=all_updates,
+                                         profile=kwargs.get('profile', None))
         logger.info("The training algorithm is initialized")
 
     def _validate_source_names(self, batch):
