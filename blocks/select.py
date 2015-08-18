@@ -179,7 +179,6 @@ class Selector(object):
         Examples
         --------
         >>> from blocks.bricks import MLP, Tanh
-        >>> from blocks.initialization import Constant, Uniform
         >>> mlp = MLP([Tanh(), Tanh(), Tanh()], [5, 7, 11, 2])
         >>> mlp.allocate()
         >>> selector = Selector([mlp])
