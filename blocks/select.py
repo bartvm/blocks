@@ -180,10 +180,8 @@ class Selector(object):
         --------
         >>> from blocks.bricks import MLP, Tanh
         >>> from blocks.initialization import Constant, Uniform
-        >>> mlp = MLP([Tanh(), Tanh(), Tanh()], [5, 7, 11, 2],
-        ...           weights_init=Uniform(width=0.01),
-        ...           biases_init=Constant(0))
-        >>> mlp.initialize()
+        >>> mlp = MLP([Tanh(), Tanh(), Tanh()], [5, 7, 11, 2])
+        >>> mlp.allocate()
         >>> selector = Selector([mlp])
         >>> selector.get_parameters()  # doctest: +NORMALIZE_WHITESPACE
         OrderedDict([('/mlp/linear_0.W', W), ('/mlp/linear_0.b', b),
