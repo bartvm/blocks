@@ -30,7 +30,7 @@ class TrainingAlgorithm(object):
 
     """
     @abstractmethod
-    def initialize(self):
+    def initialize(self, **kwargs):
         """Initialize the training algorithm."""
         pass
 
