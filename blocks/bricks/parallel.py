@@ -82,10 +82,23 @@ class Parallel(Initializable):
 
     @application
     def apply(self, *args, **kwargs):
-        args = args + tuple(kwargs[name] for name in
-                            self.input_names[len(args):])
-        return [child.apply(arg)
-                for arg, child in equizip(args, self.children)]
+        # Use of zip() rather than equizip() intentional here.
+        routed_args = dict(zip(self.input_names, args))
+        for name in kwargs:
+            if name not in self.input_names:
+                raise KeyError('invalid input name: {}'.format(name))
+            elif name in routed_args:
+                raise TypeError("{}.apply got multiple values for "
+                                "argument '{}'".format(self.__class__.__name__,
+                                                       name))
+            else:
+                routed_args[name] = kwargs[name]
+        if set(self.input_names) != set(routed_args):
+            raise ValueError('missing values for inputs: {}'.format(
+                             [name for name in self.input_names
+                              if name not in routed_args]))
+        return [child.apply(routed_args[name])
+                for name, child in equizip(self.input_names, self.children)]
 
     @apply.property('inputs')
     def apply_inputs(self):
