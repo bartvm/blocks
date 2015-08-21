@@ -11,6 +11,7 @@ from theano import tensor
 from theano.misc.pkl_utils import load
 
 from blocks.algorithms import GradientDescent, Scale
+from blocks.config import config
 from blocks.extensions import FinishAfter, TrainingExtension
 from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.training import SharedVariableModifier, TrackTheBest
@@ -128,8 +129,8 @@ class WriteCostExtension(TrainingExtension):
 
 
 def test_save_the_best():
-    with NamedTemporaryFile() as dst,\
-            NamedTemporaryFile() as dst_best:
+    with NamedTemporaryFile(dir=config.temp_dir) as dst,\
+            NamedTemporaryFile(dir=config.temp_dir) as dst_best:
         track_cost = TrackTheBest("cost", after_epoch=False, after_batch=True)
         main_loop = MockMainLoop(
             extensions=[FinishAfter(after_n_epochs=1),

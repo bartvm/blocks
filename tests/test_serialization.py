@@ -7,6 +7,7 @@ import theano
 from numpy.testing import assert_allclose, assert_raises
 
 from blocks.bricks import MLP
+from blocks.config import config
 from blocks.initialization import Constant
 from blocks.serialization import load, dump, secure_dump, load_parameter_values
 
@@ -23,7 +24,7 @@ def test_serialization():
     W.set_value(W.get_value() * 2)
 
     # Check the data using numpy.load
-    with NamedTemporaryFile(delete=False) as f:
+    with NamedTemporaryFile(delete=False, dir=config.temp_dir) as f:
         dump(mlp, f)
     numpy_data = numpy.load(f.name)
     assert set(numpy_data.keys()) == \
@@ -38,7 +39,7 @@ def test_serialization():
 
     # Ensure that only parameters are saved as NPY files
     mlp.random_data = numpy.random.rand(10)
-    with NamedTemporaryFile(delete=False) as f:
+    with NamedTemporaryFile(delete=False, dir=config.temp_dir) as f:
         dump(mlp, f)
     numpy_data = numpy.load(f.name)
     assert set(numpy_data.keys()) == \
@@ -52,7 +53,7 @@ def test_serialization():
     # Ensure that duplicate names are dealt with
     for child in mlp.children:
         child.name = 'linear'
-    with NamedTemporaryFile(delete=False) as f:
+    with NamedTemporaryFile(delete=False, dir=config.temp_dir) as f:
         dump(mlp, f)
     numpy_data = numpy.load(f.name)
     assert set(numpy_data.keys()) == \
@@ -63,7 +64,7 @@ def test_serialization():
     import __main__
     __main__.__dict__['foo'] = foo
     mlp.foo = foo
-    with NamedTemporaryFile(delete=False) as f:
+    with NamedTemporaryFile(delete=False, dir=config.temp_dir) as f:
         with warnings.catch_warnings(record=True) as w:
             dump(mlp, f)
             assert len(w) == 1
@@ -73,7 +74,7 @@ def test_serialization():
 def test_secure_dump():
     foo = object()
     bar = lambda: None  # flake8: noqa
-    with NamedTemporaryFile(delete=False) as f:
+    with NamedTemporaryFile(delete=False, dir=config.temp_dir) as f:
         secure_dump(foo, f.name)
     assert_raises(PicklingError, secure_dump, bar, f.name)
     with open(f.name, 'rb') as f:

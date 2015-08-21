@@ -60,6 +60,13 @@ The following configurations are supported:
    The maximum size of an object to store in an SQLite database in bytes.
    Objects beyond this size will trigger a warning. Defaults to 4 kilobyte.
 
+.. option:: temp_dir
+
+   The directory value for `dir` argument of the functions in `tempfile`
+   module when calling it. By default it is set to `None`, `python` searches
+   a standard list of directories to creat temporary files, otherwise choose
+   user-specific directory.
+
 .. _YAML: http://yaml.org/
 .. _environment variables:
    https://en.wikipedia.org/wiki/Environment_variable
@@ -170,4 +177,5 @@ config.add_config('sqlite_database', type_=str,
                   default=os.path.expanduser('~/blocks_log.sqlite'),
                   env_var='BLOCKS_SQLITEDB')
 config.add_config('max_blob_size', type_=int, default=4096)
+config.add_config('temp_dir', type_=str, default=None)
 config.load_yaml()

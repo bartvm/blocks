@@ -178,7 +178,8 @@ def secure_dump(object_, path, dump_function=dump, **kwargs):
 
     """
     try:
-        with tempfile.NamedTemporaryFile(delete=False) as temp:
+        with tempfile.NamedTemporaryFile(delete=False,
+                dir=config.temp_dir) as temp:
             dump_function(object_, temp, **kwargs)
         shutil.move(temp.name, path)
     except:
