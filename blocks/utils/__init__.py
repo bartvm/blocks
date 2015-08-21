@@ -487,9 +487,9 @@ def extract_args(expected, *args, **kwargs):
 
     Returns
     -------
-    routed_args : dict
-        A dictionary mapping the names in `expected` to values drawn
-        from either `args` or `kwargs`.
+    routed_args : OrderedDict
+        An OrderedDict mapping the names in `expected` to values drawn
+        from either `args` or `kwargs` in the usual Python fashion.
 
     Raises
     ------
@@ -519,4 +519,4 @@ def extract_args(expected, *args, **kwargs):
         raise ValueError('missing values for inputs: {}'.format(
                          [name for name in expected
                           if name not in routed_args]))
-    return routed_args
+    return OrderedDict((key, routed_args[key]) for key in expected)
