@@ -5,7 +5,7 @@ from picklable_itertools.extras import equizip
 
 from blocks.bricks import Initializable, Linear
 from blocks.bricks.base import lazy, application
-from blocks.utils import pack
+from blocks.utils import pack, extract_args
 
 
 class Parallel(Initializable):
@@ -82,21 +82,7 @@ class Parallel(Initializable):
 
     @application
     def apply(self, *args, **kwargs):
-        # Use of zip() rather than equizip() intentional here.
-        routed_args = dict(zip(self.input_names, args))
-        for name in kwargs:
-            if name not in self.input_names:
-                raise KeyError('invalid input name: {}'.format(name))
-            elif name in routed_args:
-                raise TypeError("{}.apply got multiple values for "
-                                "argument '{}'".format(self.__class__.__name__,
-                                                       name))
-            else:
-                routed_args[name] = kwargs[name]
-        if set(self.input_names) != set(routed_args):
-            raise ValueError('missing values for inputs: {}'.format(
-                             [name for name in self.input_names
-                              if name not in routed_args]))
+        routed_args = extract_args(self.input_names, *args, **kwargs)
         return [child.apply(routed_args[name])
                 for name, child in equizip(self.input_names, self.children)]
 

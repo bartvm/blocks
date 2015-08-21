@@ -460,3 +460,63 @@ def change_recursion_limit(limit):
     sys.setrecursionlimit(limit)
     yield
     sys.setrecursionlimit(old_limit)
+
+
+def extract_args(expected, *args, **kwargs):
+    r"""Route keyword and positional arguments to a list of names.
+
+    A frequent situation is that a method of the class gets to
+    know its positional arguments only when an instance of the class
+    has been created. In such cases the signature of such method has to
+    be `*args, **kwargs`. The downside of such signatures is that the
+    validity of a call is not checked.
+
+    Use :func:`extract_args` if your method knows at runtime, but not
+    at evaluation/compile time, what arguments it actually expects,
+    in order to check that they are correctly received.
+
+    Parameters
+    ----------
+    expected : list of str
+        A list of strings denoting names for the expected arguments,
+        in order.
+    args : iterable
+        Positional arguments that have been passed.
+    kwargs : Mapping
+        Keyword arguments that have been passed.
+
+    Returns
+    -------
+    routed_args : dict
+        A dictionary mapping the names in `expected` to values drawn
+        from either `args` or `kwargs`.
+
+    Raises
+    ------
+    KeyError
+        If a keyword argument is passed, the key for which is not
+        contained within `expected`.
+    TypeError
+        If an expected argument is accounted for in both the positional
+        and keyword arguments.
+    ValueError
+        If certain arguments in `expected` are not assigned a value
+        by either a positional or keyword argument.
+
+    """
+    # Use of zip() rather than equizip() intentional here. We want
+    # to truncate to the length of args.
+    routed_args = dict(zip(expected, args))
+    for name in kwargs:
+        if name not in expected:
+            raise KeyError('invalid input name: {}'.format(name))
+        elif name in routed_args:
+            raise TypeError("got multiple values for "
+                            "argument '{}'".format(name))
+        else:
+            routed_args[name] = kwargs[name]
+    if set(expected) != set(routed_args):
+        raise ValueError('missing values for inputs: {}'.format(
+                         [name for name in expected
+                          if name not in routed_args]))
+    return routed_args
