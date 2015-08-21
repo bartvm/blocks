@@ -7,7 +7,7 @@ from theano import tensor
 from blocks.bricks import (Identity, Linear, Maxout, LinearMaxout, MLP, Tanh,
                            Sequence, Random, Logistic, Softplus, Softmax)
 from blocks.bricks.base import application, Brick, lazy, NoneAllocation
-from blocks.bricks.parallel import Parallel, Fork
+from blocks.bricks.parallel import Parallel, Fork, Merge
 from blocks.filter import get_application_call, get_brick
 from blocks.initialization import Constant
 from blocks.utils import shared_floatx
@@ -443,6 +443,32 @@ def test_sequence_variable_inputs():
         new_y.eval({y: y_val}),
         (y_val.dot(2 * numpy.ones((5, 2))) + numpy.ones((4, 2))).dot(
             2 * numpy.ones((2, 4))) + numpy.ones((4, 4)))
+
+
+def test_parallel_arguments():
+    brick = Merge(['x', 'y', 'z'], [9, 2, 4], 5)
+    x, y, z = tensor.matrix(), tensor.matrix(), tensor.matrix()
+
+    def assert_no_exceptions(f, *args, **kwargs):
+        try:
+            f(*args, **kwargs)
+        except Exception as e:
+            raise
+            assert False, "exception raised: {}: {}".format(type(e), e)
+
+    assert_no_exceptions(brick.apply, x, y, z)
+    assert_no_exceptions(brick.apply, x, y, z=z)
+    assert_no_exceptions(brick.apply, x, y=y, z=z)
+    assert_no_exceptions(brick.apply, x=x, y=y, z=z)
+    assert_raises(KeyError, brick.apply, x, y, zzz=z)
+    assert_raises(KeyError, brick.apply, x, y, z=z, zzz=z)
+    assert_raises(TypeError, brick.apply, x, y, y=y)
+    assert_raises(TypeError, brick.apply, x, y, y=y, z=z)
+    assert_raises(ValueError, brick.apply, x, y)
+    assert_raises(ValueError, brick.apply, x, y=y)
+    assert_raises(ValueError, brick.apply, x=x, y=y)
+    assert_raises(ValueError, brick.apply, x=x)
+    assert_raises(ValueError, brick.apply, x)
 
 
 def test_application_call():
