@@ -63,9 +63,9 @@ The following configurations are supported:
 .. option:: temp_dir
 
    The directory value for `dir` argument of the functions in `tempfile`
-   module when calling it. By default it is set to `None`, `python` searches
-   a standard list of directories to creat temporary files, otherwise choose
-   user-specific directory.
+   module when calling it. By default it is set to `None`, `python`
+   searches a standard list of directories to creat temporary files,
+   otherwise choose user-specific directory.
 
 .. _YAML: http://yaml.org/
 .. _environment variables:

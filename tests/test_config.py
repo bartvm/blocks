@@ -11,7 +11,7 @@ def test_config():
     try:
 
         with tempfile.NamedTemporaryFile(mode='w', delete=False,
-                dir=config.temp_dir) as f:
+                                         dir=config.temp_dir) as f:
             f.write('data_path: yaml_path')
             filename = f.name
         os.environ['BLOCKS_CONFIG'] = filename
