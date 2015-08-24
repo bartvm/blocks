@@ -720,67 +720,70 @@ def apply_batch_normalization(computation_graph, variables, axis=None,
         else:
             axis[var] = pack(axis[var])
 
-    # ensure all these are dicts
-    (given_population_means,
-     given_population_variances,
-     given_gammas, given_betas) = [dict(x or []) for x
-                                   in (given_population_means,
-                                       given_population_variances,
-                                       given_gammas, given_betas)]
+    givens = dict(population_mean=given_population_means,
+                  population_variance=given_population_variances,
+                  gamma=given_gammas,
+                  beta=given_betas)
 
     batch_means = [var.mean(axis=axis[var], keepdims=True) for var in variables]
     batch_variances = [var.var(axis=axis[var], keepdims=True) for var in variables]
 
-    # create shared variables, using given values where available
-    (population_means, population_variances,
-     gammas, betas) = [
-         [theano.shared(defaults[var],
-                        name=var.name+"_"+name)
-          if var in defaults else
-          shared_like(batch_mean, name=var.name+"_"+name)
-          for var, batch_mean in zip(variables, batch_means)]
-         for defaults, name in ((given_population_means, "population_mean"),
-                                (given_population_variances, "population_variance"),
-                                (given_gammas, "gamma"),
-                                (given_betas, "beta"))]
-
     initialization_updates = []
     accumulation_updates = []
-    for (batch_mean, population_mean,
-         batch_variance, population_variance,
-         gamma, beta, variable) in zip(
-             batch_means, population_means,
-             batch_variances, population_variances,
-             gammas, betas, variables):
-        initialization_updates.extend([
-            (parameter, tensor.patternbroadcast(
-                initializer(batch_mean),
-                [False]*batch_mean.ndim))
-            for givens, parameter, initializer in (
-                (given_population_means, population_mean, tensor.zeros_like),
-                (given_population_variances, population_variance, tensor.ones_like),
-                (given_gammas, gamma, tensor.ones_like),
-                (given_betas, beta, tensor.zeros_like))
-            # omit initialization update if initial value was given
-            if not variable in givens])
-        accumulation_updates.extend([
-            (population_mean,
-             (1 - alpha) * batch_mean + alpha * population_mean),
-            (population_variance,
-             (1 - alpha) * batch_variance + alpha * population_variance)])
+
+    parameters = {}
+    for parameter_name, given in givens.items():
+        given = dict([] if given is None else given)
+
+        for variable, batch_mean, batch_variance in zip(
+                variables, batch_means, batch_variances):
+            name = "%s_%s" % (variable.name, parameter_name)
+
+            # create shared variable
+            if variable in given:
+                parameter = given[variable]
+                if not isinstance(parameter, tensor.TensorVariable):
+                    parameter = theano.shared(parameter, name=name)
+            else:
+                # if not given, the shape will be unknown until an
+                # initialization update is performed
+                parameter = shared_like(batch_mean, name=name)
+                initializer = dict(population_mean=tensor.zeros_like,
+                                   population_variance=tensor.ones_like,
+                                   gamma=tensor.ones_like,
+                                   beta=tensor.zeros_like)[parameter_name]
+                initialization_updates.append(
+                    (parameter, tensor.patternbroadcast(
+                        initializer(batch_mean),
+                        [False]*batch_mean.ndim)))
+
+            # don't add the PARAMETER role on population statistics
+            # as they shouldn't be trained
+            if parameter_name in "gamma beta".split():
+                add_role(parameter, PARAMETER)
+
+            # track population statistics by batch statistics
+            targets = dict(population_mean=batch_mean,
+                           population_variance=batch_variance)
+            if parameter_name in targets:
+                accumulation_updates.append((parameter,
+                                             (1 - alpha) * targets[parameter_name]
+                                             + alpha * parameter))
+
+            parameters.setdefault(parameter_name, []).append(parameter)
 
     batch_replacements = []
     population_replacements = []
     for replacements, means, variances in (
         (batch_replacements, batch_means, batch_variances),
-        (population_replacements, population_means, population_variances)):
+        (population_replacements, parameters["population_mean"],
+         parameters["population_variance"])):
         for i, (variable, mean, variance, gamma, beta) in enumerate(
-                zip(variables, means, variances, gammas, betas)):
+                zip(variables, means, variances,
+                    parameters["gamma"], parameters["beta"])):
             mean, variance, gamma, beta = [
                 tensor.addbroadcast(x, *axis[variable])
                 for x in (mean, variance, gamma, beta)]
-            add_role(gamma, PARAMETER)
-            add_role(beta, PARAMETER)
             replacement = (gamma * (variable - mean)
                            / tensor.sqrt(variance + epsilon) + beta)
             add_role(replacement, BATCH_NORMALIZED)
