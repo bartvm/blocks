@@ -636,8 +636,11 @@ def apply_dropout(computation_graph, variables, drop_prob, rng=None,
     return computation_graph.replace(replacements)
 
 
-def apply_batch_normalization(computation_graph, variables, gammas,
-                              betas, alpha=1e-2, axis=None, epsilon=1e-7):
+def apply_batch_normalization(computation_graph, variables, axis=None,
+                              alpha=1e-2, epsilon=1e-7,
+                              given_population_means=None,
+                              given_population_variances=None,
+                              given_gammas=None, given_betas=None):
     """Returns a graph to variables in a computational graph.
 
     Parameters
@@ -646,10 +649,6 @@ def apply_batch_normalization(computation_graph, variables, gammas,
         The computation graph.
     variables : list of :class:`~tensor.TensorVariable`
         Variables to be batch-normalized.
-    gammas : list of :class:`~tensor.TensorVariable`
-        Scale coefficients for the normalized variables.
-    betas : list of :class:`~tensor.TensorVariable`
-        Shift coefficients for the normalized variables.
     alpha : float, optional
         Coefficient for the exponential moving average used to
         estimate population statistics.  Lower is smoother.
@@ -658,6 +657,14 @@ def apply_batch_normalization(computation_graph, variables, gammas,
         Batch axis, or batch axes. Defaults to 0.
     epsilon : float, optional
         Stabilization constant. Defaults to 1E-7.
+    given_gammas : dict from :class:`~tensor.TensorVariable` to array-like
+        Initial scale coefficients.
+    given_betas : dict from :class:`~tensor.TensorVariable` to array-like
+        Initial shift coefficients.
+    given_population_means : dict from :class:`~tensor.TensorVariable` to array-like
+        Initial population mean estimates.
+    given_population_variances : dict from :class:`~tensor.TensorVariable` to array-like
+        Initial population variance estimates.
 
     Notes
     -----
@@ -713,36 +720,49 @@ def apply_batch_normalization(computation_graph, variables, gammas,
         else:
             axis[var] = pack(axis[var])
 
-    # Broadcast gamma and beta properly
-    for i, var in enumerate(variables):
-        axes = axis[var]
-        mapping = dict([(axis_, j) for j, axis_ in
-                        enumerate(dim for dim in xrange(var.ndim)
-                                  if dim not in axes)])
-        dims = tuple(mapping[dim] if dim not in axes else 'x'
-                     for dim in xrange(var.ndim))
-        gammas[i] = tensor.as_tensor_variable(gammas[i]).dimshuffle(*dims)
-        betas[i] = tensor.as_tensor_variable(betas[i]).dimshuffle(*dims)
+    # ensure all these are dicts
+    (given_population_means,
+     given_population_variances,
+     given_gammas, given_betas) = [dict(x or []) for x
+                                   in (given_population_means,
+                                       given_population_variances,
+                                       given_gammas, given_betas)]
 
     batch_means = [var.mean(axis=axis[var], keepdims=True) for var in variables]
     batch_variances = [var.var(axis=axis[var], keepdims=True) for var in variables]
 
-    population_means = list(map(shared_like, batch_means))
-    population_variances = list(map(shared_like, batch_variances))
+    # create shared variables, using given values where available
+    (population_means, population_variances,
+     gammas, betas) = [
+         [theano.shared(defaults[var],
+                        name=var.name+"_"+name)
+          if var in defaults else
+          shared_like(batch_mean, name=var.name+"_"+name)
+          for var, batch_mean in zip(variables, batch_means)]
+         for defaults, name in ((given_population_means, "population_mean"),
+                                (given_population_variances, "population_variance"),
+                                (given_gammas, "gamma"),
+                                (given_betas, "beta"))]
 
     initialization_updates = []
     accumulation_updates = []
     for (batch_mean, population_mean,
-         batch_variance, population_variance) in zip(
+         batch_variance, population_variance,
+         gamma, beta, variable) in zip(
              batch_means, population_means,
-             batch_variances, population_variances):
+             batch_variances, population_variances,
+             gammas, betas, variables):
         initialization_updates.extend([
-            (population_mean,
-             tensor.patternbroadcast(tensor.zeros_like(batch_mean),
-                                     [False]*batch_mean.ndim)),
-            (population_variance,
-             tensor.patternbroadcast(tensor.ones_like(batch_variance),
-                                     [False]*batch_variance.ndim))])
+            (parameter, tensor.patternbroadcast(
+                initializer(batch_mean),
+                [False]*batch_mean.ndim))
+            for givens, parameter, initializer in (
+                (given_population_means, population_mean, tensor.zeros_like),
+                (given_population_variances, population_variance, tensor.ones_like),
+                (given_gammas, gamma, tensor.ones_like),
+                (given_betas, beta, tensor.zeros_like))
+            # omit initialization update if initial value was given
+            if not variable in givens])
         accumulation_updates.extend([
             (population_mean,
              (1 - alpha) * batch_mean + alpha * population_mean),
@@ -754,11 +774,15 @@ def apply_batch_normalization(computation_graph, variables, gammas,
     for replacements, means, variances in (
         (batch_replacements, batch_means, batch_variances),
         (population_replacements, population_means, population_variances)):
-        for i, (variable, gamma, beta) in enumerate(zip(variables, gammas, betas)):
-            mu = tensor.addbroadcast(means[i], *axis[variable])
-            sigma_sqr = tensor.addbroadcast(variances[i], *axis[variable])
-            replacement = (gamma * (variable - mu)
-                           / tensor.sqrt(sigma_sqr + epsilon) + beta)
+        for i, (variable, mean, variance, gamma, beta) in enumerate(
+                zip(variables, means, variances, gammas, betas)):
+            mean, variance, gamma, beta = [
+                tensor.addbroadcast(x, *axis[variable])
+                for x in (mean, variance, gamma, beta)]
+            add_role(gamma, PARAMETER)
+            add_role(beta, PARAMETER)
+            replacement = (gamma * (variable - mean)
+                           / tensor.sqrt(variance + epsilon) + beta)
             add_role(replacement, BATCH_NORMALIZED)
             replacement.tag.replacement_of = variable
             replacements.append((variable, replacement))
