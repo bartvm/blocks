@@ -434,10 +434,10 @@ class LSTM(BaseRecurrent, Initializable):
             (batch_size, features). Required for `one_step` usage.
         inputs : :class:`~tensor.TensorVariable`
             The 2 dimensional matrix of inputs in the shape (batch_size,
-            features * 4). The `inputs` needs to be four times the dimension of
-            the LSTM brick to insure each four gates receive different
-            transformations of the input. See [Grav13]_ equations 7 to 10 for
-            more details.
+            features * 4). The `inputs` needs to be four times the
+            dimension of the LSTM brick to insure each four gates receive
+            different transformations of the input. See [Grav13]_
+            equations 7 to 10 for more details.
         mask : :class:`~tensor.TensorVariable`
             A 1D binary array in the shape (batch,) which is 1 if there is
             data available, 0 if not. Assumed to be 1-s only if not given.
