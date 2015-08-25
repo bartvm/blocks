@@ -442,8 +442,8 @@ class LSTM(BaseRecurrent, Initializable):
             A 1D binary array in the shape (batch,) which is 1 if there is
             data available, 0 if not. Assumed to be 1-s only if not given.
 
-        .. [Grav13] Graves, Alex, *Generating sequences with recurrent neural
-            networks*, arXiv preprint arXiv:1308.0850 (2013).
+        .. [Grav13] Graves, Alex, *Generating sequences with recurrent
+            neural networks*, arXiv preprint arXiv:1308.0850 (2013).
 
         Returns
         -------
