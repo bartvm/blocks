@@ -157,11 +157,8 @@ def recurrent(*args, **kwargs):
             if len(sequences_given):
                 # TODO Assumes 1 time dim!
                 shape = list(sequences_given.values())[0].shape
-                if not iterate:
-                    batch_size = shape[0]
-                else:
-                    n_steps = shape[0]
-                    batch_size = shape[1]
+                n_steps = shape[0]
+                batch_size = shape[1]
             else:
                 # TODO Raise error if n_steps and batch_size not found?
                 n_steps = kwargs.pop('n_steps')
