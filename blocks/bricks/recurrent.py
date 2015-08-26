@@ -307,7 +307,7 @@ class SimpleRecurrent(BaseRecurrent, Initializable):
 
     @recurrent(sequences=['inputs', 'mask'], states=['states'],
                outputs=['states'], contexts=[])
-    def apply(self, inputs=None, states=None, mask=None):
+    def apply(self, inputs, states, mask=None):
         """Apply the simple transition.
 
         Parameters
