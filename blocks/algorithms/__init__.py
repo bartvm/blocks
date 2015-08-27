@@ -191,6 +191,10 @@ class GradientDescent(DifferentiableCostMinimizer):
         be backpropagated. Only makes sense when `gradients` is `None`.
     on_unused_sources : str, one of 'raise' (default), 'ignore', 'warn'
         Controls behavior when not all sources are used.
+    theano_func_kwargs : dict, optional
+        A passthrough to `theano.function` for additional arguments.
+        Useful for passing `profile` or `mode` arguments to the theano
+        function that will be compiled for the algorithm.
 
     Attributes
     ----------
@@ -201,9 +205,8 @@ class GradientDescent(DifferentiableCostMinimizer):
 
     """
     def __init__(self, step_rule=None, gradients=None, known_grads=None,
-                 consider_constant=None,
-                 on_unused_sources='raise',
-                 **kwargs):
+                 consider_constant=None, on_unused_sources='raise',
+                 theano_func_kwargs=None, **kwargs):
         if gradients:
             kwargs.setdefault("parameters", gradients.keys())
         super(GradientDescent, self).__init__(**kwargs)
@@ -232,8 +235,10 @@ class GradientDescent(DifferentiableCostMinimizer):
         self.total_step_norm = named_copy(l2_norm(self.steps.values()),
                                           "total_step_norm")
         self.on_unused_sources = on_unused_sources
+        self.theano_func_kwargs = theano_func_kwargs \
+            if theano_func_kwargs is not None else dict()
 
-    def initialize(self, **kwargs):
+    def initialize(self):
         logger.info("Initializing the training algorithm")
         all_updates = self.updates
         # Note: the gradients are computed in the same order in which
@@ -242,8 +247,8 @@ class GradientDescent(DifferentiableCostMinimizer):
         for parameter in self.parameters:
             all_updates.append((parameter, parameter - self.steps[parameter]))
         all_updates += self.step_rule_updates
-        self._function = theano.function(self.inputs, [], updates=all_updates,
-                                         profile=kwargs.get('profile', None))
+        self._function = theano.function(
+            self.inputs, [], updates=all_updates, **self.theano_func_kwargs)
         logger.info("The training algorithm is initialized")
 
     def _validate_source_names(self, batch):

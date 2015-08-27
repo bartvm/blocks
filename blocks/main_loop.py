@@ -168,7 +168,7 @@ class MainLoop(object):
                         extension.main_loop = self
                     self._run_extensions('before_training')
                     with Timer('initialization', self.profile):
-                        self.algorithm.initialize(profile=self.profile)
+                        self.algorithm.initialize()
                     self.status['training_started'] = True
                 # We can not write "else:" here because extensions
                 # called "before_training" could have changed the status
