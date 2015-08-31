@@ -235,8 +235,8 @@ class GradientDescent(DifferentiableCostMinimizer):
         self.total_step_norm = named_copy(l2_norm(self.steps.values()),
                                           "total_step_norm")
         self.on_unused_sources = on_unused_sources
-        self.theano_func_kwargs = theano_func_kwargs \
-            if theano_func_kwargs is not None else dict()
+        self.theano_func_kwargs = (theano_func_kwargs if theano_func_kwargs
+                                   is not None else dict())
 
     def initialize(self):
         logger.info("Initializing the training algorithm")
