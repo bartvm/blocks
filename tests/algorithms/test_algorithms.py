@@ -4,6 +4,7 @@ import numpy
 import theano
 from numpy.testing import assert_allclose, assert_raises
 from theano import tensor
+from theano.compile.profiling import ProfileStats
 
 from blocks.algorithms import (GradientDescent, StepClipping, VariableClipping,
                                CompositeRule, Scale, StepRule, BasicMomentum,
@@ -299,3 +300,17 @@ def test_restrict():
     assert_allclose(steps[5].eval(), 25.0)
 
     assert updates == [(10, 100), (40, 400)]
+
+
+def test_theano_profile_for_sgd_function():
+    W = shared_floatx(numpy.array([[1, 2], [3, 4]]))
+    W_start_value = W.get_value()
+    cost = tensor.sum(W ** 2)
+
+    algorithm = GradientDescent(
+        cost=cost, parameters=[W], theano_func_kwargs={'profile': True})
+    algorithm.step_rule.learning_rate.set_value(0.75)
+    algorithm.initialize()
+    algorithm.process_batch(dict())
+    assert_allclose(W.get_value(), -0.5 * W_start_value)
+    assert isinstance(algorithm._function.profile, ProfileStats)
