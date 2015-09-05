@@ -154,3 +154,24 @@ class CollectorRole(ParameterRole):
 
 #: A collection of parameters combined into a single shared variable
 COLLECTOR = CollectorRole()
+
+
+class AlgorithmStateRole(VariableRole):
+    pass
+
+#: Shared variables used in algorithms updates
+ALGORITHM_STATE = AlgorithmStateRole()
+
+
+class AlgorithmHyperparameterRole(AlgorithmStateRole):
+    pass
+
+#: hyperparameters accociated with algorithms
+ALGORITHM_HYPERPARAMETER = AlgorithmHyperparameterRole()
+
+
+class AlgorithmBufferRole(AlgorithmStateRole):
+    pass
+
+#: buffers accociated with algorithms
+ALGORITHM_BUFFER = AlgorithmBufferRole()
