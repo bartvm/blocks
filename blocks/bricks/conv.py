@@ -46,7 +46,7 @@ class Convolutional(Initializable):
     """
     @lazy(allocation=['filter_size', 'num_filters', 'num_channels'])
     def __init__(self, filter_size, num_filters, num_channels, batch_size=None,
-                 image_size=None, step=(1, 1), border_mode='valid',
+                 image_size=(None, None), step=(1, 1), border_mode='valid',
                  tied_biases=False, **kwargs):
         super(Convolutional, self).__init__(**kwargs)
 
@@ -69,6 +69,14 @@ class Convolutional(Initializable):
             if self.tied_biases:
                 b = shared_floatx_nans((self.num_filters,), name='b')
             else:
+                # this error is raised here instead of during initializiation
+                # because ConvolutionalSequence may specify the image size
+                if self.image_size == (None, None) and not self.tied_biases:
+                    raise ValueError('Cannot infer bias size without '
+                                     'image_size specified. If you use '
+                                     'variable image_size, you should use '
+                                     'tied_biases=True.')
+
                 b = shared_floatx_nans(self.get_dim('output'), name='b')
             add_role(b, BIAS)
 
@@ -110,10 +118,15 @@ class Convolutional(Initializable):
         else:
             W, = self.parameters
 
+        if self.image_size == (None, None):
+            image_shape = None
+        else:
+            image_shape = (self.batch_size, self.num_channels)
+            image_shape += self.image_size
+
         output = conv2d(
             input_, W,
-            image_shape=(self.batch_size, self.num_channels) +
-                        (self.image_size if self.image_size else (None, None)),
+            image_shape=image_shape,
             subsample=self.step,
             border_mode=self.border_mode,
             filter_shape=((self.num_filters, self.num_channels) +

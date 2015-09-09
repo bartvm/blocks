@@ -1,4 +1,5 @@
 import numpy
+from nose.tools import assert_raises_regexp
 
 import theano
 from numpy.testing import assert_allclose, assert_equal
@@ -32,6 +33,26 @@ def test_convolutional():
     conv.image_size = (17, 13)
     conv.batch_size = 2  # This should have effect on get_dim
     assert conv.get_dim('output') == (num_filters, 15, 11)
+
+
+def test_no_input_size():
+    # suppose x is outputted by some RNN
+    x = tensor.tensor4('x')
+    filter_size = (1, 3)
+    num_filters = 2
+    num_channels = 5
+    c = Convolutional(filter_size, num_filters, num_channels, tied_biases=True,
+                      weights_init=Constant(1.), biases_init=Constant(1.))
+    c.initialize()
+    out = c.apply(x)
+    assert c.get_dim('output') == (2, None, None)
+    assert out.ndim == 4
+
+    c = Convolutional(filter_size, num_filters, num_channels,
+                      tied_biases=False, weights_init=Constant(1.),
+                      biases_init=Constant(1.))
+    assert_raises_regexp(ValueError, 'Cannot infer bias size \S+',
+                         c.initialize)
 
 
 def test_tied_biases():
