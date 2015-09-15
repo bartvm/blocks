@@ -8,7 +8,7 @@ from blocks.extensions import TrainingExtension, FinishAfter
 from blocks.extensions.monitoring import TrainingDataMonitoring
 from blocks.monitoring import aggregation
 from blocks.algorithms import GradientDescent, Scale
-from blocks.utils import shared_floatx, named_copy
+from blocks.utils import shared_floatx
 from blocks.main_loop import MainLoop
 
 
@@ -24,7 +24,7 @@ def test_training_data_monitoring():
     y = tensor.scalar('targets')
     W = shared_floatx([0, 0], name='W')
     V = shared_floatx(7, name='V')
-    W_sum = named_copy(W.sum(), 'W_sum')
+    W_sum = W.sum().copy(name='W_sum')
     cost = ((x * W).sum() - y) ** 2
     cost.name = 'cost'
 

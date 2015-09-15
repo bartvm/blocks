@@ -259,13 +259,6 @@ def check_theano_variable(variable, n_dim, dtype_prefix):
                              dtype_prefix, variable.dtype))
 
 
-def named_copy(variable, new_name):
-    """Clones a variable and set a new name to the clone."""
-    result = variable.copy()
-    result.name = new_name
-    return result
-
-
 def is_graph_input(variable):
     """Check if variable is a user-provided graph input.
 

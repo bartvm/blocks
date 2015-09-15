@@ -14,7 +14,7 @@ from theano import tensor
 from blocks.graph import ComputationGraph
 from blocks.roles import add_role, ALGORITHM_HYPERPARAMETER, ALGORITHM_BUFFER
 from blocks.theano_expressions import l2_norm
-from blocks.utils import dict_subset, named_copy, pack, shared_floatx
+from blocks.utils import dict_subset, pack, shared_floatx
 
 logger = logging.getLogger(__name__)
 
@@ -229,12 +229,12 @@ class GradientDescent(DifferentiableCostMinimizer):
                                  "gradients are passed in")
         self.step_rule = step_rule if step_rule else Scale()
 
-        self.total_gradient_norm = named_copy(l2_norm(self.gradients.values()),
-                                              "total_gradient_norm")
+        self.total_gradient_norm = l2_norm(
+            self.gradients.values()).copy(name="total_gradient_norm")
         self.steps, self.step_rule_updates = (
             self.step_rule.compute_steps(self.gradients))
-        self.total_step_norm = named_copy(l2_norm(self.steps.values()),
-                                          "total_step_norm")
+        self.total_step_norm = l2_norm(
+            self.steps.values()).copy(name="total_step_norm")
         self.on_unused_sources = on_unused_sources
         self.theano_func_kwargs = (theano_func_kwargs if theano_func_kwargs
                                    is not None else dict())
