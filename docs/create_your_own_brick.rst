@@ -20,7 +20,7 @@ Bricks ingredients and recipe
 All the bricks in blocks inherit directly or indirectly from the
 :class:`.Brick`. There is already a rich inheritance hierarchy of
 bricks implemented in blocks and thus, you should consider which brick level
-to inherit from. Bear it mind that multiple inheritance is often possible and
+to inherit from. Bear in mind that multiple inheritance is often possible and
 advocated whenever it makes sense.
 
 Here are examples of possible bricks to inherit from:
@@ -34,7 +34,7 @@ Here are examples of possible bricks to inherit from:
   :class:`.Initializable` and :class:`.Feedforward`.
 * :class:`.BaseRecurrent`: the base class for recurrent bricks. Check the
   :doc:`tutorial about rnns</rnn>` for more information.
-* many mores!
+* many more!
 
 Let's say that you want to create a brick from scracth, simply inheriting
 from :class:`.Brick`, then you should consider overwriting the following
@@ -45,7 +45,7 @@ methods (strictly speaking, all these methods are optional):
   "children bricks" that belongs to your brick (in that case, you have to put
   the children bricks into ``self.children``). The initialiazation of the
   attributes can be lazy as described later in the tutorial.
-* :meth:`you_decide_which_name`: you need to implement a method that actually
+* :meth:`apply`: you need to implement a method that actually
   implements the operation of the brick, taking as arguments the inputs
   of the brick and returning its outputs. It can have any name and for simple
   bricks is often named ``apply``. You should decorate it with the
@@ -73,15 +73,15 @@ methods (strictly speaking, all these methods are optional):
 If you want to inherit from a specific brick, check its docstring to
 identify the particular methods to overwrite and the attributes to define.
 
-you_decide_which_name method
+apply method
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :meth:`you_decide_which_name` method listed above is probably the most
+The :meth:`apply` method listed above is probably the most
 important method of your brick because it is the one that actually takes
 theano tensors as inputs, process them and return output tensors. You should
 decorate it with the :func:`.application` decorator, which names variables
 and register auxiliary variables of the operation you implement.
-It is used as followed (:meth:`you_decide_which_name` is named :meth:`apply`):
+It is used as follows:
 
     >>> class Foo(Brick): # doctest: +SKIP
     ...     @application(inputs=['input1', 'input2'], outputs=['output'])
@@ -120,11 +120,18 @@ argument of your ``apply`` function, as shown in this example:
     ...         return x + 1
 
 You can retrieve these annotated variables as usual with the computational
-graph.
+graph :class:`.ComputationGraph` and filters :class:`.VariableFilter`.
 
 
 Lazy initialization
 ~~~~~~~~~~~~~~~~~~~
+
+.. doctest::
+   :hide:
+
+    >>> from blocks.bricks import Feedforward, Linear
+    >>> from blocks.bricks.base import lazy, application
+    >>> from blocks.initialization import Constant
 
 Instead of forcing the user to provide all the brick attributes as arguments
 to the :meth:`.Brick.__init__` method, you could let him/her specify them
@@ -137,7 +144,40 @@ the :func:`.lazy` decorator:
     ...     ...
 
 This allows the user to specify attr1 and attr2 after the creation of the
-brick.
+brick. For example, the following ``DoubleSequential`` brick is composed of two
+:class:`.Feedforward` bricks for which you do not need to specify the
+``input_dim`` of brick2 directly at its creation.
+
+    >>> class DoubleSequential(Feedforward):
+    ...     """
+    ...     Two sequential Feedforward bricks.
+    ...     """
+    ...     def __init__(self, brick1, brick2, **kwargs):
+    ...         super(Feedforward, self).__init__(**kwargs)
+    ...         self.brick1 = brick1
+    ...         self.brick2 = brick2
+    ...         self.input_dim = brick1.input_dim
+    ...         self.output_dim = brick2.output_dim
+    ...         self.children = [self.brick1, self.brick2]
+    ...
+    ...     def _push_allocation_config(self):
+    ...         self.brick2.input_dim = self.brick1.get_dim('output')
+    ...
+    ...     @application
+    ...     def apply(self, x):
+    ...         return self.brick2.apply(self.brick1.apply(x))
+
+Note how ``get_dim`` is used to retrieve the ``input_dim`` of ``brick1``. You
+can now create a DoubleSeuential brick as follows.
+
+    >>> brick1 = Linear(input_dim=3, output_dim=2, use_bias=False,
+    ...                 weights_init=Constant(2))
+    >>> brick2 = Linear(output_dim=4, use_bias=False, weights_init=Constant(2))
+    >>>
+    >>> seq = DoubleSequential(brick1, brick2)
+    >>> seq.initialize()
+    >>> brick2.input_dim
+    2
 
 
 Example
@@ -176,8 +216,8 @@ which initialization scheme to use.
     ...     r"""Two linear transformations without biases.
     ...
     ...     Brick which applies two linear (affine) transformations by
-    ...     multiplying its
-    ...     two inputs with two weight matrices, resulting in two outputs.
+    ...     multiplying its two inputs with two weight matrices, resulting in
+    ...     two outputs.
     ...     The two inputs, weights and outputs can have different dimensions.
     ...
     ...     Parameters
