@@ -57,7 +57,7 @@ class LookupTable(Initializable):
             representation element.
 
         """
-        check_theano_variable(indices, None, "int")
+        check_theano_variable(indices, None, ("int", "uint"))
         output_shape = [indices.shape[i]
                         for i in range(indices.ndim)] + [self.dim]
         return self.W[indices.flatten()].reshape(output_shape)
