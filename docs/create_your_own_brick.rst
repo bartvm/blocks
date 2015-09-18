@@ -74,7 +74,7 @@ If you want to inherit from a specific brick, check its docstring to
 identify the particular methods to overwrite and the attributes to define.
 
 apply method
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
 
 The :meth:`apply` method listed above is probably the most
 important method of your brick because it is the one that actually takes
@@ -96,6 +96,9 @@ method.
 Under the hood, the ``@application`` decorator creates an object of class
 :class:`.Application`, named ``apply``, which becomes an attribute of the
 brick.
+
+Application properties
+""""""""""""""""""""""
 
 In the previous examples, variables were named with strings. If you need to
 name certain variables with other variables (such as ``self.fancy_name``),
