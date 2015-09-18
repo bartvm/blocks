@@ -98,8 +98,8 @@ Under the hood, the ``@application`` decorator creates an object of class
 brick.
 
 In the previous examples, variables were named with strings. If you need to
-name certain variables with other variables (such as ``self .fancy_name``),
-you should define them with the apply.property decorator:
+name certain variables with other variables (such as ``self.fancy_name``),
+you should define them with the ``apply.property`` decorator:
 
     >>> class Foo(Brick): # doctest: +SKIP
     ...     fancy_name = "salut_toi"
@@ -108,7 +108,11 @@ you should define them with the apply.property decorator:
     ...         ...
     ...     @apply.property('inputs')
     ...     def apply_inputs(self):
+    ...         # Note that you can use any python code to define the name
     ...         return self.fancy_name
+
+Using application calls
+"""""""""""""""""""""""
 
 You can also annotate specific variables by passing ``application_call`` as
 argument of your ``apply`` function, as shown in this example:
@@ -135,23 +139,21 @@ Lazy initialization
 
 Instead of forcing the user to provide all the brick attributes as arguments
 to the :meth:`.Brick.__init__` method, you could let him/her specify them
-later, after the creation of the brick. To enable this mecanism, called lazy
-initialization, you need to decorate the method :meth:`.Brick.__init__` with
-the :func:`.lazy` decorator:
+later, after the creation of the brick. To enable this mechanism,
+called lazy initialization, you need to decorate the constructor with the 
+:func:`.lazy` decorator:
 
     >>> @lazy(allocation=['attr1', 'attr2']) # doctest: +SKIP
     ... def __init__(self, attr1, attr1)
     ...     ...
 
-This allows the user to specify attr1 and attr2 after the creation of the
-brick. For example, the following ``DoubleSequential`` brick is composed of two
-:class:`.Feedforward` bricks for which you do not need to specify the
-``input_dim`` of brick2 directly at its creation.
+This allows the user to specify ``attr1`` and ``attr2`` after the creation of 
+the brick. For example, the following ``DoubleSequential`` brick is composed of
+two :class:`.Feedforward` bricks for which you do not need to
+specify the ``input_dim`` of ``brick2`` directly at its creation.
 
     >>> class DoubleSequential(Feedforward):
-    ...     """
-    ...     Two sequential Feedforward bricks.
-    ...     """
+    ...     """Two sequential Feedforward bricks."""
     ...     def __init__(self, brick1, brick2, **kwargs):
     ...         super(Feedforward, self).__init__(**kwargs)
     ...         self.brick1 = brick1
@@ -168,7 +170,7 @@ brick. For example, the following ``DoubleSequential`` brick is composed of two
     ...         return self.brick2.apply(self.brick1.apply(x))
 
 Note how ``get_dim`` is used to retrieve the ``input_dim`` of ``brick1``. You
-can now create a DoubleSeuential brick as follows.
+can now use a ``DoubleSeuential`` brick as follows.
 
     >>> brick1 = Linear(input_dim=3, output_dim=2, use_bias=False,
     ...                 weights_init=Constant(2))
@@ -291,14 +293,14 @@ You can test the brick as follows:
    >>> batch_size1, batch_size2 = 1, 2
    >>>
    >>> x1_mat = 3 * numpy.ones((batch_size1, input_dim1),
-   ...                                   dtype=theano.config.floatX)
+   ...                         dtype=theano.config.floatX)
    >>> x2_mat = 4 * numpy.ones((batch_size2, input_dim2),
-   ...                                   dtype=theano.config.floatX)
+   ...                         dtype=theano.config.floatX)
    >>>
    >>> x1 = theano.tensor.matrix('x1')
    >>> x2 = theano.tensor.matrix('x2')
    >>> parallel1 = ParallelLinear(input_dim1, input_dim2, output_dim1,
-   ...                    output_dim2, weights_init=Constant(2))
+   ...                            output_dim2, weights_init=Constant(2))
    >>> parallel1.initialize()
    >>> output1, output2 = parallel1.apply(x1, x2)
    >>>
@@ -336,7 +338,7 @@ One can also create the brick using :class:`Linear` children bricks, which
 You can test this new version as follows:
 
    >>> parallel2 = ParallelLinear2(input_dim1, input_dim2, output_dim1,
-   ...                    output_dim2, weights_init=Constant(2))
+   ...                             output_dim2, weights_init=Constant(2))
    >>> parallel2.initialize()
    >>> output1, output2 = parallel2.apply(x1, x2)
    >>>
@@ -363,5 +365,4 @@ apply to our two inputs is a :class:``Linear`` brick with no bias:
    >>> f3(x1_mat, x2_mat) # doctest: +ELLIPSIS
    [array([[ 60.,  60.]]...), array([[ 40.],
           [ 40.]]...)]
-
 
