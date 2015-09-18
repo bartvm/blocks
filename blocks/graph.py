@@ -252,6 +252,7 @@ class ComputationGraph(object):
         \*\*kwargs : dict
             key word arguments to theano.function.
             Useful for specifying specific compilation modes or profiling.
+
         """
         updates = self.updates
         if additional_updates:
