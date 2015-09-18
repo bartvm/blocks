@@ -250,8 +250,8 @@ class ComputationGraph(object):
         Parameters
         ----------
         \*\*kwargs : dict
-            key word arguments to theano.function.
-            Useful for specifying specific compilation modes or profiling.
+            Keyword arguments to theano.function.
+            Useful for specifying compilation modes or profiling.
 
         """
         updates = self.updates
