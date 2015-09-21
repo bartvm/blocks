@@ -56,16 +56,21 @@ methods (strictly speaking, all these methods are optional):
 * :meth:`.Brick._allocate`: you should implement this method to allocate the
   shared variables (often representing parameters) of the brick. In blocks,
   by convention, the built-in bricks allocate their shared variables with nan
-  values and we recommand you to do the same.
+  values and we recommend you to do the same.
 * :meth:`.Brick._initialize`: you should implement this method to initialize
   the shared variables of your brick. This method is called after the
   allocation.
 * :meth:`.Brick._push_allocation_config`: you should consider overwriting
-  this method if you want to allocate the children bricks in a specific way.
+  this method if you want to change configuration of the children bricks
+  before they allocate their parameters.
 * :meth:`.Brick._push_initialization_config`: you should consider
-  overwriting this method if you want to initialize the children bricks in a
-  specific way. You should inherit from :class:`.Initializable` to initialize
-  the potential children bricks recursively.
+  overwriting this method if you want to change the initialization schemes of
+  the children before they get initialized.
+  If the children bricks need to be initialized with the same scheme, then you
+  should inherit your brick from :class:`.Initializable`, which
+  automatically push the initialization schemes of your brick (provided as
+  arguments ``weights_init`` and ``biases_init`` of the constructor) to the
+  children bricks.
 * :meth:`.Brick.get_dim`: implementing this function is useful if you want
   to provide a simple way to get the dimensions of the inputs and outputs of
   the brick.
@@ -73,8 +78,8 @@ methods (strictly speaking, all these methods are optional):
 If you want to inherit from a specific brick, check its docstring to
 identify the particular methods to overwrite and the attributes to define.
 
-apply method
-~~~~~~~~~~~~
+Application methods
+~~~~~~~~~~~~~~~~~~~
 
 The :meth:`apply` method listed above is probably the most
 important method of your brick because it is the one that actually takes
@@ -95,17 +100,22 @@ method.
 
 Under the hood, the ``@application`` decorator creates an object of class
 :class:`.Application`, named ``apply``, which becomes an attribute of the
-brick.
+brick class (by opposition to class instances).
 
 Application properties
 """"""""""""""""""""""
 
-In the previous examples, variables were named with strings. If you need to
-name certain variables with other variables (such as ``self.fancy_name``),
-you should define them with the ``apply.property`` decorator:
+In the previous examples, the names of the arguments of the application methods
+were directly provided as arguments of the ``@application`` decorator because
+they were common to all instances of the classes. On the other hand, if these
+names need to be defined differently for particular instances of the class,
+you should use the ``apply.property`` decorator. Let's say that we want to
+name our attribute inputs with the string ``self.fancy_name``, then we should
+write:
 
     >>> class Foo(Brick): # doctest: +SKIP
-    ...     fancy_name = "salut_toi"
+    ...     def __init__(self, fancy_name):
+    ...         self.fancy_name = fancy_name
     ...     @application
     ...     def apply(self, input)
     ...         ...
@@ -117,8 +127,9 @@ you should define them with the ``apply.property`` decorator:
 Using application calls
 """""""""""""""""""""""
 
-You can also annotate specific variables by passing ``application_call`` as
-argument of your ``apply`` function, as shown in this example:
+If you need to add auxiliary variables to the computation graph
+:class:`.ComputationGraph`, you need to pass ``application_call`` as argument
+of your ``apply`` function, as shown in this example:
 
     >>> class Foo(Brick): # doctest: +SKIP
     ...     @application
@@ -212,9 +223,11 @@ implementing a variant of the :class:`.Linear` brick. Contrary to
 :class:`.Linear`, ours has two inputs and two outputs, which means that we can
 not inherit from :class:`.Feedforward`, which requires a single input and a
 single output. Our brick will have to manage two shared variables
-representing the matrices to multiply the inputs with and thus, inheriting from
-:class:`.Initializable` makes perfectly sense as we will let the user decide
-which initialization scheme to use.
+representing the matrices to multiply the inputs. As we want to initialize them
+with the same scheme, we should inherit from :class:`.Initializable`, which
+automatically push the initialization schemes to the children. The
+initialization schemes are provided as arguments ``weights_init``
+and ``biases_init`` of the constructor of our brick (in the ``kwargs``).
 
 
     >>> class ParallelLinear(Initializable):
@@ -305,6 +318,8 @@ You can test the brick as follows:
    >>> parallel1 = ParallelLinear(input_dim1, input_dim2, output_dim1,
    ...                            output_dim2, weights_init=Constant(2))
    >>> parallel1.initialize()
+   >>> # The weights_init initialization scheme is pushed to the children
+   >>> # bricks.
    >>> output1, output2 = parallel1.apply(x1, x2)
    >>>
    >>> f1 = theano.function([x1, x2], [output1, output2])
