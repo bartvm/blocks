@@ -31,7 +31,7 @@ before_install:
   - export FUEL_DATA_PATH=$TRAVIS_BUILD_DIR/data
 install:
   # Install all Python dependencies
-  - conda install -q --yes python=$TRAVIS_PYTHON_VERSION mkl --file req-travis-conda.txt
+  - conda install -q --yes python=$TRAVIS_PYTHON_VERSION --file req-travis-conda.txt
   - pip install -q -r req-travis-pip.txt
 script:
   - pip install -e . -r requirements.txt # Tests setup.py
