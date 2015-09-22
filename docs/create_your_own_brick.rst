@@ -223,9 +223,9 @@ implementing a variant of the :class:`.Linear` brick. Contrary to
 :class:`.Linear`, ours has two inputs and two outputs, which means that we can
 not inherit from :class:`.Feedforward`, which requires a single input and a
 single output. Our brick will have to manage two shared variables
-representing the matrices to multiply the inputs. As we want to initialize them
-with the same scheme, we should inherit from :class:`.Initializable`, which
-automatically push the initialization schemes to the children. The
+representing the matrices to multiply the inputs with. As we want to initialize
+them with the same scheme, we should inherit from :class:`.Initializable`,
+which automatically push the initialization schemes to the children. The
 initialization schemes are provided as arguments ``weights_init``
 and ``biases_init`` of the constructor of our brick (in the ``kwargs``).
 
@@ -366,9 +366,10 @@ You can test this new version as follows:
           [ 40.]]...)]
 
 Actually it was not even necessary to create a custom brick for this particular
-operation as blocks always have a brick, called :class:``Parallel``, that
-applies the same brick to several inputs. In our case the brick we want to
-apply to our two inputs is a :class:``Linear`` brick with no bias:
+operation as blocks has a brick, called :class:``Parallel``, which
+applies the same prototype brick to several inputs. In our case the prototype
+brick we want to apply to our two inputs is a :class:``Linear`` brick with no
+bias:
 
    >>> parallel3 = Parallel(
    ...     prototype=Linear(use_bias=False),
