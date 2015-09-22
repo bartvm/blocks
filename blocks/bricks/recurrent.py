@@ -434,7 +434,8 @@ class LSTM(BaseRecurrent, Initializable):
             features * 4). The `inputs` needs to be four times the
             dimension of the LSTM brick to insure each four gates receive
             different transformations of the input. See [Grav13]_
-            equations 7 to 10 for more details.
+            equations 7 to 10 for more details. The `inputs` are then split
+            in this order: Input gate, forget gate, cell and output gate.
         mask : :class:`~tensor.TensorVariable`
             A 1D binary array in the shape (batch,) which is 1 if there is
             data available, 0 if not. Assumed to be 1-s only if not given.
