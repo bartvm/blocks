@@ -395,7 +395,7 @@ class LSTM(BaseRecurrent, Initializable):
         self.W_cell_to_in = shared_floatx_nans((self.dim,),
                                                name='W_cell_to_in')
         self.W_cell_to_forget = shared_floatx_nans((self.dim,),
-                                                name='W_cell_to_forget')
+                                                   name='W_cell_to_forget')
         self.W_cell_to_out = shared_floatx_nans((self.dim,),
                                                 name='W_cell_to_out')
         # The underscore is required to prevent collision with
@@ -417,7 +417,7 @@ class LSTM(BaseRecurrent, Initializable):
 
         if self.use_bias:
             self.b_cell_to_forget = shared_floatx_nans((self.dim,),
-                                                name='b_cell_to_forget')
+                                                       name='b_cell_to_forget')
             add_role(self.b_cell_to_forget, BIAS)
             self.parameters.append(self.b_cell_to_forget)
 
