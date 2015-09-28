@@ -354,9 +354,9 @@ class LSTM(BaseRecurrent, Initializable):
         networks*, arXiv preprint arXiv:1308.0850 (2013).
     .. [HS97] Sepp Hochreiter, and Jürgen Schmidhuber, *Long Short-Term
         Memory*, Neural Computation 9(8) (1997), pp. 1735-1780.
-    .. [Jozefowicz15] Jozefowicz R., Zaremba W. and Sutskever I., *An Empirical
-        Exploration of Recurrent Network Architectures*, Journal of Machine
-        Learning Research 37 (2015).
+    .. [Jozefowicz15] Jozefowicz R., Zaremba W. and Sutskever I., *An
+        Empirical Exploration of Recurrent Network Architectures*, Journal
+        of Machine Learning Research 37 (2015).
 
     Parameters
     ----------
@@ -395,7 +395,7 @@ class LSTM(BaseRecurrent, Initializable):
         self.W_cell_to_in = shared_floatx_nans((self.dim,),
                                                name='W_cell_to_in')
         self.W_cell_to_forget = shared_floatx_nans((self.dim,),
-                                                   name='W_cell_to_forget')
+                                                name='W_cell_to_forget')
         self.W_cell_to_out = shared_floatx_nans((self.dim,),
                                                 name='W_cell_to_out')
         # The underscore is required to prevent collision with
@@ -417,7 +417,7 @@ class LSTM(BaseRecurrent, Initializable):
 
         if self.use_bias:
             self.b_cell_to_forget = shared_floatx_nans((self.dim,),
-                                                       name='b_cell_to_forget')
+                                                name='b_cell_to_forget')
             add_role(self.b_cell_to_forget, BIAS)
             self.parameters.append(self.b_cell_to_forget)
 
