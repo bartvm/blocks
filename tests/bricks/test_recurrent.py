@@ -146,7 +146,7 @@ class TestSimpleRecurrent(unittest.TestCase):
 class TestLSTM(unittest.TestCase):
     def setUp(self):
         self.lstm = LSTM(dim=3, weights_init=Constant(2),
-                         biases_init=Constant(0))
+                         biases_init=Constant(1))
         self.lstm.initialize()
 
     def test_one_step(self):
@@ -166,6 +166,7 @@ class TestLSTM(unittest.TestCase):
         W_cell_to_in = 2 * numpy.ones((3,), dtype=theano.config.floatX)
         W_cell_to_out = 2 * numpy.ones((3,), dtype=theano.config.floatX)
         W_cell_to_forget = 2 * numpy.ones((3,), dtype=theano.config.floatX)
+        b_cell_to_forget = 1 * numpy.ones((3,), dtype=theano.config.floatX)
 
         # omitting biases because they are zero
         activation = numpy.dot(h0_val, W_state_val) + x_val
@@ -174,7 +175,8 @@ class TestLSTM(unittest.TestCase):
             return 1. / (1. + numpy.exp(-x))
 
         i_t = sigmoid(activation[:, :3] + c0_val * W_cell_to_in)
-        f_t = sigmoid(activation[:, 3:6] + c0_val * W_cell_to_forget)
+        f_t = sigmoid(activation[:, 3:6] + c0_val * W_cell_to_forget +
+                      b_cell_to_forget)
         next_cells = f_t * c0_val + i_t * numpy.tanh(activation[:, 6:9])
         o_t = sigmoid(activation[:, 9:12] +
                       next_cells * W_cell_to_out)
@@ -201,6 +203,7 @@ class TestLSTM(unittest.TestCase):
         W_cell_to_in = 2 * numpy.ones((3,), dtype=theano.config.floatX)
         W_cell_to_out = 2 * numpy.ones((3,), dtype=theano.config.floatX)
         W_cell_to_forget = 2 * numpy.ones((3,), dtype=theano.config.floatX)
+        b_cell_to_forget = 1 * numpy.ones((3,), dtype=theano.config.floatX)
 
         def sigmoid(x):
             return 1. / (1. + numpy.exp(-x))
@@ -208,7 +211,8 @@ class TestLSTM(unittest.TestCase):
         for i in range(1, 25):
             activation = numpy.dot(h_val[i-1], W_state_val) + x_val[i-1]
             i_t = sigmoid(activation[:, :3] + c_val[i-1] * W_cell_to_in)
-            f_t = sigmoid(activation[:, 3:6] + c_val[i-1] * W_cell_to_forget)
+            f_t = sigmoid(activation[:, 3:6] + c_val[i-1] * W_cell_to_forget +
+                          b_cell_to_forget)
             c_val[i] = f_t * c_val[i-1] + i_t * numpy.tanh(activation[:, 6:9])
             o_t = sigmoid(activation[:, 9:12] +
                           c_val[i] * W_cell_to_out)
