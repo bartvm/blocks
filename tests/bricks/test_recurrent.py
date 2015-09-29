@@ -146,9 +146,9 @@ class TestSimpleRecurrent(unittest.TestCase):
 class TestLSTM(unittest.TestCase):
     def setUp(self):
         self.lstm_with_bias = LSTM(dim=3, weights_init=Constant(2),
-                         biases_init=Constant(1))
+                                   biases_init=Constant(1))
         self.lstm_without_bias = LSTM(dim=3, weights_init=Constant(2),
-                         biases_init=Constant(0), use_bias=False)
+                                      biases_init=Constant(0), use_bias=False)
         self.lstm_with_bias.initialize()
         self.lstm_without_bias.initialize()
 
