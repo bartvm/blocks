@@ -354,9 +354,6 @@ class LSTM(BaseRecurrent, Initializable):
         networks*, arXiv preprint arXiv:1308.0850 (2013).
     .. [HS97] Sepp Hochreiter, and Jürgen Schmidhuber, *Long Short-Term
         Memory*, Neural Computation 9(8) (1997), pp. 1735-1780.
-    .. [Jozefowicz15] Jozefowicz R., Zaremba W. and Sutskever I., *An
-        Empirical Exploration of Recurrent Network Architectures*, Journal
-        of Machine Learning Research 37 (2015).
 
     Parameters
     ----------
@@ -471,9 +468,12 @@ class LSTM(BaseRecurrent, Initializable):
         activation = tensor.dot(states, self.W_state) + inputs
         in_gate = tensor.nnet.sigmoid(slice_last(activation, 0) +
                                       cells * self.W_cell_to_in)
-        forget_gate = tensor.nnet.sigmoid(slice_last(activation, 1) +
-                                          cells * self.W_cell_to_forget +
-                                          self.b_cell_to_forget)
+
+        forget_gate = slice_last(activation, 1) + cells * self.W_cell_to_forget
+        if self.use_bias:
+            forget_gate += self.b_cell_to_forget
+        forget_gate = tensor.nnet.sigmoid(forget_gate)
+
         next_cells = (forget_gate * cells +
                       in_gate * nonlinearity(slice_last(activation, 2)))
         out_gate = tensor.nnet.sigmoid(slice_last(activation, 3) +
