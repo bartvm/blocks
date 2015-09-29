@@ -5,7 +5,8 @@ using Theano.
 
 Want to get try it out? Start by :doc:`installing <setup>` Blocks and having a
 look at the :ref:`quickstart <quickstart>` further down this page. Once you're
-hooked, try your hand at the :ref:`tutorials <tutorials>`.
+hooked, try your hand at the :ref:`tutorials <tutorials>` and the
+examples_.
 
 Blocks is developed in parallel with Fuel_, a dataset processing framework.
 
@@ -23,6 +24,7 @@ Blocks is developed in parallel with Fuel_, a dataset processing framework.
 .. _mailing list: https://groups.google.com/forum/#!forum/blocks-users
 .. _making a GitHub issue: https://github.com/mila-udem/blocks/issues/new
 .. _Fuel: https://github.com/mila-udem/fuel
+.. _examples: https://github.com/mila-udem/blocks-examples
 
 .. _tutorials:
 
@@ -118,6 +120,9 @@ And train!
 >>> main_loop.run() # doctest: +ELLIPSIS
 <BLANKLINE>
 ...
+
+For a runnable version of this code, please see the MNIST demo
+in our repository with examples_.
 
 Features
 --------
