@@ -33,6 +33,10 @@ In the future we also hope to support:
 
 * Dimension, type and axes-checking
 
+See Also:
+    `blocks examples`_ for maintained examples of scripts using Blocks
+    `blocks extras`_ for semi-maintained additional Blocks components
+
 Citing Blocks
    If you use Blocks or Fuel in your work, we'd really appreciate it if you could cite the following paper:
    
@@ -47,3 +51,5 @@ Contributing
 .. _documentation: http://blocks.readthedocs.org
 .. _developer guidelines: http://blocks.readthedocs.org/en/latest/development/index.html
 .. _Blocks and Fuel\: Frameworks for deep learning: http://arxiv.org/abs/1506.00619
+.. _blocks examples: https://github.com/mila-udem/blocks-examples 
+.. _blocks extras: https://github.com/mila-udem/blocks-extras
