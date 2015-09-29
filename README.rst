@@ -34,7 +34,7 @@ In the future we also hope to support:
 * Dimension, type and axes-checking
 
 See Also:
-   * `Fuel`_, the data processing engine developed primarily for Blocks
+   * `Fuel`_, the data processing engine developed primarily for Blocks.
    * `Blocks-examples`_ for maintained examples of scripts using Blocks.
    * `Blocks-extras`_ for semi-maintained additional Blocks components.
 
