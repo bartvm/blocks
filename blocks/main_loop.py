@@ -9,6 +9,7 @@ from blocks.utils import reraise_as, unpack, change_recursion_limit
 from blocks.utils.profile import Profile, Timer
 from blocks.algorithms import DifferentiableCostMinimizer
 from blocks.extensions import CallbackName
+from blocks.model import Model
 
 logger = logging.getLogger(__name__)
 
@@ -69,13 +70,16 @@ class MainLoop(object):
 
     Parameters
     ----------
-    algorithm : object
+    algorithm : instance of :class:`~blocks.algorithms.TrainingAlgorithm`
         The training algorithm.
     data_stream : instance of :class:`.DataStream`.
-        The data stream.
-    model : :class:`.AbstractModel` instance, optional
-        The model object. It is entirely transparent for the main loop
-        but may be used by extensions.
+        The data stream. Should support :class:`AbstractDataStream`
+        interface from Fuel.
+    model : instance of :class:`.ComputationGraph`, optional
+        An annotated computation graph, typically represented
+        by :class:`ComputationGraph` or :class:`Model` object. The main
+        loop object uses the model only for optional sanity checks, it is
+        here mainly for the main loop extensions.
     log : instance of :class:`.TrainingLog`, optional
         The log. When not given, a :class:`.TrainingLog` is created.
     log_backend : str
@@ -146,12 +150,9 @@ class MainLoop(object):
         # reset `profile.current`. Otherwise, it simply does not hurt.
         self.profile.current = []
 
-        if self._model and isinstance(self.algorithm,
-                                      DifferentiableCostMinimizer):
-            # Sanity check: model and algorithm should be configured
-            # similarly.
-            if not self._model.get_objective() == self.algorithm.cost:
-                logger.warning("different costs for model and algorithm")
+        # Sanity check for the most common case
+        if (self._model and isinstance(self._model, Model) and
+                isinstance(self.algorithm, DifferentiableCostMinimizer)):
             if not (set(self._model.get_parameter_dict().values()) ==
                     set(self.algorithm.parameters)):
                 logger.warning("different parameters for model and algorithm")

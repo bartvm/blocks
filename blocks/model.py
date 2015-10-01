@@ -1,17 +1,20 @@
-"""Defines models.
+"""Model - heavily annotated computation graph.
 
-A model is a thin layer of abstraction between the user-defined computation
-graph, bricks, parameters and main loop extensions. This module provides
-the basic :class:`AbstractModel` interface as well as its implementations
-(currently only :class:`Model`).
+A model in Blocks is simply an annotated computation graph.  The class
+:class:`Model` extends :class:`blocks.graph.ComputationGraph` :class:,
+which is able to handle annotations and roles in general, but is
+deliberately made unaware of specific annotations that a Theano graph
+created by Blocks typically has, such as bricks and application calls.  The
+:class:`Model` adds this functionality. Using :class:`Model` you can do
+things like quering all the bricks used to build the computation graph,
+requesting "hierarhical names" of the parameters, etc.
+
+For more information, see :class:`Model` docstring.
 
 """
 import logging
-from abc import ABCMeta, abstractmethod
 from collections import OrderedDict, Counter
 from itertools import chain
-
-from six import add_metaclass
 
 from blocks.graph import ComputationGraph
 from blocks.select import Selector
@@ -19,133 +22,32 @@ from blocks.filter import get_brick
 
 logger = logging.getLogger(__name__)
 
-multiple_message = """
 
-Model with multiple outputs are currently only partially supported \
-in Blocks. For instance a call of 'get_objective' will crash. \
-Contact Blocks developers for more details.
-"""
+class Model(ComputationGraph):
+    """Handles annotations in Blocks-built computation graphs.
 
+    Use this class to handle your Blocks-created computation graph.
 
-@add_metaclass(ABCMeta)
-class AbstractModel(object):
-    """A parameterized entity trained in the main loop.
-
-    A model is a parameterized entity the user trains a in a main loop.
-    The following are traits of every model:
-
-    * It has parameters and supports a way to access them. In addition
-      to returning handles to parameter objects it can return their values
-      as numpy arrays and set their values to given numpy arrays.
-
-    * It has an optimality objective.
-
-    * It can be serialized and deserialized by mean of pickling.
-
-    * It might have bricks as its components.
-
-    This class provides an interface for models. For experiments use
-    a subclass, e.g. the :class:`Model`.
+    Examples
+    --------
+    >>> from theano import tensor
+    >>> from blocks.bricks import MLP, Tanh
+    >>> x = tensor.matrix('x')
+    >>> mlp = MLP([Tanh(), Tanh()], [10, 10, 10])
+    >>> y = mlp.apply(x)
+    >>> model = Model(y)
+    >>> # With model you can get access to the brick hierarchy
+    >>> model.get_top_bricks() #doctest: +ELLIPSIS
+    [<blocks.bricks.MLP object at ...]
+    >>> # With model you get "hierarchical" names for the parameters,
+    >>> # which encode the position of the owning brick in the
+    >>> # brick hierarchy.
+    >>> model.get_parameter_dict() #doctest: +NORMALIZE_WHITESPACE
+    OrderedDict([('/mlp/linear_1.b', b), ('/mlp/linear_0.b', b),
+    ('/mlp/linear_0.W', W), ('/mlp/linear_1.W', W)])
 
     """
-    @abstractmethod
-    def get_parameter_dict(self):
-        """Return the model parameters.
-
-        Returns
-        -------
-        parameters : OrderedDict
-            Dictionary of (name, parameter) pairs.
-
-        """
-        pass
-
-    def get_parameter_values(self):
-        """Return the values of model parameters.
-
-        The default implementation assumes that parameters are Theano
-        shared variables.
-
-        Returns
-        -------
-        parameter_values : OrderedDict
-            Dictionary of (parameter name, :class:`~numpy.ndarray`) pairs.
-
-        """
-        return OrderedDict(
-            (name, parameter.get_value())
-            for name, parameter in self.get_parameter_dict().items())
-
-    def set_parameter_values(self, parameter_values):
-        """Set the values of model parameters.
-
-        The default implementation assumes that parameters are Theano
-        shared variables.
-
-        Parameters
-        ----------
-        parameter_values : OrderedDict
-            Dictionary of (parameter name, :class:`~numpy.ndarray`) pairs.
-
-        """
-        parameters = self.get_parameter_dict()
-
-        unknown = set(parameter_values) - set(parameters)
-        missing = set(parameters) - set(parameter_values)
-        if len(unknown):
-            logger.error("unknown parameter names: {}\n".format(unknown))
-        if len(missing):
-            logger.error("missing values for parameters: {}\n".format(missing))
-
-        for name, value in parameter_values.items():
-            if name in parameters:
-                parameters[name].set_value(value)
-
-    @abstractmethod
-    def get_objective(self):
-        """Return the optimization objective."""
-        pass
-
-    def get_top_bricks(self):
-        """Return the top-level bricks that are used in the model.
-
-        Returns
-        -------
-        bricks : list
-            List of bricks.
-
-        """
-        raise NotImplementedError()
-
-
-class Model(AbstractModel, ComputationGraph):
-    """Wraps a computation graph to support model interface.
-
-    This model covers the most common case when all information
-    about the model is contained in an annotated computation graph:
-    parameters are identified by the roles, bricks found by annotations.
-    Due to frequency of this case this class is called simply 'Model'
-    and not 'ComputationGraphModel'.
-
-    .. todo::
-
-        Overriding the automatically found parameters and bricks might
-        be needed.
-
-        If there are top bricks in scan inner graphs, those will not be
-        found.
-
-    Parameters
-    ----------
-    outputs : (list of) :class:`~theano.Variable`
-        The output variables of the computation graph.
-
-    """
-    def __init__(self, outputs):
-        super(Model, self).__init__(outputs)
-        if len(self.outputs) > 1:
-            logger.warning("model with multiple output " + multiple_message)
-
+    def __init__(self, *args, **kwargs):
         bricks = [get_brick(var) for var
                   in self.variables + self.scan_variables if get_brick(var)]
         children = set(chain(*(brick.children for brick in bricks)))
@@ -172,26 +74,70 @@ class Model(AbstractModel, ComputationGraph):
                 parameter_list.append((parameter.name, parameter))
         self._parameter_dict = OrderedDict(parameter_list)
 
-    def get_objective(self):
-        """Return the output variable, if there is a single one.
-
-        If there is only one output variable, it is a reasonable default
-        setting to assume that it is the optimization objective.
-
-        """
-        if len(self.outputs) == 1:
-            return self.outputs[0]
-        raise NotImplementedError
-
     def get_parameter_dict(self):
-        """Get model parameters.
+        """Returns parameters with their hierarchical names.
 
         The parameter names are formed from positions of their owner bricks
         in the bricks hierarchy. The variable names are used for the
         parameters that do not belong to any brick.
 
+        Returns:
+        -------
+        parameter_dict : dict
+            A dictionary of (hierarchical name, shared variable) pairs.
+
         """
         return self._parameter_dict
 
+    def get_parameter_values(self):
+        """Return the values of model parameters.
+
+        The same hierarhical names as in :meth:`get_parameter_dict` are
+        used to uniquely identify parameters.
+
+        Returns
+        -------
+        parameter_values : OrderedDict
+            Dictionary of (hierarchical name, :class:`~numpy.ndarray`)
+            pairs.
+
+        """
+        return OrderedDict(
+            (name, parameter.get_value())
+            for name, parameter in self.get_parameter_dict().items())
+
+    def set_parameter_values(self, parameter_values):
+        """Set the values of model parameters.
+
+        The same hierarhical names as in :meth:`get_parameter_dict` are
+        used to uniquely identify parameters.
+
+        Parameters
+        ----------
+        parameter_values : OrderedDict
+            Dictionary of (hierarchical name, :class:`~numpy.ndarray`)
+            pairs.
+
+        """
+        parameters = self.get_parameter_dict()
+
+        unknown = set(parameter_values) - set(parameters)
+        missing = set(parameters) - set(parameter_values)
+        if len(unknown):
+            logger.error("unknown parameter names: {}\n".format(unknown))
+        if len(missing):
+            logger.error("missing values for parameters: {}\n".format(missing))
+
+        for name, value in parameter_values.items():
+            if name in parameters:
+                parameters[name].set_value(value)
+
     def get_top_bricks(self):
+        """Get the bricks that do not have parents.
+
+        Returns:
+        -------
+        bricks : list of :class:`~blocks.bricks.base.Brick`
+
+        """
         return self.top_bricks
