@@ -2,7 +2,6 @@
 import logging
 from collections import OrderedDict
 from itertools import chain
-from six.moves import xrange
 
 import numpy
 import theano
@@ -657,13 +656,13 @@ def apply_batch_normalization(computation_graph, variables, axis=None,
         Batch axis, or batch axes. Defaults to 0.
     epsilon : float, optional
         Stabilization constant. Defaults to 1E-7.
-    given_gammas : dict from :class:`~tensor.TensorVariable` to array-like
+    given_gammas : dict of (variable, ndarray) pairs
         Initial scale coefficients.
-    given_betas : dict from :class:`~tensor.TensorVariable` to array-like
+    given_betas : dict of (variable, ndarray) pairs
         Initial shift coefficients.
-    given_population_means : dict from :class:`~tensor.TensorVariable` to array-like
+    given_population_means : dict of (variable, ndarray) pairs
         Initial population mean estimates.
-    given_population_variances : dict from :class:`~tensor.TensorVariable` to array-like
+    given_population_variances : dict of (variable, ndarray) pairs
         Initial population variance estimates.
 
     Notes
@@ -725,8 +724,10 @@ def apply_batch_normalization(computation_graph, variables, axis=None,
                   gamma=given_gammas,
                   beta=given_betas)
 
-    batch_means = [var.mean(axis=axis[var], keepdims=True) for var in variables]
-    batch_variances = [var.var(axis=axis[var], keepdims=True) for var in variables]
+    batch_means = [var.mean(axis=axis[var], keepdims=True)
+                   for var in variables]
+    batch_variances = [var.var(axis=axis[var], keepdims=True)
+                       for var in variables]
 
     initialization_updates = []
     accumulation_updates = []
@@ -755,7 +756,7 @@ def apply_batch_normalization(computation_graph, variables, axis=None,
                 initialization_updates.append(
                     (parameter, tensor.patternbroadcast(
                         initializer(batch_mean),
-                        [False]*batch_mean.ndim)))
+                        [False] * batch_mean.ndim)))
 
             # don't add the PARAMETER role on population statistics
             # as they shouldn't be trained
@@ -766,9 +767,9 @@ def apply_batch_normalization(computation_graph, variables, axis=None,
             targets = dict(population_mean=batch_mean,
                            population_variance=batch_variance)
             if parameter_name in targets:
-                accumulation_updates.append((parameter,
-                                             (1 - alpha) * targets[parameter_name]
-                                             + alpha * parameter))
+                accumulation_updates.append(
+                    (parameter, (alpha * parameter +
+                                 (1 - alpha) * targets[parameter_name])))
 
             parameters.setdefault(parameter_name, []).append(parameter)
 
@@ -784,8 +785,8 @@ def apply_batch_normalization(computation_graph, variables, axis=None,
             mean, variance, gamma, beta = [
                 tensor.addbroadcast(x, *axis[variable])
                 for x in (mean, variance, gamma, beta)]
-            replacement = (gamma * (variable - mean)
-                           / tensor.sqrt(variance + epsilon) + beta)
+            replacement = (gamma * (variable - mean) /
+                           tensor.sqrt(variance + epsilon) + beta)
             add_role(replacement, BATCH_NORMALIZED)
             replacement.tag.replacement_of = variable
             replacements.append((variable, replacement))
