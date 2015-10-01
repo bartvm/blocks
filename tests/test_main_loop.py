@@ -13,7 +13,7 @@ from blocks.main_loop import MainLoop
 from blocks.extensions import TrainingExtension, FinishAfter, Printing
 from blocks.utils import unpack
 from blocks.config import config
-from tests import MockAlgorithm, MockMainLoop
+from blocks.utils.testing import MockAlgorithm, MockMainLoop
 
 
 class WriteBatchExtension(TrainingExtension):

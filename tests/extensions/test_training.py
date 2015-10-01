@@ -18,7 +18,7 @@ from blocks.extensions.training import SharedVariableModifier, TrackTheBest
 from blocks.extensions.predicates import OnLogRecord
 from blocks.main_loop import MainLoop
 from blocks.utils import shared_floatx
-from tests import MockMainLoop
+from blocks.utils.testing import MockMainLoop
 
 
 def test_shared_variable_modifier():

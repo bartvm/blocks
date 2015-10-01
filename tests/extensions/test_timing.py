@@ -1,5 +1,5 @@
 from blocks.extensions import Timing, FinishAfter
-from tests import MockMainLoop
+from blocks.utils.testing import MockMainLoop
 
 
 def test_timing():
