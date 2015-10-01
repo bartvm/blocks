@@ -8,7 +8,7 @@ import pkgutil
 
 import blocks
 import blocks.bricks
-from tests import skip_if_not_available
+from blocks.utils.testing import skip_if_not_available
 
 
 def setup(testobj):
