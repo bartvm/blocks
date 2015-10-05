@@ -40,11 +40,12 @@ class Model(ComputationGraph):
     >>> y = mlp.apply(x)
     >>> model = Model(y)
 
-    With :class:`Model` you can get access to the brick hierarchy. The brick
-    hierarchy is defined by ``children`` attributes that every brick has.
-    The bricks that are not children of other bricks are called top bricks.
-    It is often useful to have access to top bricks of a brick hierarchy
-    used to build a computation graph, and here is how you can do it:
+    With :class:`Model` you can get access to the brick hierarchy. The
+    brick hierarchy is defined by ``children`` attributes that every brick
+    has.  The bricks that are not children of other bricks are called top
+    bricks.  It is often useful to have access to top bricks of a brick
+    hierarchy used to build a computation graph, and here is how you can do
+    it:
 
     >>> model.get_top_bricks() #doctest: +ELLIPSIS
     [<blocks.bricks.MLP object at ...]
