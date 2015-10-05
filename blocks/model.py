@@ -6,8 +6,11 @@ which is able to handle annotations and roles in general, but is
 deliberately made unaware of specific annotations that a Theano graph
 created by Blocks typically has, such as bricks and application calls.  The
 :class:`Model` adds this functionality. Using :class:`Model` you can do
-things like quering all the bricks used to build the computation graph,
-requesting "hierarhical names" of the parameters, etc.
+things like query all the bricks used to build the computation graph,
+request "hierarhical names" of the parameters (a hierarchical name is a
+path-like string which in addition to the parameter's name contains names
+of the bricks on the path from a root brick to the brick that owns the
+parameters, e.g. ``/mlp/linear/W``).
 
 For more information, see :class:`Model` docstring.
 
@@ -36,12 +39,20 @@ class Model(ComputationGraph):
     >>> mlp = MLP([Tanh(), Tanh()], [10, 10, 10])
     >>> y = mlp.apply(x)
     >>> model = Model(y)
-    >>> # With model you can get access to the brick hierarchy
+
+    With :class:`Model` you can get access to the brick hierarchy. The brick
+    hierarchy is defined by ``children`` attributes that every brick has.
+    The bricks that are not children of other bricks are called top bricks.
+    It is often useful to have access to top bricks of a brick hierarchy
+    used to build a computation graph, and here is how you can do it:
+
     >>> model.get_top_bricks() #doctest: +ELLIPSIS
     [<blocks.bricks.MLP object at ...]
-    >>> # With model you get "hierarchical" names for the parameters,
-    >>> # which encode the position of the owning brick in the
-    >>> # brick hierarchy.
+
+    You can also get "hierarchical" names for the parameters,
+    which encode the position of the owning brick in the
+    brick hierarchy.
+
     >>> model.get_parameter_dict() #doctest: +NORMALIZE_WHITESPACE
     OrderedDict([('/mlp/linear_1.b', b), ('/mlp/linear_0.b', b),
     ('/mlp/linear_0.W', W), ('/mlp/linear_1.W', W)])
@@ -81,7 +92,7 @@ class Model(ComputationGraph):
         in the bricks hierarchy. The variable names are used for the
         parameters that do not belong to any brick.
 
-        Returns:
+        Returns
         -------
         parameter_dict : dict
             A dictionary of (hierarchical name, shared variable) pairs.
@@ -135,7 +146,7 @@ class Model(ComputationGraph):
     def get_top_bricks(self):
         """Get the bricks that do not have parents.
 
-        Returns:
+        Returns
         -------
         bricks : list of :class:`~blocks.bricks.base.Brick`
 
