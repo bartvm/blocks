@@ -19,8 +19,6 @@ import logging
 from collections import OrderedDict, Counter
 from itertools import chain
 
-import six
-
 from blocks.graph import ComputationGraph
 from blocks.select import Selector
 from blocks.filter import get_brick

@@ -5,6 +5,8 @@ from numpy.testing import assert_allclose, assert_raises
 
 from blocks.bricks import MLP, Tanh
 from blocks.model import Model
+from blocks.graph import add_role, PARAMETER
+from blocks.utils import shared_floatx
 
 
 def test_model():
@@ -14,7 +16,7 @@ def test_model():
     h1 = mlp1.apply(x)
     h2 = mlp2.apply(h1)
 
-    model = Model(h2.sum())
+    model = Model(h2)
     assert model.get_top_bricks() == [mlp1, mlp2]
     # The order of parameters returned is deterministic but
     # not sensible.
@@ -50,3 +52,12 @@ def test_model():
     def helper():
         Model(mlp4.apply(mlp3.apply(x)))
     assert_raises(ValueError, helper)
+
+
+def test_model_handles_brickless_parameteres():
+    x = tensor.matrix('x')
+    v = shared_floatx(numpy.zeros((10, 10)), name='V')
+    add_role(v, PARAMETER)
+    y = x.dot(v)
+    model = Model(y)
+    assert list(model.get_parameter_dict().items()) == [('V', v)]
