@@ -36,6 +36,7 @@ setup(
     setup_requires=['numpy'],
     install_requires=['numpy', 'six', 'pyyaml', 'toolz', 'theano',
                       'picklable-itertools', 'progressbar2', 'fuel'],
+    dependency_links=['https://github.com/mila-udem/fuel/tarball/master#egg=fuel'],
     extras_require={
         'test': ['mock', 'nose', 'nose2'],
         'docs': ['sphinx', 'sphinx-rtd-theme']
