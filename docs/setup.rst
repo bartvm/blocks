@@ -8,7 +8,7 @@ directly from GitHub.
 .. code-block:: bash
 
    $ pip install git+git://github.com/mila-udem/blocks.git \
-     -r https://raw.githubusercontent.com/mila-udem/blocks/master/requirements.txt
+     -r https://raw.githubusercontent.com/mila-udem/blocks/master/req.txt
 
 This will give you the cutting-edge development version. The latest stable
 release is in the ``stable`` branch and can be installed as follows.
@@ -16,13 +16,13 @@ release is in the ``stable`` branch and can be installed as follows.
 .. code-block:: bash
 
    $ pip install git+git://github.com/mila-udem/blocks.git@stable \
-     -r https://raw.githubusercontent.com/mila-udem/blocks/stable/requirements.txt
+     -r https://raw.githubusercontent.com/mila-udem/blocks/stable/req.txt
 
 .. note::
 
    Blocks relies on several packages, such as Theano_ and picklable_itertools_,
    to be installed directly from GitHub. The only way of doing so reliably is
-   through a ``requirements.txt`` file, which is why this installation command
+   through a ``req.txt`` file, which is why this installation command
    might look slightly different from what you're used to.
 
    Installing requirements from GitHub requires pip 1.5 or higher; you can
@@ -85,7 +85,7 @@ with your own GitHub user name:
 .. code-block:: bash
 
    $ pip install -e git+git@github.com:USER/blocks.git#egg=blocks[test,docs] --src=$HOME \
-     -r https://raw.githubusercontent.com/mila-udem/blocks/master/requirements.txt
+     -r https://raw.githubusercontent.com/mila-udem/blocks/master/req.txt
 
 As with the usual installation, you can use ``--user`` or ``--no-deps`` if you
 need to. You can now make changes in the ``blocks`` directory created by pip,
@@ -96,7 +96,7 @@ command from the folder you cloned Blocks to:
 
 .. code-block:: bash
 
-   $ pip install -e file:.#egg=blocks[test,docs] -r requirements.txt
+   $ pip install -e file:.#egg=blocks[test,docs] -r req.txt
 
 .. _fork Blocks on GitHub: https://github.com/mila-udem/blocks/fork
 

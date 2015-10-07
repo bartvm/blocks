@@ -1,3 +1,12 @@
-nose2[coverage-plugin]==0.5.0
 coveralls==1.0
+nose2[coverage-plugin]==0.5.0
+picklable-itertools==0.1.1
 progressbar2==2.7.3
+
+--allow-external theano
+--allow-unverified theano
+git+https://github.com/Theano/Theano.git#egg=theano
+
+--allow-external fuel
+--allow-unverified fuel
+git+https://github.com/mila-udem/fuel#egg=fuel

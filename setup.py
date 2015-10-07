@@ -37,7 +37,7 @@ setup(
     install_requires=['numpy', 'six', 'pyyaml', 'toolz', 'theano',
                       'picklable-itertools', 'progressbar2', 'fuel'],
     extras_require={
-        'test': ['nose', 'nose2', 'mock'],
-        'docs': ['sphinx', 'sphinxcontrib-napoleon', 'sphinx-rtd-theme']
+        'test': ['mock', 'nose', 'nose2'],
+        'docs': ['sphinx', 'sphinx-rtd-theme']
     },
     zip_safe=False)
