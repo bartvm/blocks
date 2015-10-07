@@ -1,0 +1,9 @@
+picklable-itertools==0.1.1
+progressbar2==2.7.3
+pyyaml==3.11
+six==1.9.0
+toolz==0.7.2
+
+--allow-external theano
+--allow-unverified theano
+git+https://github.com/Theano/Theano.git#egg=theano

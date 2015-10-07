@@ -34,7 +34,7 @@ install:
   - conda install -q --yes python=$TRAVIS_PYTHON_VERSION --file req-travis-conda.txt
   - pip install -q -r req-travis-pip.txt
 script:
-  - pip install -e . -r req.txt # Tests setup.py
+  - pip install -e . -r requirements.txt # Tests setup.py
   - curl https://raw.githubusercontent.com/mila-udem/fuel/master/.travis-data.sh | bash -s -- mnist
   - # Must export environment variable so that the subprocess is aware of it
   - export THEANO_FLAGS=floatX=$FLOATX,optimizer=fast_compile

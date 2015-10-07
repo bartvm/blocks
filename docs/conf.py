@@ -14,6 +14,7 @@
 
 import sys
 import os
+from mock import Mock as MagicMock
 from sphinx.ext.autodoc import cut_lines
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -57,6 +58,14 @@ intersphinx_mapping = {
     'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
     'python': ('http://docs.python.org/3.4', None)
 }
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+            return Mock()
+
+MOCK_MODULES = ['fuel']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 graphviz_dot_args = ['-Gbgcolor=#fcfcfc']  # To match the RTD theme
 graphviz_output_format = 'svg'  # To produce SVG figures
