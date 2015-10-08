@@ -46,6 +46,15 @@ def test_model():
     for name, value in parameter_values.items():
         assert_allclose(value, got_parameter_values[name])
 
+    # Test exception is raised if parameter shapes don't match
+    def helper():
+        parameter_values = {
+            '/mlp/linear_0.W': 2 * numpy.ones((11, 11),
+                                              dtype=theano.config.floatX),
+            '/mlp/linear_0.b': 3 * numpy.ones(11, dtype=theano.config.floatX)}
+        model3.set_parameter_values(parameter_values)
+    assert_raises(ValueError, helper)
+
     # Test name conflict handling
     mlp4 = MLP([Tanh()], [10, 10])
 

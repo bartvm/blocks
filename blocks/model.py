@@ -143,6 +143,11 @@ class Model(ComputationGraph):
 
         for name, value in parameter_values.items():
             if name in parameters:
+                model_shape = parameters[name].container.data.shape
+                if model_shape != value.shape:
+                    raise ValueError("Shape mismatch for parameter: {}. "
+                                     "Expected {}, got {}."
+                                     .format(name, model_shape, value.shape))
                 parameters[name].set_value(value)
 
     def get_top_bricks(self):
