@@ -44,6 +44,13 @@ class Convolutional(Initializable):
         Defaults to ``False``.
 
     """
+
+    # Make it possible to override the implementation of conv2d that gets
+    # used, i.e. to use theano.sandbox.cuda.dnn.dnn_conv directly in order
+    # to leverage features not yet available in Theano's standard conv2d.
+    conv2d_impl = staticmethod(conv2d)
+    get_output_shape = staticmethod(ConvOp.getOutputShape)
+
     @lazy(allocation=['filter_size', 'num_filters', 'num_channels'])
     def __init__(self, filter_size, num_filters, num_channels, batch_size=None,
                  image_size=(None, None), step=(1, 1), border_mode='valid',
@@ -124,7 +131,7 @@ class Convolutional(Initializable):
             image_shape = (self.batch_size, self.num_channels)
             image_shape += self.image_size
 
-        output = conv2d(
+        output = self.conv2d_impl(
             input_, W,
             image_shape=image_shape,
             subsample=self.step,
@@ -143,7 +150,7 @@ class Convolutional(Initializable):
             return (self.num_channels,) + self.image_size
         if name == 'output':
             return ((self.num_filters,) +
-                    ConvOp.getOutputShape(self.image_size, self.filter_size,
+                    self.get_output_shape(self.image_size, self.filter_size,
                                           self.step, self.border_mode))
         return super(Convolutional, self).get_dim(name)
 
