@@ -44,7 +44,6 @@ class Convolutional(Initializable):
         Defaults to ``False``.
 
     """
-
     # Make it possible to override the implementation of conv2d that gets
     # used, i.e. to use theano.sandbox.cuda.dnn.dnn_conv directly in order
     # to leverage features not yet available in Theano's standard conv2d.
