@@ -47,7 +47,16 @@ class Convolutional(Initializable):
     # Make it possible to override the implementation of conv2d that gets
     # used, i.e. to use theano.sandbox.cuda.dnn.dnn_conv directly in order
     # to leverage features not yet available in Theano's standard conv2d.
+    # The function you override with here should accept at least the
+    # input and the kernels as positionals, and the keyword arguments
+    # image_shape, subsample, border_mode, and filter_shape. If some of
+    # these are unsupported they should still be accepted and ignored,
+    # e.g. with a wrapper function that swallows **kwargs.
     conv2d_impl = staticmethod(conv2d)
+
+    # Used to override the output shape computation for a given value of
+    # conv2d_impl. Should accept 4 positional arguments: the image size,
+    # the filter size, the step (strides), and the border mode.
     get_output_shape = staticmethod(ConvOp.getOutputShape)
 
     @lazy(allocation=['filter_size', 'num_filters', 'num_channels'])
