@@ -197,3 +197,17 @@ def test_convolutional_layer_use_bias():
     act.allocate()
     assert not act.convolution.use_bias
     assert len(ComputationGraph([act.apply(tensor.tensor4())]).parameters) == 1
+
+
+def test_convolutional_sequence_use_bias():
+    cnn = ConvolutionalSequence(
+        [ConvolutionalActivation(activation=Rectifier().apply,
+                                 filter_size=(1, 1), num_filters=1)
+         for _ in range(3)],
+        num_channels=1, image_size=(1, 1),
+        use_bias=False)
+    cnn.allocate()
+    x = tensor.tensor4()
+    y = cnn.apply(x)
+    params = ComputationGraph(y).parameters
+    assert len(params) == 3 and all(param.name == 'W' for param in params)

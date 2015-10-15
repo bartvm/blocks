@@ -416,6 +416,7 @@ class ConvolutionalSequence(Sequence, Initializable, Feedforward):
             layer.image_size = image_size
             layer.num_channels = num_channels
             layer.batch_size = self.batch_size
+            layer.use_bias = self.use_bias
 
             # Push input dimensions to children
             layer._push_allocation_config()
