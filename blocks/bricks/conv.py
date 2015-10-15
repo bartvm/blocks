@@ -223,7 +223,7 @@ class _AllocationMixin(object):
     def _push_allocation_config(self):
         for attr in ['filter_size', 'num_filters', 'border_mode',
                      'batch_size', 'num_channels', 'image_size',
-                     'tied_biases']:
+                     'tied_biases', 'use_bias']:
             setattr(self.convolution, attr, getattr(self, attr))
 
 

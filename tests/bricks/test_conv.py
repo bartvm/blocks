@@ -10,6 +10,7 @@ from blocks.bricks import Rectifier
 from blocks.bricks.conv import (Convolutional, ConvolutionalLayer, MaxPooling,
                                 ConvolutionalActivation, ConvolutionalSequence)
 from blocks.initialization import Constant
+from blocks.graph import ComputationGraph
 
 
 def test_convolutional():
@@ -180,3 +181,19 @@ def test_convolutional_sequence():
     y_val = (numpy.ones((batch_size, 4, 4, 3)) *
              (9 * 4 + 5) * 4 * 5)
     assert_allclose(func(x_val), y_val)
+
+
+def test_convolutional_activation_use_bias():
+    act = ConvolutionalActivation(Rectifier().apply, (3, 3), 5, 4,
+                                  image_size=(9, 9), use_bias=False)
+    act.allocate()
+    assert not act.convolution.use_bias
+    assert len(ComputationGraph([act.apply(tensor.tensor4())]).parameters) == 1
+
+
+def test_convolutional_layer_use_bias():
+    act = ConvolutionalLayer(Rectifier().apply, (3, 3), 5, (2, 2), 6,
+                             image_size=(9, 9), use_bias=False)
+    act.allocate()
+    assert not act.convolution.use_bias
+    assert len(ComputationGraph([act.apply(tensor.tensor4())]).parameters) == 1
