@@ -219,7 +219,15 @@ class MaxPooling(Initializable, Feedforward):
                                                        st=self.step))
 
 
-class ConvolutionalActivation(Sequence, Initializable):
+class _AllocationMixin(object):
+    def _push_allocation_config(self):
+        for attr in ['filter_size', 'num_filters', 'border_mode',
+                     'batch_size', 'num_channels', 'image_size',
+                     'tied_biases']:
+            setattr(self.convolution, attr, getattr(self, attr))
+
+
+class ConvolutionalActivation(_AllocationMixin, Sequence, Initializable):
     """A convolution followed by an activation function.
 
     Parameters
@@ -252,18 +260,16 @@ class ConvolutionalActivation(Sequence, Initializable):
             application_methods=[self.convolution.apply, activation],
             **kwargs)
 
-    def _push_allocation_config(self):
-        for attr in ['filter_size', 'num_filters', 'step', 'border_mode',
-                     'batch_size', 'num_channels', 'image_size',
-                     'tied_biases']:
-            setattr(self.convolution, attr, getattr(self, attr))
-
     def get_dim(self, name):
         # TODO The name of the activation output doesn't need to be `output`
         return self.convolution.get_dim(name)
 
+    def _push_allocation_config(self):
+        super(ConvolutionalActivation, self)._push_allocation_config()
+        self.convolution.step = self.step
 
-class ConvolutionalLayer(Sequence, Initializable):
+
+class ConvolutionalLayer(_AllocationMixin, Sequence, Initializable):
     """A complete convolutional layer: Convolution, nonlinearity, pooling.
 
     .. todo::
@@ -312,10 +318,7 @@ class ConvolutionalLayer(Sequence, Initializable):
         self.tied_biases = tied_biases
 
     def _push_allocation_config(self):
-        for attr in ['filter_size', 'num_filters', 'num_channels',
-                     'batch_size', 'border_mode', 'image_size',
-                     'tied_biases']:
-            setattr(self.convolution, attr, getattr(self, attr))
+        super(ConvolutionalLayer, self)._push_allocation_config()
         self.convolution.step = self.conv_step
         self.convolution._push_allocation_config()
         if self.image_size is not None:
