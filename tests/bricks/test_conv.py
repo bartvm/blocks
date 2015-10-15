@@ -35,6 +35,25 @@ def test_convolutional():
     assert conv.get_dim('output') == (num_filters, 15, 11)
 
 
+def test_border_mode_not_pushed():
+    layers = [Convolutional(border_mode='full'),
+              ConvolutionalActivation(Rectifier().apply),
+              ConvolutionalActivation(Rectifier().apply, border_mode='valid'),
+              ConvolutionalLayer(Rectifier().apply, border_mode='full')]
+    stack = ConvolutionalSequence(layers)
+    stack.push_allocation_config()
+    assert stack.children[0].border_mode == 'full'
+    assert stack.children[1].border_mode == 'valid'
+    assert stack.children[2].border_mode == 'valid'
+    assert stack.children[3].border_mode == 'full'
+    stack2 = ConvolutionalSequence(layers, border_mode='full')
+    stack2.push_allocation_config()
+    assert stack2.children[0].border_mode == 'full'
+    assert stack2.children[1].border_mode == 'full'
+    assert stack2.children[2].border_mode == 'full'
+    assert stack2.children[3].border_mode == 'full'
+
+
 def test_no_input_size():
     # suppose x is outputted by some RNN
     x = tensor.tensor4('x')

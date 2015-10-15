@@ -356,6 +356,14 @@ class ConvolutionalSequence(Sequence, Initializable, Feedforward):
         Width and height of the input (image/featuremap). If given,
         will be passed to theano's convolution operator resulting in
         possibly faster execution.
+    border_mode : 'valid', 'full' or None, optional
+        The border mode to use, see :func:`scipy.signal.convolve2d` for
+        details. Unlike with :class:`Convolutional`, this defaults to
+        None, in which case no default value is pushed down to child
+        bricks at allocation time. Child bricks will in this case
+        need to rely on either a default border mode (usually valid)
+        or one provided at construction and/or after construction
+        (but before allocation).
 
     Notes
     -----
@@ -365,10 +373,18 @@ class ConvolutionalSequence(Sequence, Initializable, Feedforward):
     input dimensions of a layer to the output dimensions of the previous
     layer by the :meth:`~.Brick.push_allocation_config` method.
 
+    The reason the `border_mode` parameter behaves the way it does is that
+    pushing a single default `border_mode` makes it very difficult to
+    have child bricks with different border modes. Normally, such things
+    would be overridden after `push_allocation_config()`, but this is
+    a particular hassle as the border mode affects the allocation
+    parameters of every subsequent child brick in the sequence. Thus, only
+    an explicitly specified border mode will be pushed down the hierarchy.
+
     """
     @lazy(allocation=['num_channels'])
     def __init__(self, layers, num_channels, batch_size=None, image_size=None,
-                 border_mode='valid', tied_biases=False, **kwargs):
+                 border_mode=None, tied_biases=False, **kwargs):
         self.layers = layers
         self.image_size = image_size
         self.num_channels = num_channels
@@ -391,8 +407,9 @@ class ConvolutionalSequence(Sequence, Initializable, Feedforward):
         num_channels = self.num_channels
         image_size = self.image_size
         for layer in self.layers:
-            for attr in ['border_mode', 'tied_biases']:
-                setattr(layer, attr, getattr(self, attr))
+            if self.border_mode is not None:
+                layer.border_mode = self.border_mode
+            layer.tied_biases = self.tied_biases
             layer.image_size = image_size
             layer.num_channels = num_channels
             layer.batch_size = self.batch_size
