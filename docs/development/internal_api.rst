@@ -46,9 +46,3 @@ Utils
    :members:
    :private-members:
    :show-inheritance:
-
-.. automodule:: blocks.serialization
-   :undoc-members:
-   :members:
-   :private-members:
-   :show-inheritance:
