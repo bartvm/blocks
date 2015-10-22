@@ -589,11 +589,11 @@ class AbstractEmitter(Brick):
     flexible enough to handle this. The two ways in which it can be
     applied are:
 
-        1. In the cost_matrix function of :class:`BaseSequenceGenerator`
-        where it will be applied to the whole sequence at once.
+        1. In :meth:BaseSequenceGenerator.cost_matrix where it will
+        be applied to the whole sequence at once.
 
-        2. In the generate function of :class:`BaseSequenceGenerator`
-        where it will be only applied to one step ot the sequence.
+        2. In :meth:BaseSequenceGenerator.generate where it will be
+        applied to only one step of the sequence.
 
     """
     @abstractmethod
