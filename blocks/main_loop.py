@@ -27,7 +27,7 @@ Blocks will now exit. The remaining `on_error` extensions will not be run."""
 
 epoch_interrupt_message = """
 
-Blocks will complete this epoch iteration of training and run extensions \
+Blocks will complete this epoch of training and run extensions \
 before exiting. If you do not want to complete this epoch, press CTRL + C \
 again to stop training after the current batch."""
 
