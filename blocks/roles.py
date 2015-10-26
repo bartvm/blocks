@@ -175,3 +175,10 @@ class AlgorithmBufferRole(AlgorithmStateRole):
 
 #: buffers accociated with algorithms
 ALGORITHM_BUFFER = AlgorithmBufferRole()
+
+
+class BatchNormalizationRole(VariableRole):
+    pass
+
+#: Inputs with batch normalization applied
+BATCH_NORMALIZED = BatchNormalizationRole()

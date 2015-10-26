@@ -8,7 +8,8 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams
 from blocks.bricks import MLP, Identity, Logistic
 from blocks.bricks.cost import SquaredError
 from blocks.filter import VariableFilter
-from blocks.graph import apply_noise, collect_parameters, ComputationGraph
+from blocks.graph import (apply_noise, apply_batch_normalization,
+                          collect_parameters, ComputationGraph)
 from blocks.initialization import Constant
 from blocks.roles import add_role, COLLECTED, PARAMETER, AUXILIARY
 from tests.bricks.test_bricks import TestBrick
@@ -172,3 +173,55 @@ def test_collect():
     assert numpy.all(W1.eval() == 1.)
     assert W2.eval().shape == (100, 784)
     assert numpy.all(W2.eval() == 2.)
+
+
+def test_apply_batch_normalization():
+    x = tensor.matrix()
+    y = 2 * x
+
+    cg = ComputationGraph([y])
+    cg_bn = apply_batch_normalization(
+        cg, [x], [numpy.array([2, 3]).astype(floatX)],
+        [numpy.array([-1, -2]).astype(floatX)])
+    assert_allclose(
+        cg_bn.outputs[0].eval(
+            {x: numpy.arange(4).reshape((2, 2)).astype(floatX)}),
+        [[-6., -10.], [2., 2.]],
+        atol=1e-5)
+
+
+def test_apply_batch_normalization_use_population():
+    x = tensor.matrix()
+    y = 2 * x
+
+    cg = ComputationGraph([y])
+    cg_bn = apply_batch_normalization(
+        cg, [x], [numpy.array([2, 3]).astype(floatX)],
+        [numpy.array([-1, -2]).astype(floatX)], use_population={x: True})
+    assert_allclose(
+        cg_bn.outputs[0].eval(
+            {x: numpy.arange(4).reshape((2, 2)).astype(floatX)}),
+        [[-2., 2.], [6., 14.]],
+        atol=1e-5)
+
+
+def test_apply_batch_normalization_conv():
+    x = tensor.tensor4()
+    y = 2 * x
+
+    cg = ComputationGraph([y])
+    cg_bn = apply_batch_normalization(
+        cg, [x], [numpy.array([2, 3]).astype(floatX)],
+        [numpy.array([-1, -2]).astype(floatX)], axis=[0, 2, 3])
+    assert_allclose(
+        cg_bn.outputs[0].eval(
+            {x: numpy.arange(16).reshape((2, 2, 2, 2)).astype(floatX)}),
+        [[[[-7.29697754, -6.33389071],
+           [-5.37080389, -4.40771706]],
+          [[-11.9454663, -10.50083607],
+           [-9.05620583, -7.61157559]]],
+         [[[0.40771706, 1.37080389],
+           [2.33389071, 3.29697754]],
+          [[-0.38842441, 1.05620583],
+           [2.50083607, 3.9454663]]]],
+        atol=1e-5)

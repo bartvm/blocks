@@ -2,11 +2,12 @@
 import logging
 from collections import OrderedDict
 from itertools import chain
+from six.moves import xrange
 
 import numpy
 import theano
 from picklable_itertools.extras import equizip
-from theano import Variable
+from theano import Variable, tensor
 from theano.gof import graph
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.scan_module.scan_op import Scan
@@ -14,10 +15,9 @@ from toolz import unique
 
 from blocks.config import config
 from blocks.roles import (add_role, has_roles, AUXILIARY, PARAMETER, DROPOUT,
-                          COLLECTED, COLLECTOR)
+                          COLLECTED, COLLECTOR, BATCH_NORMALIZED)
 from blocks.utils import (is_graph_input, is_shared_variable, dict_union,
-                          shared_floatx_zeros, shared_like)
-import warnings
+                          shared_floatx_zeros, shared_like, pack)
 
 logger = logging.getLogger(__name__)
 
@@ -630,6 +630,122 @@ def apply_dropout(computation_graph, variables, drop_prob, rng=None,
                     for var in variables]
     for variable, replacement in replacements:
         add_role(replacement, DROPOUT)
+        replacement.tag.replacement_of = variable
+
+    return computation_graph.replace(replacements)
+
+
+def apply_batch_normalization(computation_graph, variables, gammas,
+                              betas, axis=None, epsilon=1e-7,
+                              use_population=None):
+    """Returns a graph to variables in a computational graph.
+
+    Parameters
+    ----------
+    computation_graph : instance of :class:`ComputationGraph`
+        The computation graph.
+    variables : list of :class:`~tensor.TensorVariable`
+        Variables to be batch-normalized.
+    gammas : list of :class:`~tensor.TensorVariable`
+        Scale coefficients for the normalized variables.
+    betas : list of :class:`~tensor.TensorVariable`
+        Shift coefficients for the normalized variables.
+    axis : int or iterable, optional
+        Batch axis, or batch axes. Defaults to 0.
+    epsilon : float, optional
+        Stabilization constant. Defaults to 1E-7.
+    use_population : dict, optional
+        Maps variables to be replaced to a boolean value indicating
+        whether to use population statistics instead of batch
+        statistics. When using population statistics, `gammas` and
+        `betas` represent the population statistics and a variable
+        `var` is simply replaced with `gamma * var + beta`.
+        Defaults to `None`, in which case batch statistics are always
+        used. If a particular variable does not appear as a key in
+        the dictionary, it is presumed that it uses batch statistics.
+
+    Notes
+    -----
+    For more information, see [BN]_.
+
+    .. [BN] Sergey Ioffe and Christian Szegedy. *Batch Normalization:
+       Accelerating Deep Network Training by Reducing Internal Covariate
+       Shift*, arXiv:1502.03167.
+
+    Examples
+    --------
+    >>> from theano import function
+    >>> from blocks.bricks import MLP, Identity
+    >>> from blocks.filter import VariableFilter
+    >>> from blocks.initialization import Constant
+    >>> from blocks.roles import INPUT
+    >>> from blocks.utils import shared_floatx
+    >>> linear = MLP([Identity(), Identity()], [2, 10, 2],
+    ...              weights_init=Constant(1), biases_init=Constant(2))
+    >>> x = tensor.matrix('x')
+    >>> gamma_1 = shared_floatx(numpy.ones(2), name='gamma_1')
+    >>> gamma_2 = shared_floatx(numpy.ones(10), name='gamma_2')
+    >>> beta_1 = shared_floatx(numpy.zeros(2), name='beta_1')
+    >>> beta_2 = shared_floatx(numpy.zeros(10), name='beta_2')
+    >>> y = linear.apply(x)
+    >>> cg = ComputationGraph(y)
+    >>> inputs = VariableFilter(
+    ...     roles=[INPUT],
+    ...     bricks=linear.linear_transformations)(cg.variables)
+    >>> cg_bn = apply_batch_normalization(
+    ...     cg, inputs, [gamma_1, gamma_2], [beta_1, beta_2])
+    >>> fprop = function(cg.inputs, cg.outputs[0])
+    >>> bn_fprop = function(cg_bn.inputs, cg_bn.outputs[0])
+    >>> linear.initialize()
+    >>> print(fprop(numpy.ones((3, 2),
+    ...             dtype=theano.config.floatX))) # doctest:+ELLIPSIS
+    [[ 42.  42.]
+     [ 42.  42.]
+     [ 42.  42.]]...
+    >>> print(bn_fprop(numpy.ones((3, 2),
+    ...                dtype=theano.config.floatX))) # doctest:+ELLIPSIS
+    [[ 2.  2.]
+     [ 2.  2.]
+     [ 2.  2.]]...
+
+    """
+    epsilon = numpy.cast[theano.config.floatX](epsilon)
+    if not use_population:
+        use_population = dict([(var, False) for var in variables])
+    if not axis:
+        axis = dict([(var, 0) for var in variables])
+    for var in variables:
+        if var not in use_population:
+            use_population[var] = False
+        if var not in axis:
+            axis[var] = pack(0)
+        else:
+            axis[var] = pack(axis[var])
+
+    # Broadcast gamma and beta properly
+    for i, var in enumerate(variables):
+        axes = axis[var]
+        mapping = dict([(axis_, j) for j, axis_ in
+                        enumerate(dim for dim in xrange(var.ndim)
+                                  if dim not in axes)])
+        dims = tuple(mapping[dim] if dim not in axes else 'x'
+                     for dim in xrange(var.ndim))
+        gammas[i] = tensor.as_tensor_variable(gammas[i]).dimshuffle(*dims)
+        betas[i] = tensor.as_tensor_variable(betas[i]).dimshuffle(*dims)
+
+    means = [var.mean(axis=axis[var], keepdims=True) for var in variables]
+    variances = [var.var(axis=axis[var], keepdims=True) for var in variables]
+    replacements = []
+    zip_iterator = zip(variables, means, variances, gammas, betas)
+    for var, mu, sigma_sqr, gamma, beta in zip_iterator:
+        if use_population[var]:
+            replacements.append((var, gamma * var + beta))
+        else:
+            replacements.append(
+                (var,
+                 gamma * (var - mu) / tensor.sqrt(sigma_sqr + epsilon) + beta))
+    for variable, replacement in replacements:
+        add_role(replacement, BATCH_NORMALIZED)
         replacement.tag.replacement_of = variable
 
     return computation_graph.replace(replacements)
