@@ -656,6 +656,11 @@ class Bidirectional(Initializable):
     def apply_delegate(self):
         return self.children[0].apply
 
+    def get_dim(self, name):
+        if name in self.apply.outputs:
+            return self.prototype.get_dim(name) * 2
+        return self.prototype.get_dim(name)
+
 RECURRENTSTACK_SEPARATOR = '#'
 
 
