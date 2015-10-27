@@ -255,6 +255,52 @@ Sending a pull request
 See our :doc:`pull request workflow <pull_request>` for a refresher on the
 general recipe for sending a pull request to Blocks.
 
+Making a new release
+--------------------
+.. note:
+   This section is targeted for Blocks and Fuel administrators.
+
+Create an initial pull request and copy the following piece of markdown code. 
+This pull request should only change the version number. Then, create a pull 
+request to Fuel which refers the first PR. Follow the instruction carefully 
+and check the boxes in process. 
+```
+- **Stage 1**: Make changes in `master`:
+  - [ ] Freeze other PRs.
+
+        After we agreed to initiate the process of releasing a new version,
+        other PRs shouldn't be merged.
+  - [ ] Increase the version number counter of Blocks.
+  - [ ] Increase the version number counter of Fuel.
+- **Stage 2**: After two PRs merged to Blocks and Fuel:
+  - [ ] Create a pull request to merge `master` into `stable`.
+
+        Refer the initial PR. 
+  - [ ] Create a pull request to Fuel.
+
+        A coresponding PR to Fuel which merges its `master` into `stable`.
+        Refer the initial PR.
+  - [ ] Check the Travis CI build, make sure it refers the stable branch.
+   
+        Read carefully the Travis CI messages, check that it tests the
+        rigth version.
+  - [ ] Check the Theano version.
+
+        The `req*.txt` should refer the last development Theano version 
+        which is known not to have bugs.
+  - [ ] Check referred Fuel version. 
+  
+        We should reference the stable version of Fuel. It can be seen
+        in the Travis CI output.
+  - [ ] Merge Fuel pull request.
+  - [ ] Merge this pull request.
+- **Stage 3**: After the PR is merged:
+  - [ ] Wait the build passes.
+  - [ ] Create release at GitHub.
+  - [ ] Check documentation build at ReadTheDocs.
+  - [ ] Double check that the version corresponds `__version__`.
+```
+
 .. toctree::
    :hidden:
 
