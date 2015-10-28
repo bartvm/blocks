@@ -14,7 +14,8 @@ from blocks.bricks.recurrent import (
     recurrent, BaseRecurrent, GatedRecurrent,
     SimpleRecurrent, Bidirectional, LSTM,
     RecurrentStack, RECURRENTSTACK_SEPARATOR)
-from blocks.initialization import Constant, IsotropicGaussian, Orthogonal, Identity
+from blocks.initialization import (
+    Constant, IsotropicGaussian, Orthogonal, Identity)
 from blocks.filter import get_application_call, VariableFilter
 from blocks.graph import ComputationGraph
 from blocks.roles import INITIAL_STATE
