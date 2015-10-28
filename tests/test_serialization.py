@@ -1,4 +1,5 @@
 import warnings
+import tarfile
 from pickle import PicklingError
 from tempfile import NamedTemporaryFile
 
@@ -11,7 +12,7 @@ from theano import tensor, shared
 from blocks.bricks import MLP, Linear
 from blocks.initialization import Constant
 from blocks.serialization import (load, dump, secure_dump, load_parameters,
-                                  _Renamer)
+                                  _Renamer, add_to_dump)
 
 
 #from theano import tensor, shared
@@ -108,8 +109,7 @@ def test_serialization():
     mlp.foo = foo
     with NamedTemporaryFile(delete=False) as f:
         with warnings.catch_warnings(record=True) as w:
-            dump(mlp, f, pickle_separately={'foo': mlp.foo})
-            print w
+            dump(mlp.foo, f)
             assert len(w) == 1
             assert '__main__' in str(w[-1].message)
 
@@ -172,6 +172,37 @@ def test_serialization():
     assert set(numpy_data.keys()) == \
         set(['/mlp/linear.W', '/mlp/linear.W_2'])
 
+
+def test_add_to_dump():
+    mlp = MLP(activations=[None, None], dims=[100, 100, 100],
+              weights_init=Constant(1.), use_bias=False)
+    mlp.initialize()
+    W = mlp.linear_transformations[1].W
+    W.set_value(W.get_value() * 2)
+
+    with NamedTemporaryFile(delete=False) as f:
+        dump(mlp, f, parameters=[mlp.children[0].W, mlp.children[1].W])
+    with open(f.name, 'r+') as ff:
+        add_to_dump(mlp.children[0], ff, 'child0', parameters=[mlp.children[0].W])
+        add_to_dump(mlp.children[1], ff, 'child1')
+    with open(f.name, 'r') as ff:
+        saved_mlp = load(ff)
+        print saved_mlp.children[0].W.get_value()
+        print saved_mlp.children[1].W.get_value()
+    with open(f.name, 'r') as ff:
+        saved_children_0 = load(ff, 'child0')
+        print saved_children_0.W.get_value()
+    with open(f.name, 'r') as ff:
+        saved_children_1 = load(ff, 'child1')
+        print saved_children_1.W.get_value()
+    with open(f.name, 'r') as ff:
+        fff = tarfile.open(fileobj=ff)
+        print fff.getmember('_pkl').size
+        print fff.getmember('_parameters').size
+        print fff.getmember('child0').size
+        print fff.getmember('child1').size
+
+test_add_to_dump()
 
 def test_secure_dump():
     foo = object()

@@ -8,15 +8,8 @@ ones are:
     - The dump is physically a tarball, in which the pickle is stored
       as '_pkl' file.
 
-    - Parts of the dumped object can be pickled separately but be
-      referenced from '_pkl' file using the persisent id mechanism (see
-      :mod:`pickle`) docs. Such parts are stored as arbitrarily named files
-      in the tarball. The benefit is that when unpickling '_pkl' breaks for
-      some reason (typically because of changes in the codebase used), one
-      can still have access to certain parts of the dumped object.
-
     - A special file '_parameters' in the tarball can contain the data
-      of a selected set of Theano shared variables. Again, this data is
+      of a selected set of Theano shared variables. This data is
       referenced from `_pkl` using persistent id mechanism, which means
       that no duplication takes place. The goal here is to save the values
       of the parameters (this is what these shared variables are in most
@@ -24,8 +17,10 @@ ones are:
       '_parameters' file is the one used by :func:`numpy.savez`, i.e. a zip
       file of numpy arrays.
 
-    - Pickling of the whole object in fact can be bypassed if pickling of
-      some parts and parameters is sufficient.
+    - More objects can be dumped in the archive using the `add_to_dump`
+      function. If the object has the same parameters as the one alread
+      dumped, then you can avoid to dump those parameters thank to the
+      persistent id mechanism.
 
     - The :func:`dump` strives to catch situations when the user tries
       to pickle a function or a class not defined in the global namespace
@@ -71,14 +66,13 @@ Let's do something more interesting:
 
 >>> with open('main_loop.tar', 'w') as dst:
 ...     dump(main_loop, dst,
-...          pickle_separately={'log': main_loop.log},
 ...          parameters=main_loop.model.parameters)
 >>> tarball = tarfile.open('main_loop.tar', 'r')
 >>> tarball.getnames()
-['_parameters', 'log', '_pkl']
+['_parameters', '_pkl']
 
-As requested by specifying `pickle_separately` and `_parameters` arguments,
-the log was pickled separately and the parameters were saved in a zip file.
+As requested by specifying the `_parameters` argument, the parameters were
+saved in a zip file.
 
 >>> import numpy
 >>> ps = numpy.load(tarball.extractfile(tarball.getmember('_parameters')))
@@ -88,29 +82,20 @@ the log was pickled separately and the parameters were saved in a zip file.
 
 The names for parameters are chosen intellegently to reflect their
 position in the brick hierarchy, if they belong to bricks, and by
-simpling using the `.name` attribute, if they do not.
+simply using the `.name` attribute, if they do not.
 
->>> import pickle
->>> pickle.load(tarball.extractfile(tarball.getmember('log')))
-defaultdict(<type 'dict'>, {})
->>> tarball.close()
-
-The loading of the main loop as a whole however still works:
+The loading of the main loop as a whole still works:
 
 >>> with open('main_loop.tar') as src:
 ...     main_loop_loaded = load(src)
 >>> main_loop_loaded # doctest: +ELLIPSIS
 <blocks.main_loop.MainLoop object at ...>
 
-Additionally, this module provides convenience routines
-:func:`load_part` and :func:`load_parameters`:
+Additionally, this module provides convenience routine
+:func:`load_parameters`:
 
 >>> with open('main_loop.tar') as src:
 ...     parameters = load_parameters(src)
->>> with open('main_loop.tar') as src:
-...     log = load_part(src, 'log')
->>> log
-defaultdict(<type 'dict'>, {})
 >>> sorted(parameters.keys()) # doctest: +ELLIPSIS
 ['/mlp/linear_0.W', '/mlp/linear_0.b', '/mlp/linear_1.W', '/mlp/line...]
 
@@ -118,20 +103,7 @@ Loading parameters saved by :func:`dump` with :func:`load_parameters`
 ensures that their heirarchical names are compatible with
 :class:`~blocks.model.Model` and :class:`~blocks.select.Selector` classes.
 
-Finally, as promised, pickling of the whole object in its entirety can
-be skipped if you are fine with just having the parameters and/or parts
-saved:
-
->>> with open('main_loop.tar', 'w') as dst:
-...     dump(main_loop, dst,
-...          pickle_separately=[(main_loop.log, 'log')],
-...          parameters=main_loop.model.parameters,
-...          pickle_whole=False)
->>> tarball = tarfile.open('main_loop.tar', 'r')
->>> tarball.getnames()
-['_parameters', 'log']
->>> tarball.close()
-
+TODO: Add information about :func:`add_to_dump`.
 
 """
 import os
@@ -169,82 +141,55 @@ Because of limitations to pickling, this means that you will not be able to \
 resume your model outside of a namespace containing this function. In other \
 words, you can only call `continue_training` from within this script."""
 
-LOAD_ERROR_MESSAGE = """
 
-There is no object to load in this archive (ie you saved your object using \
-dump(pickle_whole=False)). To load the parts that have been pickled \
-separately, if any, use load_part(). If you want to load the parameters \
-that you saved separately, if any, use load_parameters()."""
-
-
-def dump(object_, file_,
-         parameters=None, pickle_separately=None,
-         pickle_whole=True, use_cpickle=False, **kwargs):
-    r"""Pickles an object saving some of its parts separately.
+def dump(object_, file_, parameters=None, use_cpickle=False,
+         protocol=DEFAULT_PROTOCOL, **kwargs):
+    r"""Pickles an object saving optionnaly its parameters separately.
 
     Parameters
     ----------
     object_ : object
-        The object to be pickled.
+        The object to pickle.
     file_ : file
         The destination for saving.
     parameters : list, optional
         Shared variables whose internal numpy arrays should be saved
-        separately in the `_parameters` field of the zip file.
-    pickle_separately : dict, optional
-        Specifies the components of `object_` that should be pickled
-        separately. The keys will be used as field names in the resulting
-        tar file. The values are the actual parts to save separately.
-        '_pkl` and `_parameters` are reserved keys and can't be used.
-    pickle_whole : bool, optional
-        When ``False``, the whole object is not pickled, only its
-        components are. Default: True
+        separately in the `_parameters` field of the tar file.
     use_cpickle : bool
         Use cPickle instead of pickle. Setting it to true will disable the
-        warning message if you try to pickle objects from the main module!
-        Be sure that you don't have the warning before turning this flag
+        warning message if you try to pickle objects from the main module,
+        so be sure that there is no warning before turning this flag
         on. Default: False.
+    protocol : int, optional
+        The pickling protocol to use. Unlike Python's built-in pickle, the
+        default is set to `2` instead of 0 for Python 2. The Python 3
+        default (level 3) is maintained.
     \*\*kwargs
         Keyword arguments to be passed to `pickle.Pickler`.
 
     """
-    if not pickle_separately:
-        pickle_separately = {}
-    if '_pkl' in pickle_separately or '_parameters' in pickle_separately:
-        raise ValueError("_pkl and _parameters are reserved names and can't" \
-                         " be used as keys in pickle_separately.")
-
     if use_cpickle:
         pickler = cPickle.Pickler
     else:
         pickler = _PicklerWithWarning
-
     with closing(tarfile.TarFile(fileobj=file_, mode='w')) as tar_file:
         external_objects = {}
         def _save_parameters(f):
             renamer = _Renamer()
             named_parameters = {renamer(p): p for p in parameters}
-            numpy.savez(f, **{name: p.get_value()
-                              for name, p in named_parameters.items()})
-
-            for name, p in named_parameters.items():
+            numpy.savez(f, **{n: p.get_value()
+                              for n, p in named_parameters.items()})
+            for n, p in named_parameters.items():
                 array_ = p.container.storage[0]
                 external_objects[id(array_)] = _mangle_parameter_name(
-                    type(array_), name)
+                    type(array_), n)
         if parameters:
             _taradd(_save_parameters, tar_file, '_parameters')
-        if pickle_separately:
-            for name, component in six.iteritems(pickle_separately):
-                def _pickle_separately(f):
-                    p = pickler(f, **kwargs)
-                    p.dump(component)
-                _taradd(_pickle_separately, tar_file, name)
-        def _pickle_whole(f):
-            p = pickler(f, **kwargs)
+        def _save_object(f):
+            p = pickler(f, protocol=protocol, **kwargs)
             p.persistent_id = _PersistentID(external_objects)
             p.dump(object_)
-        if pickle_whole:
-            _taradd(_pickle_whole, tar_file, '_pkl')
+        _taradd(_save_object, tar_file, '_pkl')
 
 
 def secure_dump(object_, file_, dump_function=dump, **kwargs):
@@ -275,13 +220,21 @@ def secure_dump(object_, file_, dump_function=dump, **kwargs):
         raise
 
 
-def load(file_):
+def load(file_, name='_pkl'):
     """Loads an object saved using the `dump` function.
+
+    By default, this function loads the object saved by the `dump`
+    function. If some objects have been added to the archive using the
+    `add_to_dump` function, then you can load them by passing their name
+    to the `name` parameter.
 
     Parameters
     ----------
     file_ : file
         The file that contains the object to load.
+    name : str
+        Name of the object to load. Default is `_pkl`, meaning that it is
+        the original object which have been dumped that is loaded.
 
     Returns
     -------
@@ -289,12 +242,9 @@ def load(file_):
 
     """
     with tarfile.open(fileobj=file_, mode='r') as tar_file:
-        files = tar_file.getnames()
-        if '_pkl' not in files:
-            raise AttributeError("No _pkl file in file_." + LOAD_ERROR_MESSAGE)
         p = pickle.Unpickler(
-            tar_file.extractfile(tar_file.getmember('_pkl')))
-        if set(['_pkl']) is not set(files):
+            tar_file.extractfile(tar_file.getmember(name)))
+        if '_parameters' in tar_file.getnames():
             p.persistent_load = _PersistentLoad(tar_file)
         return p.load()
 
@@ -320,27 +270,85 @@ def load_parameters(file_):
                 for name, value in npz_file.items()}
 
 
-def load_part(file_, part):
-    """Loads a part of an object saved by :func:`dump`.
+def add_to_dump(object_, file_, name, parameters=None, use_cpickle=False,
+                protocol=DEFAULT_PROTOCOL, **kwargs):
+    r"""Pickles an object to an existing tar archive.
 
-    This functions loads a part of an object that have been saved
-    separately by :func:`dump`, ie a part that has been given to its
-    parameter `pickle_separately`.
+    This function allows to dump more objects to an existing archive. If
+    the object you want to dump posess the same set of shared variables as
+    the object already dumped, you can pass them to the `parameters`
+    argument, which will avoid them to be serialized a second time.
+    However, it won't work if the shared variable you pass to the
+    `parameters` argument are not already in the archive.
 
     Parameters
     ----------
+    object_ : object
+        The object to pickle.
     file_ : file
-        The source to load the parameters from.
-    part : str
-        The part of the object to load.
-
-    Returns
-    -------
-    The part of the object to load.
+        The destination for saving, opened in read-write mode (`r+`).
+    name : str
+        The name of the object you are dumping. It will be used as a file
+        name in the archive. '_pkl' and '_paramters' are reserved names
+        and can't be used.
+    parameters : list, optional
+        Shared variables whose internal numpy arrays should be saved
+        separately in the `_parameters` field of the tar file. Must be a
+        subset of the parameters already in the archive.
+    use_cpickle : bool
+        Use cPickle instead of pickle. Setting it to true will disable the
+        warning message if you try to pickle objects from the main module!
+        Be sure that you don't have the warning before turning this flag
+        on. Default: False.
+    protocol : int, optional
+        The pickling protocol to use. Unlike Python's built-in pickle, the
+        default is set to `2` instead of 0 for Python 2. The Python 3
+        default (level 3) is maintained.
+    \*\*kwargs
+        Keyword arguments to be passed to `pickle.Pickler`.
 
     """
-    with tarfile.open(fileobj=file_, mode='r') as tar_file:
-        return pickle.load(tar_file.extractfile(tar_file.getmember(part)))
+    if name in ['_pkl', '_parameters']:
+        raise ValueError("_pkl and _parameters are reserved names and can't" \
+                         " be used as name for your object.")
+
+    external_parameters = {}
+    if parameters is not None:
+        renamer = _Renamer()
+        named_parameters = {renamer(p): p for p in parameters}
+        for n, p in named_parameters.items():
+            array_ = p.container.storage[0]
+            external_parameters[id(array_)] = _mangle_parameter_name(
+                type(array_), n)
+
+        # Check that the parameters are the same that the ones in the archive.
+        with closing(tarfile.TarFile(fileobj=file_, mode='r')) as tar_file:
+            if '_parameters' not in tar_file.getnames():
+                raise ValueError("There is no parameters in the archive, so" \
+                                 " you can't use the argument parameters.")
+            else:
+                parameters = numpy.load(
+                    tar_file.extractfile(tar_file.getmember('_parameters')))
+                s1 = set(parameters.keys())
+                s2 = set(external_parameters.keys())
+                if s1.issuperset(s2):
+                    raise ValueError('The set of parameters is different' \
+                                     ' from the one in the archive.')
+
+    # TODO: How to avoid this hack?
+    file_.close()
+    file_ = open(file_.name, 'r+')
+
+    if use_cpickle:
+        pickler = cPickle.Pickler
+    else:
+        pickler = _PicklerWithWarning
+    with closing(tarfile.TarFile(fileobj=file_, mode='a')) as tar_file:
+        def _save_object(f):
+            p = pickler(f, protocol=protocol, **kwargs)
+            p.persistent_id = _PersistentID(external_parameters)
+            p.dump(object_)
+        _taradd(_save_object, tar_file, name)
 
 
 def continue_training(file_):
@@ -348,7 +356,7 @@ def continue_training(file_):
 
     Parameters
     ----------
-    file : str
+    file_ : str
         Path to checkpoint.
 
     Notes
@@ -474,11 +482,7 @@ class _PersistentLoad(object):
 
     def __call__(self, id_):
         components = _unmangle_parameter_name(id_)
-        if not components:
-            return pickle.load(
-                self.tar_file.extractfile(self.tar_file.getmember(id_)))
-        else:
-            return components[0](self.parameters[components[1]])
+        return components[0](self.parameters[components[1]])
 
 
 def _mangle_parameter_name(type_, name):
