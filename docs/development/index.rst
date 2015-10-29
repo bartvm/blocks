@@ -221,8 +221,8 @@ Unit testing
 Blocks and Fuel use unit testing to ensure that individual parts of
 the library behave as intended. It's also essential in ensuring that
 parts of the library are not broken by proposed changes. Since Blocks
-depends on Fuel, it is important to make sure changes in Fuel do not
-break Blocks.
+and Fuel were designed to be used together, it is important to make sure
+changes in Fuel do not break Blocks.
 
 All new code should be accompanied by extensive unit tests. Whenever a pull
 request is made, the full test suite is run on `Travis CI`_, and pull requests
