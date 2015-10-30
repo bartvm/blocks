@@ -253,7 +253,7 @@
        xml:space="preserve"
        id="flowRoot4017-5"
        style="font-size:10px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       transform="matrix(0.89878529,-0.43838912,0.43838912,0.89878529,106.28345,270.94408)"><flowRegion
+       transform="matrix(0.89878529,-0.43838912,0.43838912,0.89878529,110.28345,272.44408)"><flowRegion
          id="flowRegion4019-3"><rect
            id="rect4021-5"
            width="101.82338"
@@ -261,11 +261,11 @@
            x="140.71425"
            y="156.81145" /></flowRegion><flowPara
          id="flowPara4023-9"
-         style="font-size:8px">transition.take_look</flowPara><flowPara
-         style="font-size:8px"
+         style="font-size:6px">transition.take_glimpses</flowPara><flowPara
+         style="font-size:6px"
          id="flowPara4069" /><flowPara
          id="flowPara4025-7"
-         style="font-size:8px" /></flowRoot>    <rect
+         style="font-size:6px" /></flowRoot>    <rect
        style="fill:#000000;fill-opacity:0;stroke:#000000;stroke-width:0.30361959;stroke-miterlimit:4;stroke-dasharray:0.91085878, 0.91085878;stroke-dashoffset:0"
        id="rect3008-35-16-2"
        width="20.296885"
