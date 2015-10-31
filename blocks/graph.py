@@ -6,7 +6,7 @@ from itertools import chain
 import numpy
 import theano
 from picklable_itertools.extras import equizip
-from theano import Variable
+from theano import Variable, tensor
 from theano.gof import graph
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.scan_module.scan_op import Scan
@@ -14,9 +14,9 @@ from toolz import unique
 
 from blocks.config import config
 from blocks.roles import (add_role, has_roles, AUXILIARY, PARAMETER, DROPOUT,
-                          COLLECTED, COLLECTOR)
+                          BATCH_NORMALIZED, COLLECTED, COLLECTOR)
 from blocks.utils import (is_graph_input, is_shared_variable, dict_union,
-                          shared_floatx_zeros, shared_like)
+                          shared_floatx_zeros, shared_like, pack)
 import warnings
 
 logger = logging.getLogger(__name__)
@@ -633,3 +633,165 @@ def apply_dropout(computation_graph, variables, drop_prob, rng=None,
         replacement.tag.replacement_of = variable
 
     return computation_graph.replace(replacements)
+
+
+def apply_batch_normalization(computation_graph, variables, axis=None,
+                              alpha=1e-2, epsilon=1e-7,
+                              given_population_means=None,
+                              given_population_variances=None,
+                              given_gammas=None, given_betas=None):
+    """Returns a graph to variables in a computational graph.
+
+    Parameters
+    ----------
+    computation_graph : instance of :class:`ComputationGraph`
+        The computation graph.
+    variables : list of :class:`~tensor.TensorVariable`
+        Variables to be batch-normalized.
+    alpha : float, optional
+        Coefficient for the exponential moving average used to
+        estimate population statistics.  Lower is smoother.
+        Defaults to 1E-2.
+    axis : int or iterable, optional
+        Batch axis, or batch axes. Defaults to 0.
+    epsilon : float, optional
+        Stabilization constant. Defaults to 1E-7.
+    given_gammas : dict of (variable, ndarray) pairs
+        Initial scale coefficients.
+    given_betas : dict of (variable, ndarray) pairs
+        Initial shift coefficients.
+    given_population_means : dict of (variable, ndarray) pairs
+        Initial population mean estimates.
+    given_population_variances : dict of (variable, ndarray) pairs
+        Initial population variance estimates.
+
+    Notes
+    -----
+    For more information, see [BN]_.
+
+    .. [BN] Sergey Ioffe and Christian Szegedy. *Batch Normalization:
+       Accelerating Deep Network Training by Reducing Internal Covariate
+       Shift*, arXiv:1502.03167.
+
+    Examples
+    --------
+    >>> from theano import function
+    >>> from blocks.bricks import MLP, Identity
+    >>> from blocks.filter import VariableFilter
+    >>> from blocks.initialization import Constant
+    >>> from blocks.roles import INPUT
+    >>> from blocks.utils import shared_floatx
+    >>> linear = MLP([Identity(), Identity()], [2, 10, 2],
+    ...              weights_init=Constant(1), biases_init=Constant(2))
+    >>> x = tensor.matrix('x')
+    >>> gamma_1 = shared_floatx(numpy.ones(2), name='gamma_1')
+    >>> gamma_2 = shared_floatx(numpy.ones(10), name='gamma_2')
+    >>> beta_1 = shared_floatx(numpy.zeros(2), name='beta_1')
+    >>> beta_2 = shared_floatx(numpy.zeros(10), name='beta_2')
+    >>> y = linear.apply(x)
+    >>> cg = ComputationGraph(y)
+    >>> inputs = VariableFilter(
+    ...     roles=[INPUT],
+    ...     bricks=linear.linear_transformations)(cg.variables)
+    >>> cg_bn = apply_batch_normalization(
+    ...     cg, inputs, [gamma_1, gamma_2], [beta_1, beta_2])
+    >>> fprop = function(cg.inputs, cg.outputs[0])
+    >>> bn_fprop = function(cg_bn.inputs, cg_bn.outputs[0])
+    >>> linear.initialize()
+    >>> print(fprop(numpy.ones((3, 2),
+    ...             dtype=theano.config.floatX))) # doctest:+ELLIPSIS
+    [[ 42.  42.]
+     [ 42.  42.]
+     [ 42.  42.]]...
+    >>> print(bn_fprop(numpy.ones((3, 2),
+    ...                dtype=theano.config.floatX))) # doctest:+ELLIPSIS
+    [[ 2.  2.]
+     [ 2.  2.]
+     [ 2.  2.]]...
+
+    """
+    epsilon = numpy.cast[theano.config.floatX](epsilon)
+    if not axis:
+        axis = dict([(var, 0) for var in variables])
+    for var in variables:
+        if var not in axis:
+            axis[var] = pack(0)
+        else:
+            axis[var] = pack(axis[var])
+
+    givens = dict(population_mean=given_population_means,
+                  population_variance=given_population_variances,
+                  gamma=given_gammas,
+                  beta=given_betas)
+
+    batch_means = [var.mean(axis=axis[var], keepdims=True)
+                   for var in variables]
+    batch_variances = [var.var(axis=axis[var], keepdims=True)
+                       for var in variables]
+
+    initialization_updates = []
+    accumulation_updates = []
+
+    parameters = {}
+    for parameter_name, given in givens.items():
+        given = dict([] if given is None else given)
+
+        for variable, batch_mean, batch_variance in zip(
+                variables, batch_means, batch_variances):
+            name = "%s_%s" % (variable.name, parameter_name)
+
+            # create shared variable
+            if variable in given:
+                parameter = given[variable]
+                if not isinstance(parameter, tensor.TensorVariable):
+                    parameter = theano.shared(parameter, name=name)
+            else:
+                # if not given, the shape will be unknown until an
+                # initialization update is performed
+                parameter = shared_like(batch_mean, name=name)
+                initializer = dict(population_mean=tensor.zeros_like,
+                                   population_variance=tensor.ones_like,
+                                   gamma=tensor.ones_like,
+                                   beta=tensor.zeros_like)[parameter_name]
+                initialization_updates.append(
+                    (parameter, tensor.patternbroadcast(
+                        initializer(batch_mean),
+                        [False] * batch_mean.ndim)))
+
+            # don't add the PARAMETER role on population statistics
+            # as they shouldn't be trained
+            if parameter_name in "gamma beta".split():
+                add_role(parameter, PARAMETER)
+
+            # track population statistics by batch statistics
+            targets = dict(population_mean=batch_mean,
+                           population_variance=batch_variance)
+            if parameter_name in targets:
+                accumulation_updates.append(
+                    (parameter, (alpha * parameter +
+                                 (1 - alpha) * targets[parameter_name])))
+
+            parameters.setdefault(parameter_name, []).append(parameter)
+
+    batch_replacements = []
+    population_replacements = []
+    for replacements, means, variances in (
+        (batch_replacements, batch_means, batch_variances),
+        (population_replacements, parameters["population_mean"],
+         parameters["population_variance"])):
+        for i, (variable, mean, variance, gamma, beta) in enumerate(
+                zip(variables, means, variances,
+                    parameters["gamma"], parameters["beta"])):
+            mean, variance, gamma, beta = [
+                tensor.addbroadcast(x, *axis[variable])
+                for x in (mean, variance, gamma, beta)]
+            replacement = (gamma * (variable - mean) /
+                           tensor.sqrt(variance + epsilon) + beta)
+            add_role(replacement, BATCH_NORMALIZED)
+            replacement.tag.replacement_of = variable
+            replacements.append((variable, replacement))
+
+    return (computation_graph.replace(batch_replacements),
+            computation_graph.replace(population_replacements),
+            initialization_updates,
+            accumulation_updates)

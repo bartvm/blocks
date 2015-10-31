@@ -45,6 +45,7 @@ In-depth
    :maxdepth: 1
 
    rnn
+   batch_normalization
    configuration
    create_your_own_brick
    serialization
