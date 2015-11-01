@@ -533,8 +533,8 @@ def collect_parameters(computation_graph, parameters):
 
 
 def apply_dropout(computation_graph, variables, drop_prob, rng=None,
-                  seed=None):
     """Returns a graph to variables in a computational graph.
+    """Apply dropout to specified variables in a graph.
 
     Parameters
     ----------
@@ -550,6 +550,12 @@ def apply_dropout(computation_graph, variables, drop_prob, rng=None,
         Random number generator.
     seed : int
         Random seed to be used if `rng` was not specified.
+
+    Returns
+    -------
+    dropped_computation_graph : instance of :class:`ComputationGraph`
+        A new computation graph with dropout applied to the specified
+        variables.
 
     Notes
     -----
