@@ -533,7 +533,7 @@ def collect_parameters(computation_graph, parameters):
 
 
 def apply_dropout(computation_graph, variables, drop_prob, rng=None,
-    """Returns a graph to variables in a computational graph.
+                  seed=None, custom_divisor=None):
     """Apply dropout to specified variables in a graph.
 
     Parameters
@@ -550,6 +550,11 @@ def apply_dropout(computation_graph, variables, drop_prob, rng=None,
         Random number generator.
     seed : int
         Random seed to be used if `rng` was not specified.
+    custom_divisor : float or None, optional
+        Divide dropped variables by a given scalar value. If `None`,
+        (default) dropped variables will be divided by `(1 - drop_prob)`
+        which is equivalent to scaling by `(1 - drop_prob)` at test
+        time as recommended in [DROPOUT]_.
 
     Returns
     -------
@@ -628,11 +633,14 @@ def apply_dropout(computation_graph, variables, drop_prob, rng=None,
         seed = config.default_seed
     if not rng:
         rng = MRG_RandomStreams(seed)
-
+    if custom_divisor is None:
+        divisor = (1 - drop_prob)
+    else:
+        divisor = custom_divisor
     replacements = [(var, var *
                      rng.binomial(var.shape, p=1 - drop_prob,
                                   dtype=theano.config.floatX) /
-                     (1 - drop_prob))
+                     divisor)
                     for var in variables]
     for variable, replacement in replacements:
         add_role(replacement, DROPOUT)
