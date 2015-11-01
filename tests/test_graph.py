@@ -8,7 +8,8 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams
 from blocks.bricks import MLP, Identity, Logistic
 from blocks.bricks.cost import SquaredError
 from blocks.filter import VariableFilter
-from blocks.graph import apply_noise, collect_parameters, ComputationGraph
+from blocks.graph import (apply_dropout, apply_noise, collect_parameters,
+                          ComputationGraph)
 from blocks.initialization import Constant
 from blocks.roles import add_role, COLLECTED, PARAMETER, AUXILIARY
 from tests.bricks.test_bricks import TestBrick
@@ -138,6 +139,36 @@ def test_apply_noise():
     assert_allclose(
         noised_cg.outputs[0].eval({x: 1., y: 1.}),
         2 + MRG_RandomStreams(1).normal(tuple()).eval())
+
+
+def test_apply_dropout():
+    x = tensor.vector()
+    y = tensor.vector()
+    z = x * y
+    cg = ComputationGraph([z])
+    dropped_cg = apply_dropout(cg, [x], 0.4, seed=1)
+
+    x_ = numpy.array([5., 6., 7.], dtype=theano.config.floatX)
+    y_ = numpy.array([1., 2., 3.], dtype=theano.config.floatX)
+
+    assert_allclose(
+        dropped_cg.outputs[0].eval({x: x_, y: y_}),
+        x_ * y_ * MRG_RandomStreams(1).binomial((3,), p=0.6).eval() / 0.6)
+
+
+def test_apply_dropout_custom_divisor():
+    x = tensor.vector()
+    y = tensor.vector()
+    z = x - y
+    cg = ComputationGraph([z])
+    scaled_dropped_cg = apply_dropout(cg, [y], 0.8, seed=2, custom_divisor=2.5)
+
+    x_ = numpy.array([9., 8., 9.], dtype=theano.config.floatX)
+    y_ = numpy.array([4., 5., 6.], dtype=theano.config.floatX)
+
+    assert_allclose(
+        scaled_dropped_cg.outputs[0].eval({x: x_, y: y_}),
+        x_ - (y_ * MRG_RandomStreams(2).binomial((3,), p=0.2).eval() / 2.5))
 
 
 def test_snapshot():
