@@ -163,30 +163,39 @@ class Convolutional(Initializable):
         return super(Convolutional, self).get_dim(name)
 
 
-class MaxPooling(Initializable, Feedforward):
-    """Max pooling layer.
+class Pooling(Initializable, Feedforward):
+    """Base Brick for pooling operations.
 
-    Parameters
-    ----------
-    pooling_size : tuple
-        The height and width of the pooling region i.e. this is the factor
-        by which your input's last two dimensions will be downscaled.
-    step : tuple, optional
-        The vertical and horizontal shift (stride) between pooling regions.
-        By default this is equal to `pooling_size`. Setting this to a lower
-        number results in overlapping pooling regions.
-    input_dim : tuple, optional
-        A tuple of integers representing the shape of the input. The last
-        two dimensions will be used to calculate the output dimension.
+    This should generally not be instantiated directly; see
+    :class:`MaxPooling`.
 
     """
-    @lazy(allocation=['pooling_size'])
-    def __init__(self, pooling_size, step=None, input_dim=None, **kwargs):
-        super(MaxPooling, self).__init__(**kwargs)
-
-        self.input_dim = input_dim
+    @lazy(allocation=['mode', 'pooling_size'])
+    def __init__(self, mode, pooling_size, step=None, input_dim=None,
+                 ignore_border=False, padding=(0, 0), **kwargs):
+        super(Pooling, self).__init__(**kwargs)
         self.pooling_size = pooling_size
+        self.mode = mode
         self.step = step
+        self.input_dim = input_dim if input_dim is not None else (None,) * 3
+        self.ignore_border = ignore_border
+        self.padding = padding
+
+    @property
+    def image_size(self):
+        return self.input_dim[-2:]
+
+    @image_size.setter
+    def image_size(self, value):
+        self.input_dim = self.input_dim[:-2] + value
+
+    @property
+    def num_channels(self):
+        return self.input_dim[0]
+
+    @num_channels.setter
+    def num_channels(self, value):
+        self.input_dim = (value,) + self.input_dim[1:]
 
     @application(inputs=['input_'], outputs=['output'])
     def apply(self, input_):
@@ -207,16 +216,59 @@ class MaxPooling(Initializable, Feedforward):
             with the last two dimensions downsampled.
 
         """
-        output = max_pool_2d(input_, self.pooling_size, st=self.step)
+        output = max_pool_2d(input_, self.pooling_size, st=self.step,
+                             mode=self.mode, padding=self.padding,
+                             ignore_border=self.ignore_border)
         return output
 
     def get_dim(self, name):
         if name == 'input_':
             return self.input_dim
         if name == 'output':
-            return tuple(DownsampleFactorMax.out_shape(self.input_dim,
-                                                       self.pooling_size,
-                                                       st=self.step))
+            return tuple(DownsampleFactorMax.out_shape(
+                self.input_dim, self.pooling_size, st=self.step,
+                ignore_border=self.ignore_border, padding=self.padding))
+
+
+class MaxPooling(Pooling):
+    """Max pooling layer.
+
+    Parameters
+    ----------
+    pooling_size : tuple
+        The height and width of the pooling region i.e. this is the factor
+        by which your input's last two dimensions will be downscaled.
+    step : tuple, optional
+        The vertical and horizontal shift (stride) between pooling regions.
+        By default this is equal to `pooling_size`. Setting this to a lower
+        number results in overlapping pooling regions.
+    input_dim : tuple, optional
+        A tuple of integers representing the shape of the input. The last
+        two dimensions will be used to calculate the output dimension.
+    padding : tuple, optional
+        A tuple of integers representing the vertical and horizontal
+        zero-padding to be applied to each of the top and bottom
+        (vertical) and left and right (horizontal) edges. For example,
+        an argument of (4, 3) will apply 4 pixels of padding to the
+        top edge, 4 pixels of padding to the bottom edge, and 3 pixels
+        each for the left and right edge. By default, no padding is
+        performed.
+    ignore_border : bool, optional
+        Whether or not to do partial downsampling based on borders where
+        the extent of the pooling region reaches beyond the edge of the
+        image. If `True`, a (5, 5) image with (2, 2) pooling regions
+        and (2, 2) step will be downsampled to shape (2, 2), otherwise
+        it will be downsampled to (3, 3). `False` by default.
+
+    """
+    @lazy(allocation=['pooling_size'])
+    def __init__(self, pooling_size, step=None, input_dim=None,
+                 ignore_border=False, padding=(0, 0),
+                 **kwargs):
+        super(MaxPooling, self).__init__('max', pooling_size,
+                                         step=step, input_dim=input_dim,
+                                         ignore_border=ignore_border,
+                                         padding=padding, **kwargs)
 
 
 class _AllocationMixin(object):
