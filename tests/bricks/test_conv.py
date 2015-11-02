@@ -8,7 +8,8 @@ from theano import function
 
 from blocks.bricks import Rectifier
 from blocks.bricks.conv import (Convolutional, ConvolutionalLayer, MaxPooling,
-                                ConvolutionalActivation, ConvolutionalSequence)
+                                AveragePooling, ConvolutionalActivation,
+                                ConvolutionalSequence)
 from blocks.initialization import Constant
 from blocks.graph import ComputationGraph
 
@@ -122,6 +123,63 @@ def test_max_pooling():
     pool.input_dim = (x_size, y_size)
     pool.get_dim('output') == (num_channels, x_size / pool_size + 1,
                                y_size / pool_size + 1)
+
+
+def test_max_pooling_ignore_border_true():
+    x = tensor.tensor4('x')
+    brick = MaxPooling((3, 4), ignore_border=True)
+    y = brick.apply(x)
+    out = y.eval({x: numpy.zeros((8, 3, 10, 13), dtype=theano.config.floatX)})
+    assert out.shape == (8, 3, 3, 3)
+
+
+def test_max_pooling_ignore_border_false():
+    x = tensor.tensor4('x')
+    brick = MaxPooling((5, 7), ignore_border=False)
+    y = brick.apply(x)
+    out = y.eval({x: numpy.zeros((4, 6, 12, 15), dtype=theano.config.floatX)})
+    assert out.shape == (4, 6, 3, 3)
+
+
+def test_max_pooling_padding():
+    x = tensor.tensor4('x')
+    brick = MaxPooling((6, 2), padding=(3, 1), ignore_border=True)
+    y = brick.apply(x)
+    out = y.eval({x: numpy.zeros((2, 3, 6, 10), dtype=theano.config.floatX)})
+    assert out.shape == (2, 3, 2, 6)
+
+
+def test_average_pooling():
+    x = tensor.tensor4('x')
+    brick = AveragePooling((2, 2))
+    y = brick.apply(x)
+    tmp = numpy.arange(16, dtype=theano.config.floatX).reshape(1, 1, 4, 4)
+    x_ = numpy.tile(tmp, [2, 3, 1, 1])
+    out = y.eval({x: x_})
+    assert_allclose(
+        out - numpy.array([[10 / 4., 18 / 4.], [42 / 4., 50 / 4.]]),
+        numpy.zeros_like(out))
+
+
+def test_average_pooling_inc_padding():
+    x = tensor.tensor4('x')
+    brick = AveragePooling((2, 2), ignore_border=True, padding=(1, 1),
+                           include_padding=True)
+    y = brick.apply(x)
+    output = y.eval({x: 3 * numpy.ones((1, 1, 2, 2),
+                                       dtype=theano.config.floatX)})
+    expected_out = numpy.array([0.75, 0.75, 0.75, 0.75]).reshape(1, 1, 2, 2)
+    assert_allclose(expected_out, output)
+
+
+def test_average_pooling_exc_padding():
+    x = tensor.tensor4('x')
+    brick = AveragePooling((2, 2), ignore_border=True, padding=(1, 1),
+                           include_padding=False)
+    y = brick.apply(x)
+    x_ = 3 * numpy.ones((1, 1, 2, 2), dtype=theano.config.floatX)
+    output = y.eval({x: x_})
+    assert_allclose(x_, output)
 
 
 def test_convolutional_layer():
