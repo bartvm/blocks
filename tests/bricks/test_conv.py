@@ -182,6 +182,18 @@ def test_average_pooling_exc_padding():
     assert_allclose(x_, output)
 
 
+def test_pooling_works_in_convolutional_sequence():
+    x = tensor.tensor4('x')
+    brick = ConvolutionalSequence([AveragePooling((2, 2), step=(2, 2)),
+                                   MaxPooling((4, 4), step=(2, 2),
+                                              ignore_border=True)],
+                                  image_size=(16, 32), num_channels=3)
+    brick.allocate()
+    y = brick.apply(x)
+    out = y.eval({x: numpy.empty((2, 3, 16, 32), dtype=theano.config.floatX)})
+    assert out.shape == (2, 3, 3, 7)
+
+
 def test_convolutional_layer():
     x = tensor.tensor4('x')
     num_channels = 4
