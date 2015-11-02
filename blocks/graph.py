@@ -560,7 +560,9 @@ def apply_dropout(computation_graph, variables, drop_prob, rng=None,
     -------
     dropped_computation_graph : instance of :class:`ComputationGraph`
         A new computation graph with dropout applied to the specified
-        variables.
+        variables. In order to train with, or monitor, the outputs
+        of the original computation graph with dropout applies, use
+        the variables contained in `dropped_computation_graph.outputs`.
 
     Notes
     -----
