@@ -162,6 +162,11 @@ class Convolutional(Initializable):
                                           self.step, self.border_mode))
         return super(Convolutional, self).get_dim(name)
 
+    @property
+    def num_output_channels(self):
+        return self.num_filters
+
+
 
 class Pooling(Initializable, Feedforward):
     """Base Brick for pooling operations.
@@ -229,6 +234,10 @@ class Pooling(Initializable, Feedforward):
                 self.input_dim, self.pooling_size, st=self.step,
                 ignore_border=self.ignore_border, padding=self.padding))
 
+    @property
+    def num_output_channels(self):
+        return self.input_dim[0]
+
 
 class MaxPooling(Pooling):
     """Max pooling layer.
@@ -277,6 +286,14 @@ class _AllocationMixin(object):
                      'batch_size', 'num_channels', 'image_size',
                      'tied_biases', 'use_bias']:
             setattr(self.convolution, attr, getattr(self, attr))
+
+    @property
+    def num_output_channels(self):
+        # Assumes an elementwise activation function. Would need to
+        # change to support e.g. maxout, but that would also require
+        # a way of querying the activation function for this kind of
+        # information.
+        return self.num_filters
 
 
 class ConvolutionalActivation(_AllocationMixin, Sequence, Initializable):
@@ -478,7 +495,7 @@ class ConvolutionalSequence(Sequence, Initializable, Feedforward):
             if layer.image_size is not None:
                 output_shape = layer.get_dim('output')
                 image_size = output_shape[1:]
-            num_channels = layer.num_filters
+            num_channels = layer.num_output_channels
 
 
 class Flattener(Brick):
