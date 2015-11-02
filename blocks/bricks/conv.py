@@ -167,7 +167,6 @@ class Convolutional(Initializable):
         return self.num_filters
 
 
-
 class Pooling(Initializable, Feedforward):
     """Base Brick for pooling operations.
 
@@ -278,6 +277,34 @@ class MaxPooling(Pooling):
                                          step=step, input_dim=input_dim,
                                          ignore_border=ignore_border,
                                          padding=padding, **kwargs)
+
+
+class AveragePooling(Pooling):
+    """Average pooling layer.
+
+    Parameters
+    ----------
+    include_padding : bool, optional
+        When calculating an average, include zeros that are the
+        result of zero padding added by the `padding` argument.
+        A value of `True` is only accepted if `ignore_border`
+        is also `True`. `False` by default.
+
+    Notes
+    -----
+    For documentation on the remainder of the arguments to this
+    class, see :class:`MaxPooling`.
+
+    """
+    @lazy(allocation=['pooling_size'])
+    def __init__(self, pooling_size, step=None, input_dim=None,
+                 ignore_border=False, padding=(0, 0),
+                 include_padding=False, **kwargs):
+        mode = 'average_inc_pad' if include_padding else 'average_exc_pad'
+        super(AveragePooling, self).__init__(mode, pooling_size,
+                                             step=step, input_dim=input_dim,
+                                             ignore_border=ignore_border,
+                                             padding=padding, **kwargs)
 
 
 class _AllocationMixin(object):
