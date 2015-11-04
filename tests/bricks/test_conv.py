@@ -118,8 +118,8 @@ def test_max_pooling():
                        dtype=theano.config.floatX)
     assert_allclose(func(x_val),
                     numpy.ones((batch_size, num_channels,
-                                x_size / pool_size + 1,
-                                y_size / pool_size + 1)))
+                                x_size / pool_size,
+                                y_size / pool_size)))
     pool.input_dim = (x_size, y_size)
     pool.get_dim('output') == (num_channels, x_size / pool_size + 1,
                                y_size / pool_size + 1)
@@ -217,7 +217,7 @@ def test_convolutional_layer():
     x_val = numpy.ones((batch_size, num_channels, 17, 13),
                        dtype=theano.config.floatX)
     assert_allclose(func(x_val), numpy.prod(filter_size) * num_channels *
-                    numpy.ones((batch_size, num_filters, 5, 4)) + 5)
+                    numpy.ones((batch_size, num_filters, 5, 3)) + 5)
 
     assert_equal(conv.convolution.batch_size, batch_size)
     assert_equal(conv.pooling.batch_size, batch_size)
@@ -248,7 +248,7 @@ def test_convolutional_sequence():
     func = function([x], y)
 
     x_val = numpy.ones((batch_size, 4, 17, 13), dtype=theano.config.floatX)
-    y_val = (numpy.ones((batch_size, 4, 4, 3)) *
+    y_val = (numpy.ones((batch_size, 4, 4, 2)) *
              (9 * 4 + 5) * 4 * 5)
     assert_allclose(func(x_val), y_val)
 

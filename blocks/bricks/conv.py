@@ -175,8 +175,8 @@ class Pooling(Initializable, Feedforward):
 
     """
     @lazy(allocation=['mode', 'pooling_size'])
-    def __init__(self, mode, pooling_size, step=None, input_dim=None,
-                 ignore_border=False, padding=(0, 0), **kwargs):
+    def __init__(self, mode, pooling_size, step, input_dim, ignore_border,
+                 padding, **kwargs):
         super(Pooling, self).__init__(**kwargs)
         self.pooling_size = pooling_size
         self.mode = mode
@@ -266,12 +266,26 @@ class MaxPooling(Pooling):
         the extent of the pooling region reaches beyond the edge of the
         image. If `True`, a (5, 5) image with (2, 2) pooling regions
         and (2, 2) step will be downsampled to shape (2, 2), otherwise
-        it will be downsampled to (3, 3). `False` by default.
+        it will be downsampled to (3, 3). `True` by default.
+
+    Notes
+    -----
+    .. warning::
+        As of this writing, setting `ignore_border` to `False` with a step
+        not equal to the pooling size will force Theano to perform pooling
+        computations on CPU rather than GPU, even if you have specified
+        a GPU as your computation device. Additionally, Theano will only
+        use [cuDNN]_ (if available) for pooling computations with
+        `ignure_border` set to `True`. You can ensure that the entire
+        input is captured by at least one pool by using the `padding`
+        argument to add zero padding prior to pooling being performed.
+
+    .. [cuDNN]: `NVIDIA cuDNN <https://developer.nvidia.com/cudnn>`_.
 
     """
     @lazy(allocation=['pooling_size'])
     def __init__(self, pooling_size, step=None, input_dim=None,
-                 ignore_border=False, padding=(0, 0),
+                 ignore_border=True, padding=(0, 0),
                  **kwargs):
         super(MaxPooling, self).__init__('max', pooling_size,
                                          step=step, input_dim=input_dim,
@@ -298,7 +312,7 @@ class AveragePooling(Pooling):
     """
     @lazy(allocation=['pooling_size'])
     def __init__(self, pooling_size, step=None, input_dim=None,
-                 ignore_border=False, padding=(0, 0),
+                 ignore_border=True, padding=(0, 0),
                  include_padding=False, **kwargs):
         mode = 'average_inc_pad' if include_padding else 'average_exc_pad'
         super(AveragePooling, self).__init__(mode, pooling_size,
