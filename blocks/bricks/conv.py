@@ -292,6 +292,13 @@ class MaxPooling(Pooling):
                                          ignore_border=ignore_border,
                                          padding=padding, **kwargs)
 
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        # Fix objects created before pull request #899.
+        self.mode = getattr(self, 'mode', 'max')
+        self.padding = getattr(self, 'padding', (0, 0))
+        self.ignore_border = getattr(self, 'ignore_border', False)
+
 
 class AveragePooling(Pooling):
     """Average pooling layer.

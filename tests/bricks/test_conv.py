@@ -1,3 +1,4 @@
+import pickle
 import numpy
 from nose.tools import assert_raises_regexp
 
@@ -147,6 +148,29 @@ def test_max_pooling_padding():
     y = brick.apply(x)
     out = y.eval({x: numpy.zeros((2, 3, 6, 10), dtype=theano.config.floatX)})
     assert out.shape == (2, 3, 2, 6)
+
+
+def test_max_pooling_old_pickle():
+    brick = MaxPooling((3, 4))
+    brick.allocate()
+    # Simulate old pickle, before #899.
+    del brick.ignore_border
+    del brick.mode
+    del brick.padding
+    # Pickle in this broken state and re-load.
+    broken_pickled = pickle.dumps(brick)
+    loaded = pickle.loads(broken_pickled)
+    # Same shape, same step.
+    assert brick.pooling_size == loaded.pooling_size
+    assert brick.step == loaded.step
+    # Check that the new attributes were indeed added.
+    assert hasattr(loaded, 'padding') and loaded.padding == (0, 0)
+    assert hasattr(loaded, 'mode') and loaded.mode == 'max'
+    assert hasattr(loaded, 'ignore_border') and not loaded.ignore_border
+    try:
+        loaded.apply(tensor.tensor4())
+    except Exception:
+        raise AssertionError("failed to apply on unpickled MaxPooling")
 
 
 def test_average_pooling():
