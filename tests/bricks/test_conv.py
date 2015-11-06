@@ -171,6 +171,11 @@ def test_max_pooling_old_pickle():
         loaded.apply(tensor.tensor4())
     except Exception:
         raise AssertionError("failed to apply on unpickled MaxPooling")
+    # Make sure we're not overriding these attributes wrongly.
+    new_brick = MaxPooling((4, 3), padding=(2, 1))
+    new_brick_unpickled = pickle.loads(pickle.dumps(new_brick))
+    assert new_brick_unpickled.padding == (2, 1)
+    assert new_brick_unpickled.ignore_border
 
 
 def test_average_pooling():
