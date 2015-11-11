@@ -239,7 +239,7 @@ class GradientDescent(DifferentiableCostMinimizer):
 
         self.total_step_norm = l2_norm(
             self.steps.values()).copy()
-        self.total_step_norm.name="total_step_norm"
+        self.total_step_norm.name = "total_step_norm"
 
         self.on_unused_sources = on_unused_sources
         self.theano_func_kwargs = (theano_func_kwargs if theano_func_kwargs
