@@ -3,14 +3,13 @@ import numpy
 from nose.tools import assert_raises_regexp
 
 import theano
-from numpy.testing import assert_allclose, assert_equal
+from numpy.testing import assert_allclose
 from theano import tensor
 from theano import function
 
 from blocks.bricks import Rectifier
-from blocks.bricks.conv import (Convolutional, ConvolutionalLayer, MaxPooling,
-                                AveragePooling, ConvolutionalActivation,
-                                ConvolutionalSequence)
+from blocks.bricks.conv import (Convolutional, MaxPooling, AveragePooling,
+                                ConvolutionalActivation, ConvolutionalSequence)
 from blocks.initialization import Constant
 from blocks.graph import ComputationGraph
 
@@ -42,7 +41,7 @@ def test_border_mode_not_pushed():
     layers = [Convolutional(border_mode='full'),
               ConvolutionalActivation(Rectifier().apply),
               ConvolutionalActivation(Rectifier().apply, border_mode='valid'),
-              ConvolutionalLayer(Rectifier().apply, border_mode='full')]
+              ConvolutionalActivation(Rectifier().apply, border_mode='full')]
     stack = ConvolutionalSequence(layers)
     stack.push_allocation_config()
     assert stack.children[0].border_mode == 'full'
@@ -223,35 +222,6 @@ def test_pooling_works_in_convolutional_sequence():
     assert out.shape == (2, 3, 3, 7)
 
 
-def test_convolutional_layer():
-    x = tensor.tensor4('x')
-    num_channels = 4
-    batch_size = 5
-    pooling_size = 3
-    num_filters = 3
-    filter_size = (3, 3)
-    activation = Rectifier().apply
-
-    conv = ConvolutionalLayer(activation, filter_size, num_filters,
-                              (pooling_size, pooling_size),
-                              num_channels, image_size=(17, 13),
-                              batch_size=batch_size,
-                              weights_init=Constant(1.),
-                              biases_init=Constant(5.))
-    conv.initialize()
-
-    y = conv.apply(x)
-    func = function([x], y)
-
-    x_val = numpy.ones((batch_size, num_channels, 17, 13),
-                       dtype=theano.config.floatX)
-    assert_allclose(func(x_val), numpy.prod(filter_size) * num_channels *
-                    numpy.ones((batch_size, num_filters, 5, 3)) + 5)
-
-    assert_equal(conv.convolution.batch_size, batch_size)
-    assert_equal(conv.pooling.batch_size, batch_size)
-
-
 def test_convolutional_sequence():
     x = tensor.tensor4('x')
     num_channels = 4
@@ -259,14 +229,14 @@ def test_convolutional_sequence():
     batch_size = 5
     activation = Rectifier().apply
 
-    conv = ConvolutionalLayer(activation, (3, 3), 5,
-                              (pooling_size, pooling_size),
-                              weights_init=Constant(1.),
-                              biases_init=Constant(5.))
+    conv = ConvolutionalActivation(activation, (3, 3), 5,
+                                   weights_init=Constant(1.),
+                                   biases_init=Constant(5.))
+    pooling = MaxPooling(pooling_size=(pooling_size, pooling_size))
     conv2 = ConvolutionalActivation(activation, (2, 2), 4,
                                     weights_init=Constant(1.))
 
-    seq = ConvolutionalSequence([conv, conv2], num_channels,
+    seq = ConvolutionalSequence([conv, pooling, conv2], num_channels,
                                 image_size=(17, 13))
     seq.push_allocation_config()
     assert conv.num_channels == 4
@@ -285,14 +255,6 @@ def test_convolutional_sequence():
 def test_convolutional_activation_use_bias():
     act = ConvolutionalActivation(Rectifier().apply, (3, 3), 5, 4,
                                   image_size=(9, 9), use_bias=False)
-    act.allocate()
-    assert not act.convolution.use_bias
-    assert len(ComputationGraph([act.apply(tensor.tensor4())]).parameters) == 1
-
-
-def test_convolutional_layer_use_bias():
-    act = ConvolutionalLayer(Rectifier().apply, (3, 3), 5, (2, 2), 6,
-                             image_size=(9, 9), use_bias=False)
     act.allocate()
     assert not act.convolution.use_bias
     assert len(ComputationGraph([act.apply(tensor.tensor4())]).parameters) == 1
