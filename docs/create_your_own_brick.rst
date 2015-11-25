@@ -119,12 +119,12 @@ to the tag attributes of the variables, as shown below:
     >>> i2 = tensor.matrix('i2')
     >>> y = foo.apply(i1, i2)
     >>> theano.printing.debugprint(y)
-    Elemwise{identity} [@A] 'foo_apply_output'   
-     |Elemwise{add,no_inplace} [@B] ''   
-       |Elemwise{identity} [@C] 'foo_apply_input1'   
-       | |i1 [@D]
-       |Elemwise{identity} [@E] 'foo_apply_input2'   
-         |i2 [@F]
+    Elemwise{identity} [id A] 'foo_apply_output'   
+     |Elemwise{add,no_inplace} [id B] ''   
+       |Elemwise{identity} [id C] 'foo_apply_input1'   
+       | |i1 [id D]
+       |Elemwise{identity} [id E] 'foo_apply_input2'   
+         |i2 [id F]
     >>> print(y.name)
     foo_apply_output
     >>> print(y.tag.name)
