@@ -1,4 +1,4 @@
-from theano.tensor.nnet.conv import conv2d, ConvOp
+from theano.tensor.nnet.conv import conv2d, get_conv_output_shape
 from theano.tensor.signal.downsample import max_pool_2d, DownsampleFactorMax
 
 from blocks.bricks import Initializable, Feedforward, Sequence
@@ -55,9 +55,12 @@ class Convolutional(Initializable):
     conv2d_impl = staticmethod(conv2d)
 
     # Used to override the output shape computation for a given value of
-    # conv2d_impl. Should accept 4 positional arguments: the image size,
-    # the filter size, the step (strides), and the border mode.
-    get_output_shape = staticmethod(ConvOp.getOutputShape)
+    # conv2d_impl. Should accept 4 positional arguments: the shape of an
+    # image minibatch (with 4 elements: batch size, number of channels,
+    # height, and width), the shape of the filter bank (number of filters,
+    # number of output channels, filter height, filter width), the border
+    # mode, and the step (vertical and horizontal strides).
+    get_output_shape = staticmethod(get_conv_output_shape)
 
     @lazy(allocation=['filter_size', 'num_filters', 'num_channels'])
     def __init__(self, filter_size, num_filters, num_channels, batch_size=None,
@@ -157,9 +160,11 @@ class Convolutional(Initializable):
         if name == 'input_':
             return (self.num_channels,) + self.image_size
         if name == 'output':
-            return ((self.num_filters,) +
-                    self.get_output_shape(self.image_size, self.filter_size,
-                                          self.step, self.border_mode))
+            image_shape = (None, self.num_channels) + self.image_size
+            kernel_shape = ((self.num_filters, self.num_channels) +
+                            self.filter_size)
+            return self.get_output_shape(image_shape, kernel_shape,
+                                         self.border_mode, self.step)[-3:]
         return super(Convolutional, self).get_dim(name)
 
     @property
