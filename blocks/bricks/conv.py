@@ -166,8 +166,10 @@ class Convolutional(Initializable):
             image_shape = (None, self.num_channels) + self.image_size
             kernel_shape = ((self.num_filters, self.num_channels) +
                             self.filter_size)
-            return self.get_output_shape(image_shape, kernel_shape,
-                                         self.border_mode, self.step)[-3:]
+            out_shape = self.get_output_shape(image_shape, kernel_shape,
+                                              self.border_mode, self.step)
+            assert len(out_shape) == 4
+            return out_shape[1:]
         return super(Convolutional, self).get_dim(name)
 
     @property
