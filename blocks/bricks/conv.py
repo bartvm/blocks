@@ -59,7 +59,10 @@ class Convolutional(Initializable):
     # image minibatch (with 4 elements: batch size, number of channels,
     # height, and width), the shape of the filter bank (number of filters,
     # number of output channels, filter height, filter width), the border
-    # mode, and the step (vertical and horizontal strides).
+    # mode, and the step (vertical and horizontal strides). It is expected
+    # to return a 4-tuple of (batch size, number of channels, output
+    # height, output width). The first element of this tuple is not used
+    # for anything by this brick.
     get_output_shape = staticmethod(get_conv_output_shape)
 
     @lazy(allocation=['filter_size', 'num_filters', 'num_channels'])
