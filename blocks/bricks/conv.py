@@ -392,13 +392,13 @@ class ConvolutionalActivation(_AllocationMixin, Sequence, Initializable):
 
 
 class ConvolutionalSequence(Sequence, Initializable, Feedforward):
-    """A sequence of convolutional operations.
+    """A sequence of convolutional (or pooling) operations.
 
     Parameters
     ----------
     layers : list
-        List of convolutional bricks (i.e. :class:`Convolutional` or
-        :class:`ConvolutionalActivation`).
+        List of convolutional bricks (i.e. :class:`Convolutional`,
+        :class:`ConvolutionalActivation`, or :class:`Pooling` bricks).
     num_channels : int
         Number of input channels in the image. For the first layer this is
         normally 1 for grayscale images and 3 for color (RGB) images. For
