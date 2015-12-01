@@ -138,8 +138,8 @@ def shared_floatx(value, name=None, borrow=False, dtype=None, **kwargs):
                          name=name, borrow=borrow, **kwargs)
 
 
-def shared_like(variable, name=None):
-    """Construct a shared variable to hold the value of a tensor variable.
+def shared_like(variable, name=None, **kwargs):
+    r"""Construct a shared variable to hold the value of a tensor variable.
 
     Parameters
     ----------
@@ -149,6 +149,8 @@ def shared_like(variable, name=None):
     name : :obj:`str` or :obj:`None`
         The name of the shared variable. If None, the name is determined
         based on variable's name.
+    \*\*kwargs
+        Keyword arguments to pass to the :func:`~theano.shared` function.
 
     """
     variable = tensor.as_tensor_variable(variable)
@@ -156,7 +158,7 @@ def shared_like(variable, name=None):
         name = "shared_{}".format(variable.name)
     return theano.shared(numpy.zeros((0,) * variable.ndim,
                                      dtype=variable.dtype),
-                         name=name)
+                         name=name, **kwargs)
 
 
 def reraise_as(new_exc):
