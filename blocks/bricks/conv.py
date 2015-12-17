@@ -1,10 +1,31 @@
-from theano.tensor.nnet.conv import conv2d, get_conv_output_shape
+from theano.tensor.nnet.conv import conv2d
+import theano
+# from theano.tensor.nnet.conv import get_conv_output_shape
+from theano.sandbox.cuda import dnn
+from theano.sandbox.cuda.dnn import dnn_conv
 from theano.tensor.signal.downsample import max_pool_2d, DownsampleFactorMax
 
 from blocks.bricks import Initializable, Feedforward, Sequence
 from blocks.bricks.base import application, Brick, lazy
 from blocks.roles import add_role, FILTER, BIAS
 from blocks.utils import shared_floatx_nans
+
+
+def on_gpu():
+    return theano.config.device[:3] == 'gpu'
+
+
+def conv_output_length(input_length, filter_size, border_mode, stride):
+    if input_length is None:
+        return None
+    # assert border_mode in {'full', 'valid'}
+    if border_mode == 'full':
+        output_length = input_length + filter_size - 1
+    elif border_mode == 'valid':
+        output_length = input_length - filter_size + 1
+    else:
+        output_length = input_length - filter_size + 2 * border_mode + 1
+    return (output_length + stride - 1) // stride
 
 
 class Convolutional(Initializable):
@@ -52,7 +73,10 @@ class Convolutional(Initializable):
     # image_shape, subsample, border_mode, and filter_shape. If some of
     # these are unsupported they should still be accepted and ignored,
     # e.g. with a wrapper function that swallows **kwargs.
-    conv2d_impl = staticmethod(conv2d)
+    if on_gpu() and dnn.dnn_available():
+        conv2d_impl = staticmethod(dnn_conv)
+    else:
+        conv2d_impl = staticmethod(conv2d)
 
     # Used to override the output shape computation for a given value of
     # conv2d_impl. Should accept 4 positional arguments: the shape of an
@@ -63,7 +87,7 @@ class Convolutional(Initializable):
     # to return a 4-tuple of (batch size, number of channels, output
     # height, output width). The first element of this tuple is not used
     # for anything by this brick.
-    get_output_shape = staticmethod(get_conv_output_shape)
+    # get_output_shape = staticmethod(get_conv_output_shape)
 
     @lazy(allocation=['filter_size', 'num_filters', 'num_channels'])
     def __init__(self, filter_size, num_filters, num_channels, batch_size=None,
@@ -147,11 +171,8 @@ class Convolutional(Initializable):
 
         output = self.conv2d_impl(
             input_, W,
-            image_shape=image_shape,
             subsample=self.step,
-            border_mode=self.border_mode,
-            filter_shape=((self.num_filters, self.num_channels) +
-                          self.filter_size))
+            border_mode=self.border_mode)
         if self.use_bias:
             if self.tied_biases:
                 output += b.dimshuffle('x', 0, 'x', 'x')
@@ -163,13 +184,19 @@ class Convolutional(Initializable):
         if name == 'input_':
             return (self.num_channels,) + self.image_size
         if name == 'output':
-            image_shape = (None, self.num_channels) + self.image_size
-            kernel_shape = ((self.num_filters, self.num_channels) +
-                            self.filter_size)
-            out_shape = self.get_output_shape(image_shape, kernel_shape,
-                                              self.border_mode, self.step)
-            assert len(out_shape) == 4
-            return out_shape[1:]
+            rows = self.image_size[0]
+            cols = self.image_size[1]
+            if self.border_mode in {'full', 'valid'}:
+                rows = conv_output_length(rows, self.filter_size[
+                                          0], self.border_mode, self.step[0])
+                cols = conv_output_length(cols, self.filter_size[
+                                          1], self.border_mode, self.step[1])
+            else:
+                rows = conv_output_length(rows, self.filter_size[
+                                          0], self.border_mode[0], self.step[0])
+                cols = conv_output_length(cols, self.filter_size[
+                                          1], self.border_mode[1], self.step[1])
+            return tuple((self.num_filters, rows, cols))
         return super(Convolutional, self).get_dim(name)
 
     @property
@@ -339,6 +366,7 @@ class AveragePooling(Pooling):
 
 
 class _AllocationMixin(object):
+
     def _push_allocation_config(self):
         for attr in ['filter_size', 'num_filters', 'border_mode',
                      'batch_size', 'num_channels', 'image_size',
