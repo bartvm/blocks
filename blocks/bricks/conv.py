@@ -1,6 +1,4 @@
 from theano.tensor.nnet.conv import conv2d
-import theano
-# from theano.tensor.nnet.conv import get_conv_output_shape
 from theano.sandbox.cuda import dnn
 from theano.sandbox.cuda.dnn import dnn_conv
 from theano.tensor.signal.downsample import max_pool_2d, DownsampleFactorMax
@@ -9,10 +7,6 @@ from blocks.bricks import Initializable, Feedforward, Sequence
 from blocks.bricks.base import application, Brick, lazy
 from blocks.roles import add_role, FILTER, BIAS
 from blocks.utils import shared_floatx_nans
-
-
-def on_gpu():
-    return theano.config.device[:3] == 'gpu'
 
 
 def conv_output_length(input_length, filter_size, border_mode, stride):
@@ -73,7 +67,7 @@ class Convolutional(Initializable):
     # image_shape, subsample, border_mode, and filter_shape. If some of
     # these are unsupported they should still be accepted and ignored,
     # e.g. with a wrapper function that swallows **kwargs.
-    if on_gpu() and dnn.dnn_available():
+    if dnn.dnn_available():
         conv2d_impl = staticmethod(dnn_conv)
     else:
         conv2d_impl = staticmethod(conv2d)
