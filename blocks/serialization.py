@@ -349,12 +349,12 @@ def add_to_dump(object_, file_, name, parameters=None, use_cpickle=False,
         _taradd(_save_object, tar_file, name)
 
 
-def continue_training(file_):
+def continue_training(path):
     """Continues training using checkpoint.
 
     Parameters
     ----------
-    file_ : str
+    path : str
         Path to checkpoint.
 
     Notes
@@ -377,7 +377,7 @@ def continue_training(file_):
 
     """
     with change_recursion_limit(config.recursion_limit):
-        with open(file_, "rb") as f:
+        with open(path, "rb") as f:
             main_loop = load(f)
     main_loop.run()
 
