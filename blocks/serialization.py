@@ -192,14 +192,14 @@ def dump(object_, file_, parameters=None, use_cpickle=False,
         _taradd(_save_object, tar_file, '_pkl')
 
 
-def secure_dump(object_, file_, dump_function=dump, **kwargs):
+def secure_dump(object_, path, dump_function=dump, **kwargs):
     r"""Robust serialization - does not corrupt your files when failed.
 
     Parameters
     ----------
     object_ : object
         The object to be saved to the disk.
-    file_ : str
+    path : str
         The destination for saving.
     dump_function : function
         The function that is used to perform the serialization. Must take
@@ -213,7 +213,7 @@ def secure_dump(object_, file_, dump_function=dump, **kwargs):
         with tempfile.NamedTemporaryFile(delete=False,
                                          dir=config.temp_dir) as temp:
             dump_function(object_, temp, **kwargs)
-        shutil.move(temp.name, file_)
+        shutil.move(temp.name, path)
     except:
         if "temp" in locals():
             os.remove(temp.name)
@@ -335,9 +335,7 @@ def add_to_dump(object_, file_, name, parameters=None, use_cpickle=False,
                     raise ValueError('The set of parameters is different' \
                                      ' from the one in the archive.')
 
-    # TODO: How to avoid this hack?
-    file_.close()
-    file_ = open(file_.name, 'r+')
+    file_.seek(0)
 
     if use_cpickle:
         pickler = cPickle.Pickler
