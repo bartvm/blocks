@@ -142,9 +142,9 @@ resume your model outside of a namespace containing this function. In other \
 words, you can only call `continue_training` from within this script."""
 
 
-def dump(object_, file_, parameters=None, use_cpickle=False,
-         protocol=DEFAULT_PROTOCOL, **kwargs):
-    r"""Pickles an object saving optionnaly its parameters separately.
+def dump(object_, file_, parameters=None, pickle_object=True,
+         use_cpickle=False, protocol=DEFAULT_PROTOCOL, **kwargs):
+    r"""Pickles an object, optionally saving its parameters separately.
 
     Parameters
     ----------
@@ -155,6 +155,10 @@ def dump(object_, file_, parameters=None, use_cpickle=False,
     parameters : list, optional
         Shared variables whose internal numpy arrays should be saved
         separately in the `_parameters` field of the tar file.
+    pickle_object : bool
+        If False, `object_` will not be serialized, only its parameters.
+        This flag can be used when `object_` is not serializable, but one
+        still want to save its parameters. Default: True
     use_cpickle : bool
         Use cPickle instead of pickle. Setting it to true will disable the
         warning message if you try to pickle objects from the main module,
@@ -185,11 +189,10 @@ def dump(object_, file_, parameters=None, use_cpickle=False,
                     type(array_), n)
         if parameters:
             _taradd(_save_parameters, tar_file, '_parameters')
-        def _save_object(f):
-            p = pickler(f, protocol=protocol, **kwargs)
-            p.persistent_id = _PersistentID(external_objects)
-            p.dump(object_)
-        _taradd(_save_object, tar_file, '_pkl')
+        if pickle_object:
+            save_object = _SaveObject(pickler, object_, external_objects,
+                                      protocol, **kwargs)
+            _taradd(save_object, tar_file, '_pkl')
 
 
 def secure_dump(object_, path, dump_function=dump, **kwargs):
@@ -220,7 +223,7 @@ def secure_dump(object_, path, dump_function=dump, **kwargs):
         raise
 
 
-def load(file_, name='_pkl'):
+def load(file_, name='_pkl', use_cpickle=False):
     """Loads an object saved using the `dump` function.
 
     By default, this function loads the object saved by the `dump`
@@ -235,14 +238,20 @@ def load(file_, name='_pkl'):
     name : str
         Name of the object to load. Default is `_pkl`, meaning that it is
         the original object which have been dumped that is loaded.
+    use_cpickle : bool
+        Use cPickle instead of pickle. Default: False.
 
     Returns
     -------
     The object saved in file_.
 
     """
+    if use_cpickle:
+        unpickler = cPickle.Unpickler
+    else:
+        unpickler = pickle.Unpickler
     with tarfile.open(fileobj=file_, mode='r') as tar_file:
-        p = pickle.Unpickler(
+        p = unpickler(
             tar_file.extractfile(tar_file.getmember(name)))
         if '_parameters' in tar_file.getnames():
             p.persistent_load = _PersistentLoad(tar_file)
@@ -275,8 +284,8 @@ def add_to_dump(object_, file_, name, parameters=None, use_cpickle=False,
     r"""Pickles an object to an existing tar archive.
 
     This function allows to dump more objects to an existing archive. If
-    the object you want to dump posess the same set of shared variables as
-    the object already dumped, you can pass them to the `parameters`
+    the object you want to dump posesses the same set of shared variables
+    as the object already dumped, you can pass them to the `parameters`
     argument, which will avoid them to be serialized a second time.
     However, it won't work if the shared variable you pass to the
     `parameters` argument are not already in the archive.
@@ -342,11 +351,9 @@ def add_to_dump(object_, file_, name, parameters=None, use_cpickle=False,
     else:
         pickler = _PicklerWithWarning
     with closing(tarfile.TarFile(fileobj=file_, mode='a')) as tar_file:
-        def _save_object(f):
-            p = pickler(f, protocol=protocol, **kwargs)
-            p.persistent_id = _PersistentID(external_parameters)
-            p.dump(object_)
-        _taradd(_save_object, tar_file, name)
+        save_object = _SaveObject(pickler, object_, external_parameters,
+                                  protocol, **kwargs)
+        _taradd(save_object, tar_file, name)
 
 
 def continue_training(path):
@@ -404,6 +411,36 @@ class _PicklerWithWarning(_Pickler):
         dispatch[six.types.TypeType] = save_global
 
 
+class _SaveObject(object):
+    """Saves an object using Persistent ID.
+
+    Parameters
+    ----------
+    pickler : object
+        The pickler to use
+    object_ : object
+        The object to pickle.
+    external_objects : dict of object
+        The external objects to save using persistent id.
+    protocol : int, optional
+        The pickling protocol to use.
+    \*\*kwargs
+        Keyword arguments to be passed to `pickle.Pickler`.
+
+    """
+    def __init__(self, pickler, object_, external_objects, protocol, **kwargs):
+        self.pickler = pickler
+        self.object_ = object_
+        self.external_objects = external_objects
+        self.protocol = protocol
+        self.kwargs = kwargs
+
+    def __call__(self, f):
+        p = self.pickler(f, protocol=self.protocol, **self.kwargs)
+        p.persistent_id = _PersistentID(self.external_objects)
+        p.dump(self.object_)
+
+
 class _Renamer(object):
     """Returns a new name for the given parameter.
 
@@ -415,14 +452,14 @@ class _Renamer(object):
     ----------
     used_names : set
         The set of names already taken.
-    default_name :
+    default_name : str
         The name to use if a parameter doesn't have a name. Default:
-        'PARAMETER'.
+        'parameter'.
 
     """
     def __init__(self):
         self.used_names = set()
-        self.default_name = 'PARAMETER'
+        self.default_name = 'parameter'
 
     def __call__(self, parameter):
         # Standard Blocks parameter
