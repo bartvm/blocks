@@ -246,6 +246,7 @@ def load(file_, name='_pkl', use_cpickle=False):
     The object saved in file_.
 
     """
+    file_.seek(0)  # To be able to read several objects in one file
     if use_cpickle:
         unpickler = cPickle.Unpickler
     else:
@@ -339,8 +340,9 @@ def add_to_dump(object_, file_, name, parameters=None, use_cpickle=False,
                 parameters = numpy.load(
                     tar_file.extractfile(tar_file.getmember('_parameters')))
                 s1 = set(parameters.keys())
-                s2 = set(external_parameters.keys())
-                if s1.issuperset(s2):
+                s2 = [_unmangle_parameter_name(x)[1] for x in
+                      external_parameters.values()]
+                if not s1.issuperset(s2):
                     raise ValueError('The set of parameters is different' \
                                      ' from the one in the archive.')
 
