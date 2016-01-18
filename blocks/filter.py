@@ -109,7 +109,7 @@ class VariableFilter(object):
             isinstance(application, BoundApplication)
                 for application in applications):
             raise ValueError('`applications` should be a list of '
-                             'Applications')
+                             'BoundApplications')
         self.roles = roles
         self.bricks = bricks
         self.each_role = each_role
