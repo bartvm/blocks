@@ -350,6 +350,18 @@ class SequenceContentAttention(GenericSequenceAttention, Initializable):
             match_vectors.shape[:-1], ndim=match_vectors.ndim - 1)
         return energies
 
+    @application
+    def compute_energies_multiply(self, attended, preprocessed_attended, states):
+        if not preprocessed_attended:
+            preprocessed_attended = self.preprocess(attended)
+        transformed_states = self.state_transformers.apply(as_dict=True,
+                                                           **states)
+        # Broadcasting of transformed states should be done automatically
+        match_vectors = transformed_states.values() * preprocessed_attended
+        energies = tensor.sum(match_vectors,axis=match_vectors.ndim-1).reshape(
+            match_vectors.shape[:-1], ndim=match_vectors.ndim - 1)
+        return energies
+
     @application(outputs=['weighted_averages', 'weights'])
     def take_glimpses(self, attended, preprocessed_attended=None,
                       attended_mask=None, **states):
@@ -378,7 +390,7 @@ class SequenceContentAttention(GenericSequenceAttention, Initializable):
             is time.
 
         """
-        energies = self.compute_energies(attended, preprocessed_attended,
+        energies = self.compute_energies_multiply(attended, preprocessed_attended,
                                          states)
         weights = self.compute_weights(energies, attended_mask)
         weighted_averages = self.compute_weighted_averages(weights, attended)
