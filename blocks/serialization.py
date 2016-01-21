@@ -414,7 +414,7 @@ class _PicklerWithWarning(_Pickler):
 
 
 class _SaveObject(object):
-    """Saves an object using Persistent ID.
+    r"""Saves an object using Persistent ID.
 
     Parameters
     ----------
