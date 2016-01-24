@@ -103,8 +103,12 @@ class Checkpoint(SimpleExtension):
             raise
         finally:
             already_saved_to = self.main_loop.log.current_row.get(SAVED_TO, ())
-            self.main_loop.log.current_row[SAVED_TO] = (already_saved_to +
-                                                        (path,))
+            new_value = (already_saved_to + (path,))
+            self.main_loop.log.current_row[SAVED_TO] = new_value
+            retrieved = self.main_loop.log.current_row[SAVED_TO]
+            assert retrieved == new_value, (
+                'retrieved: {}, new_value: {}'.format(retrieved, new_value)
+            )
 
 
 class Load(TrainingExtension):
