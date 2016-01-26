@@ -6,7 +6,7 @@ from six.moves import cPickle
 
 from blocks.extensions import SimpleExtension, TrainingExtension
 from blocks.utils import reraise_as
-from blocks.serialization import secure_dump, load, load_parameters
+from blocks.serialization import secure_dump, load, _dump_and_add_to_dump 
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +30,9 @@ class Checkpoint(SimpleExtension):
     ----------
     path : str
         The destination path for pickling.
-    pickle_separately : list of str, optional
-        The list of the main loop's attributes to be pickled separately.
+    add_to_dump : dict of objects
+        A {'name': object} dictionnary of additional objects to save in
+        the tar archive. Its keys will be used as name in the tar file.
     use_cpickle : bool
         See documentation of :func:`~blocks.serialization.dump`.
 
@@ -47,14 +48,12 @@ class Checkpoint(SimpleExtension):
 
 
     """
-    def __init__(self, path, pickle_separately=None, use_cpickle=False,
+    def __init__(self, path, add_to_dump=None, use_cpickle=False,
                  **kwargs):
         kwargs.setdefault("after_training", True)
         super(Checkpoint, self).__init__(**kwargs)
-        if not pickle_separately:
-            pickle_separately = []
         self.path = path
-        self.pickle_separately = pickle_separately
+        self.add_to_dump = add_to_dump
         self.use_cpickle = use_cpickle
 
     def do(self, callback_name, *args):
@@ -71,8 +70,9 @@ class Checkpoint(SimpleExtension):
             if from_user:
                 path, = from_user
             secure_dump(self.main_loop, path,
+                        dump_function=_dump_and_add_to_dump
                         parameters=self.main_loop.model.parameters,
-                        pickle_separately=self.pickle_separately,
+                        add_to_dump=self.add_to_dump,
                         use_cpickle=self.use_cpickle)
         except Exception:
             path = None

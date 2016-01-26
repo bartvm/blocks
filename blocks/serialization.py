@@ -31,7 +31,6 @@ greater robustness and persistency than standard pickling.
 
 Examples
 --------
-
 Consider a standard main loop (without an algorithm and a data stream
 for brevity)
 
@@ -142,14 +141,15 @@ resume your model outside of a namespace containing this function. In other \
 words, you can only call `continue_training` from within this script."""
 
 
-def dump(object_, file_, parameters=None, pickle_object=True,
-         use_cpickle=False, protocol=DEFAULT_PROTOCOL, **kwargs):
+def dump(object_, file_, parameters=None, use_cpickle=False,
+         protocol=DEFAULT_PROTOCOL, **kwargs):
     r"""Pickles an object, optionally saving its parameters separately.
 
     Parameters
     ----------
     object_ : object
-        The object to pickle.
+        The object to pickle. If None, only the parameters passed to the
+        `parameters` argument will be saved.
     file_ : file
         The destination for saving.
     parameters : list, optional
@@ -189,7 +189,7 @@ def dump(object_, file_, parameters=None, pickle_object=True,
                     type(array_), n)
         if parameters:
             _taradd(_save_parameters, tar_file, '_parameters')
-        if pickle_object:
+        if object_ is not None:
             save_object = _SaveObject(pickler, object_, external_objects,
                                       protocol, **kwargs)
             _taradd(save_object, tar_file, '_pkl')
@@ -391,9 +391,54 @@ def continue_training(path):
     main_loop.run()
 
 
+def _dump_and_add_to_dump(object_, file_, parameters=None, add_to_dump=None,
+                          use_cpickle=False, protocol=DEFAULT_PROTOCOL,
+                          **kwargs):
+    r"""Calls both `dump` and `add_to_dump` to serialze several objects.
+
+    This function is used to serialize several at the same time, using
+    persistent ID. Its main advantage is that it can be used with
+    `secure_dump`.
+
+    Parameters
+    ----------
+    object_ : object
+        The object to pickle. If None, only the parameters passed to the
+        `parameters` argument will be saved.
+    file_ : file
+        The destination for saving.
+    parameters : list, optional
+        Shared variables whose internal numpy arrays should be saved
+        separately in the `_parameters` field of the tar file.
+    add_to_dump : dict of objects
+        A {'name': object} dictionnary of additional objects to save in
+        the tar archive. Its keys will be used as name in the tar file.
+    use_cpickle : bool
+        Use cPickle instead of pickle. Setting it to true will disable the
+        warning message if you try to pickle objects from the main module,
+        so be sure that there is no warning before turning this flag
+        on. Default: False.
+    protocol : int, optional
+        The pickling protocol to use. Unlike Python's built-in pickle, the
+        default is set to `2` instead of 0 for Python 2. The Python 3
+        default (level 3) is maintained.
+    \*\*kwargs
+        Keyword arguments to be passed to `pickle.Pickler`.
+
+    """
+    dump(object_, file_, parameters=parameters, use_cpickle=use_cpickle,
+         protocol=protocol, **kwargs)
+    if add_to_dump is not None:
+        for name, obj in enumerate(add_to_dump):
+            add_to_dump(value, file_, name, parameters=parameters,
+                        use_cpickle=use_cpickle, protocol=protocol, **kwargs)
+
+
 class _PicklerWithWarning(_Pickler):
-    """Pickler that adds a warning message if we try to save an object
-    referenced in the main module.
+    """Pickler that adds a warning message.
+
+    Adds a warning message if we try to save an object referenced in the
+    main module.
 
     """
     dispatch = _Pickler.dispatch.copy()
