@@ -81,15 +81,9 @@ def test_serialization():
     assert set(numpy_data.keys()) == \
         set(['/mlp/linear.W', '/mlp/linear.W_2'])
 
-    # Check the pickle_object flag.
+    # Check when we don't dump the main object.
     with NamedTemporaryFile(delete=False) as f:
-        dump(mlp, f, parameters=[mlp.children[0].W, mlp.children[1].W],
-             pickle_object=True)
-    with tarfile.open(f.name, 'r') as tarball:
-        assert set(tarball.getnames()) == set(['_pkl', '_parameters'])
-    with NamedTemporaryFile(delete=False) as f:
-        dump(mlp, f, parameters=[mlp.children[0].W, mlp.children[1].W],
-             pickle_object=False)
+        dump(None, f, parameters=[mlp.children[0].W, mlp.children[1].W])
     with tarfile.open(f.name, 'r') as tarball:
         assert set(tarball.getnames()) == set(['_parameters'])
 
