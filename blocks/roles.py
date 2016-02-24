@@ -93,7 +93,14 @@ class CostRole(VariableRole):
 COST = CostRole()
 
 
-class ParameterRole(VariableRole):
+class PersistentRole(VariableRole):
+    pass
+
+# Any persistent quantity that should be saved as part of the model
+PERSISTENT = PersistentRole()
+
+
+class ParameterRole(PersistentRole):
     pass
 
 #: A parameter of the model
@@ -175,3 +182,74 @@ class AlgorithmBufferRole(AlgorithmStateRole):
 
 #: buffers accociated with algorithms
 ALGORITHM_BUFFER = AlgorithmBufferRole()
+
+
+class BatchNormPopulationStatisticsRole(PersistentRole):
+    pass
+
+#: base role for batch normalization population statistics
+BATCH_NORM_POPULATION_STATISTICS = BatchNormPopulationStatisticsRole()
+
+
+class BatchNormPopulationMeanRole(BatchNormPopulationStatisticsRole):
+    pass
+
+#: mean activations accumulated over the dataset
+BATCH_NORM_POPULATION_MEAN = BatchNormPopulationMeanRole()
+
+
+class BatchNormPopulationStdevRole(BatchNormPopulationStatisticsRole):
+    pass
+
+#: standard deviations of activations accumulated over the dataset
+BATCH_NORM_POPULATION_STDEV = BatchNormPopulationStdevRole()
+
+
+class BatchNormGraphVariableRole(VariableRole):
+    pass
+
+#: base for roles used for within-graph batch normalization replacement
+BATCH_NORM_GRAPH_VARIABLE = BatchNormGraphVariableRole()
+
+
+class BatchNormOffsetRole(BatchNormGraphVariableRole):
+    pass
+
+#: offset applied in a BatchNormalization application (or its
+#  batch-normalized replacement)
+BATCH_NORM_OFFSET = BatchNormOffsetRole()
+
+
+class BatchNormDivisorRole(BatchNormGraphVariableRole):
+    pass
+
+#: divisor applied in a BatchNormalization application (or its
+#  batch-normalized replacement)
+BATCH_NORM_DIVISOR = BatchNormDivisorRole()
+
+
+class BatchNormMinibatchEstimateRole(BatchNormGraphVariableRole):
+    pass
+
+#: role added to variables that are the result of a batch normalization
+#  replacement, rather than the original population statistics variables.
+BATCH_NORM_MINIBATCH_ESTIMATE = BatchNormMinibatchEstimateRole()
+
+
+class BatchNormScaleParameterRole(ParameterRole):
+    pass
+
+#: role given to the scale parameter, referred to as "scale" in the
+# batch normalization manuscript, applied after normalizing.
+BATCH_NORM_SCALE_PARAMETER = BatchNormScaleParameterRole()
+
+
+class BatchNormShiftParameterRole(BiasRole):
+    pass
+
+#: role given to the shift parameter, referred to as "beta" in the
+# batch normalization manuscript, applied after normalizing and scaling.
+# Inherits from BIAS, because there really is no functional difference
+# with a normal bias, and indeed these are the only biases present
+# inside a BatchNormalizedMLP.
+BATCH_NORM_SHIFT_PARAMETER = BatchNormShiftParameterRole()

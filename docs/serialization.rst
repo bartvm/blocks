@@ -54,7 +54,7 @@ Parameter saving
 
 This is why Blocks intercepts the pickling of all Theano shared variables (which
 includes the parameters), and stores them as separate NPY_ files. The resulting
-file is a ZIP arcive that contains the pickled main loop as well as a collection
+file is a ZIP archive that contains the pickled main loop as well as a collection
 of NumPy arrays. The NumPy arrays (and hence parameters) in the ZIP file can be
 read, across platforms, using the :func:`numpy.load` function, making it
 possible to inspect and load parameter values, even if the unpickling of the

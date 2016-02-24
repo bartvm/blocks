@@ -104,7 +104,7 @@ the parameters by adding a :math:`L2`-regularization term (also known as
 To get the weights from our model, we will use Blocks' annotation features (read
 more about them in the :doc:`cg` tutorial).
 
->>> from blocks.bricks import WEIGHT
+>>> from blocks.roles import WEIGHT
 >>> from blocks.graph import ComputationGraph
 >>> from blocks.filter import VariableFilter
 >>> cg = ComputationGraph(cost)

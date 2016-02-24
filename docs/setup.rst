@@ -1,9 +1,9 @@
 Installation
 ============
 
-The easiest way to install Blocks using the Python package manager pip. Blocks
-isn't listed yet on the Python Package Index (PyPI), so you will have to grab it
-directly from GitHub.
+The easiest way to install Blocks is using the Python package manager
+``pip``. Blocks isn't listed yet on the Python Package Index (PyPI), so
+you will have to grab it directly from GitHub.
 
 .. code-block:: bash
 
@@ -60,6 +60,8 @@ Blocks' requirements are
 Bokeh_ is an optional requirement for if you want to use live plotting of your
 training progress (part of ``blocks-extras_``).
 
+nose2_ is an optional requirement, used to run the tests.
+
 We develop using the bleeding-edge version of Theano, so be sure to follow the
 `relevant installation instructions`_ to make sure that your Theano version is
 up to date if you didn't install it through Blocks.
@@ -105,4 +107,3 @@ Documentation
 
 If you want to build a local copy of the documentation, follow the instructions
 at the :doc:`documentation development guidelines <development/docs>`.
-

@@ -40,7 +40,7 @@ advocated whenever it makes sense.
 Here are examples of possible bricks to inherit from:
 
 * :class:`.Sequence`: a sequence of bricks.
-* :class:`.Initializable`: a brick that defines a same initialiation scheme
+* :class:`.Initializable`: a brick that defines a same initialization scheme
   (weights and biases) for all its children.
 * :class:`.Feedforward`: declares an interface for bricks with one input and
   one output.
@@ -58,7 +58,7 @@ of :class:`.Brick` for a precise description of the life-cycle of a brick):
 * :meth:`.Brick.__init__`: you should pass by argument the attributes of your
   brick. It is also in this method that you should create the potential
   "children bricks" that belongs to your brick (in that case, you have to put
-  the children bricks into ``self.children``). The initialiazation of the
+  the children bricks into ``self.children``). The initialization of the
   attributes can be lazy as described later in the tutorial.
 * :meth:`apply`: you need to implement a method that actually
   implements the operation of the brick, taking as arguments the inputs
@@ -119,12 +119,12 @@ to the tag attributes of the variables, as shown below:
     >>> i2 = tensor.matrix('i2')
     >>> y = foo.apply(i1, i2)
     >>> theano.printing.debugprint(y)
-    Elemwise{identity} [@A] 'foo_apply_output'   
-     |Elemwise{add,no_inplace} [@B] ''   
-       |Elemwise{identity} [@C] 'foo_apply_input1'   
-       | |i1 [@D]
-       |Elemwise{identity} [@E] 'foo_apply_input2'   
-         |i2 [@F]
+    Elemwise{identity} [id A] 'foo_apply_output'   
+     |Elemwise{add,no_inplace} [id B] ''   
+       |Elemwise{identity} [id C] 'foo_apply_input1'   
+       | |i1 [id D]
+       |Elemwise{identity} [id E] 'foo_apply_input2'   
+         |i2 [id F]
     >>> print(y.name)
     foo_apply_output
     >>> print(y.tag.name)

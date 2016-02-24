@@ -10,9 +10,14 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
         pass
     long_description = 'Blocks\n' + f.read().strip()
 
+exec_results = {}
+with open(path.join(path.dirname(__file__), 'blocks/version.py')) as file_:
+    exec(file_.read(), exec_results)
+version = exec_results['version']
+
 setup(
     name='blocks',
-    version=blocks.__version__,  # PEP 440 compliant
+    version=version,
     description='A Theano framework for building and training neural networks',
     long_description=long_description,
     url='https://github.com/mila-udem/blocks',

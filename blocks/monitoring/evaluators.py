@@ -114,7 +114,12 @@ class AggregationBuffer(object):
 
         self.variable_names = [v.name for v in self.variables]
         if len(set(self.variable_names)) < len(self.variables):
-            raise ValueError("variables should have different names")
+            duplicates = []
+            for vname in set(self.variable_names):
+                if self.variable_names.count(vname) > 1:
+                    duplicates.append(vname)
+            raise ValueError("variables should have different names!"
+                             " Duplicates: {}".format(', '.join(duplicates)))
         self._computation_graph = ComputationGraph(self.variables)
         self.inputs = self._computation_graph.inputs
 

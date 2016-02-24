@@ -2,6 +2,7 @@
 import logging
 from collections import OrderedDict
 from itertools import chain
+import warnings
 
 import numpy
 import theano
@@ -12,12 +13,14 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.scan_module.scan_op import Scan
 from toolz import unique
 
-from blocks.config import config
-from blocks.roles import (add_role, has_roles, AUXILIARY, PARAMETER, DROPOUT,
-                          COLLECTED, COLLECTOR)
-from blocks.utils import (is_graph_input, is_shared_variable, dict_union,
-                          shared_floatx_zeros, shared_like)
-import warnings
+from ..config import config
+from ..roles import (add_role, has_roles, AUXILIARY, PARAMETER, DROPOUT,
+                     COLLECTED, COLLECTOR)
+from ..utils import (is_graph_input, is_shared_variable, dict_union,
+                     shared_floatx_zeros, shared_like)
+from .annotations import add_annotation, Annotation  # noqa
+from .bn import batch_normalization, apply_batch_normalization  # noqa
+from .bn import get_batch_normalization_updates  # noqa
 
 logger = logging.getLogger(__name__)
 
@@ -306,119 +309,6 @@ class ComputationGraph(object):
         return self._has_inputs[variable]
 
 
-def add_annotation(var, annotation):
-    annotations = getattr(var.tag, 'annotations', [])
-    if any(old_annotation.__class__ == annotation.__class__
-           for old_annotation in annotations):
-        raise ValueError
-    else:
-        var.tag.annotations = annotations + [annotation]
-
-
-class Annotation(object):
-    """Annotations on Theano variables in a graph.
-
-    In Blocks annotations are automatically attached to variables created
-    using bricks. One form of annotation is that many variables are
-    assigned a role (see :class:`.VariableRole`). A second form of
-    annotation comes in the form of attaching a :class:`Annotation`
-    instance to the variable's ``tag`` attribute, with auxiliary variables
-    and/or updates.
-
-    For example, we might be interested in the mean activation of certain
-    application of a :class:`.Linear` brick. The variable representing the
-    mean activation is attached as an auxiliary variable to the annotations
-    of the input and output variables of this brick. Using the
-    :class:`ComputationGraph` class (the
-    :attr:`~ComputationGraph.variables`,
-    :attr:`~ComputationGraph.auxiliary_variables`, etc.  attributes in
-    particular) we can retrieve these Theano variables to pass on to the
-    monitor, use as a regularizer, etc.
-
-    In most cases, annotations are added on a brick level (e.g. each brick
-    will assign the weight norm of its weights as an auxiliary value) or on
-    an application level (e.g. each time a brick is applied, its mean
-    activation will become an auxiliary variable). However, you can also
-    add annotations manually, by setting the ``annotation`` value of a
-    variable's ``tag`` field.
-
-    Examples
-    --------
-    >>> from theano import tensor
-    >>> x = tensor.vector()
-    >>> annotation = Annotation()
-    >>> annotation.add_auxiliary_variable(x + 1, name='x_plus_1')
-    >>> add_annotation(x, annotation)
-    >>> y = x ** 2
-    >>> from blocks.graph import ComputationGraph
-    >>> cg = ComputationGraph([y])
-    >>> cg.auxiliary_variables
-    [x_plus_1]
-
-    """
-    def __init__(self):
-        self.auxiliary_variables = []
-        self.updates = OrderedDict()
-
-    def add_auxiliary_variable(self, variable, roles=None, name=None):
-        """Attach an auxiliary variable to the graph.
-
-        Auxiliary variables are Theano variables that are not part of a
-        brick's output, but can be useful nonetheless e.g. as a regularizer
-        or to monitor during training progress.
-
-        Parameters
-        ----------
-        variable : :class:`~tensor.TensorVariable`
-            The variable you want to add.
-        roles : list of :class:`.VariableRole` instances, optional
-            The roles of this variable. The :const:`.AUXILIARY`
-            role will automatically be added. Other options are
-            :const:`.COST`, :const:`.WEIGHT`, etc.
-        name : str, optional
-            Name to give to the variable. If the variable already has a
-            name it will be overwritten.
-
-        Examples
-        --------
-        >>> from blocks.bricks.base import application, Brick
-        >>> from blocks.roles import COST
-        >>> from blocks.utils import shared_floatx_nans
-        >>> class Foo(Brick):
-        ...     def _allocate(self):
-        ...         W = shared_floatx_nans((10, 10))
-        ...         self.add_auxiliary_variable(W.mean(), name='mean_W')
-        ...     @application
-        ...     def apply(self, x, application_call):
-        ...         application_call.add_auxiliary_variable(
-        ...             x - 1, name='x_minus_1')
-        ...         application_call.add_auxiliary_variable(
-        ...             x.mean(), roles=[COST], name='mean_x')
-        ...         return x + 1
-        >>> from theano import tensor
-        >>> x = tensor.vector()
-        >>> y = Foo().apply(x)
-        >>> from blocks.filter import VariableFilter
-        >>> cg = ComputationGraph([y])
-        >>> var_filter = VariableFilter(roles=[AUXILIARY])
-        >>> var_filter(cg.variables)  # doctest: +SKIP
-        {x_minus_1, mean_W, mean_x}
-        >>> var_filter = VariableFilter(roles=[COST])
-        >>> var_filter(cg.variables)  # doctest: +SKIP
-        {mean_x}
-
-        """
-        add_annotation(variable, self)
-        if name is not None:
-            variable.name = name
-            variable.tag.name = name
-        add_role(variable, AUXILIARY)
-        if roles is not None:
-            for role in roles:
-                add_role(variable, role)
-        self.auxiliary_variables.append(variable)
-
-
 def apply_noise(computation_graph, variables, level, seed=None):
     """Add Gaussian noise to certain variable of a computation graph.
 
@@ -533,8 +423,8 @@ def collect_parameters(computation_graph, parameters):
 
 
 def apply_dropout(computation_graph, variables, drop_prob, rng=None,
-                  seed=None):
-    """Returns a graph to variables in a computational graph.
+                  seed=None, custom_divisor=None):
+    """Apply dropout to specified variables in a graph.
 
     Parameters
     ----------
@@ -550,6 +440,19 @@ def apply_dropout(computation_graph, variables, drop_prob, rng=None,
         Random number generator.
     seed : int
         Random seed to be used if `rng` was not specified.
+    custom_divisor : float or None, optional
+        Divide dropped variables by a given scalar value. If `None`,
+        (default) dropped variables will be divided by `(1 - drop_prob)`
+        which is equivalent to scaling by `(1 - drop_prob)` at test
+        time as recommended in [DROPOUT]_.
+
+    Returns
+    -------
+    dropped_computation_graph : instance of :class:`ComputationGraph`
+        A new computation graph with dropout applied to the specified
+        variables. In order to train with, or monitor, the outputs
+        of the original computation graph with dropout applies, use
+        the variables contained in `dropped_computation_graph.outputs`.
 
     Notes
     -----
@@ -622,11 +525,14 @@ def apply_dropout(computation_graph, variables, drop_prob, rng=None,
         seed = config.default_seed
     if not rng:
         rng = MRG_RandomStreams(seed)
-
+    if custom_divisor is None:
+        divisor = (1 - drop_prob)
+    else:
+        divisor = custom_divisor
     replacements = [(var, var *
                      rng.binomial(var.shape, p=1 - drop_prob,
                                   dtype=theano.config.floatX) /
-                     (1 - drop_prob))
+                     divisor)
                     for var in variables]
     for variable, replacement in replacements:
         add_role(replacement, DROPOUT)

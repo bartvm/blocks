@@ -484,7 +484,7 @@ class ProgressBar(TrainingExtension):
                        progressbar.Timer(), ' ', progressbar.ETA()]
 
         return progressbar.ProgressBar(widgets=widgets,
-                                       maxval=iter_per_epoch)
+                                       max_value=iter_per_epoch)
 
     def before_epoch(self):
         self.iter_count = 0

@@ -3,6 +3,7 @@ import six
 import theano
 from numpy.testing import assert_allclose, assert_raises
 from theano import tensor
+from six.moves import cPickle
 
 from blocks.bricks import (Identity, Linear, Maxout, LinearMaxout, MLP, Tanh,
                            Sequence, Random, Logistic, Softplus, Softmax)
@@ -247,6 +248,10 @@ def test_application():
     test_brick.delegated_apply.inputs = ['x']
     assert test_brick.delegated_apply.inputs == ['x']
     assert TestBrick.delegated_apply.inputs == ['w']
+
+
+def test_application_serialization():
+    assert id(cPickle.loads(cPickle.dumps(Linear.apply))) == id(Linear.apply)
 
 
 def test_apply():

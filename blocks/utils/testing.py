@@ -76,6 +76,27 @@ def skip_if_not_available(modules=None, datasets=None, configurations=None):
             raise SkipTest
 
 
+def skip_if_configuration_set(configuration, value, message=None):
+    """Raise SkipTest if a configuration option has a certain value.
+
+    Parameters
+    ----------
+    configuration : str
+        Configuration option to check.
+    value : str
+        Value of `blocks.config.<attribute>` which should cause
+        a `SkipTest` to be raised.
+    message : str, optional
+        Reason for skipping the test.
+
+    """
+    if getattr(config, configuration) == value:
+        if message is not None:
+            raise SkipTest(message)
+        else:
+            raise SkipTest
+
+
 class MockAlgorithm(TrainingAlgorithm):
     """An algorithm that only saves data.
 

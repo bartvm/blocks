@@ -280,6 +280,13 @@ class BaseSequenceGenerator(Initializable):
         for name, variable in list(glimpses.items()) + list(states.items()):
             application_call.add_auxiliary_variable(
                 variable.copy(), name=name)
+
+        # This variables can be used to initialize the initial states of the
+        # next batch using the last states of the current batch.
+        for name in self._state_names + self._glimpse_names:
+            application_call.add_auxiliary_variable(
+                results[name][-1].copy(), name=name+"_final_value")
+
         return costs
 
     @recurrent

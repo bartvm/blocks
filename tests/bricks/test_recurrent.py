@@ -14,7 +14,8 @@ from blocks.bricks.recurrent import (
     recurrent, BaseRecurrent, GatedRecurrent,
     SimpleRecurrent, Bidirectional, LSTM,
     RecurrentStack, RECURRENTSTACK_SEPARATOR)
-from blocks.initialization import Constant, IsotropicGaussian, Orthogonal
+from blocks.initialization import (
+    Constant, IsotropicGaussian, Orthogonal, Identity)
 from blocks.filter import get_application_call, VariableFilter
 from blocks.graph import ComputationGraph
 from blocks.roles import INITIAL_STATE
@@ -531,6 +532,50 @@ class TestBidirectional(unittest.TestCase):
         assert output_names == ['states']
         assert_allclose(h_simple, h_bidir[..., :3], rtol=1e-04)
         assert_allclose(h_simple_rev, h_bidir[::-1, ...,  3:], rtol=1e-04)
+
+
+class TestBidirectionalStack(unittest.TestCase):
+    def setUp(self):
+        prototype = SimpleRecurrent(dim=3, activation=Tanh())
+        self.layers = [
+            Bidirectional(weights_init=Orthogonal(), prototype=prototype)
+            for _ in range(3)]
+        self.stack = RecurrentStack(self.layers)
+        for fork in self.stack.forks:
+            fork.weights_init = Identity(1)
+            fork.biases_init = Constant(0)
+        self.stack.initialize()
+
+        self.x_val = 0.1 * numpy.asarray(
+            list(itertools.permutations(range(4))),
+            dtype=theano.config.floatX)
+        self.x_val = (numpy.ones((24, 4, 3), dtype=theano.config.floatX) *
+                      self.x_val[..., None])
+        self.mask_val = numpy.ones((24, 4), dtype=theano.config.floatX)
+        self.mask_val[12:24, 3] = 0
+
+    def test_steps(self):
+        x = tensor.tensor3('x')
+        mask = tensor.matrix('mask')
+
+        calc_stack_layers = [
+            theano.function([x, mask], self.stack.apply(x, mask=mask)[i])
+            for i in range(len(self.layers))]
+        stack_layers = [
+            f(self.x_val, self.mask_val) for f in calc_stack_layers]
+
+        h_val = self.x_val
+        for stack_layer_value, bidir_net in zip(stack_layers, self.layers):
+            calc = theano.function([x, mask], bidir_net.apply(x, mask=mask))
+            simple_layer_value = calc(h_val, self.mask_val)
+            assert_allclose(stack_layer_value, simple_layer_value, rtol=1e-04)
+            h_val = simple_layer_value[..., :3]
+
+    def test_dims(self):
+        self.assertEqual(self.stack.get_dim("inputs"), 3)
+        for i in range(len(self.layers)):
+            state_name = self.stack.suffix("states", i)
+            self.assertEqual(self.stack.get_dim(state_name), 6)
 
 
 def test_saved_inner_graph():

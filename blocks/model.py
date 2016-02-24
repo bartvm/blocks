@@ -7,7 +7,7 @@ deliberately made unaware of specific annotations that a Theano graph
 created by Blocks typically has, such as bricks and application calls.  The
 :class:`Model` adds this functionality. Using :class:`Model` you can do
 things like query all the bricks used to build the computation graph,
-request "hierarhical names" of the parameters (a hierarchical name is a
+request "hierarchical names" of the parameters (a hierarchical name is a
 path-like string which in addition to the parameter's name contains names
 of the bricks on the path from a root brick to the brick that owns the
 parameters, e.g. ``/mlp/linear/W``).
@@ -48,7 +48,7 @@ class Model(ComputationGraph):
     it:
 
     >>> model.get_top_bricks() #doctest: +ELLIPSIS
-    [<blocks.bricks.MLP object at ...]
+    [<blocks.bricks.sequences.MLP object at ...]
 
     You can also get "hierarchical" names for the parameters,
     which encode the position of the owning brick in the

@@ -1,3 +1,26 @@
+Filing an issue
+===============
+If you are having a problem, then *before* filing an issue, please verify
+the following:
+
+* That you are using a **compatible version of Python** -- this means version
+  3.4 or newer for mainline Python. Legacy Python support is limited to 2.7 and
+  will eventually be dropped, and not all features may be available; users are
+  encouraged to move to Python 3.x as soon as possible.
+* That you are using **the latest version of Theano** from the GitHub ``master``
+  branch. Blocks is developed concurrently with Theano's bleeding edge development
+  and many problems with using Blocks can be traced to using the latest stable
+  version of Theano (or an insufficiently recent GitHub checkout). Please see the
+  `Blocks installation instructions`_ for more details.
+* You are using the latest Blocks (and Fuel_) from the GitHub ``master``
+  branch. If you are using ``stable``, then if possible, please check if your
+  problem persists if you switch to using ``master``. It may still be worth
+  filing the issue if your problem is fixed in ``master``, if it is a serious
+  enough problem to warrant backporting a fix to ``stable``.
+* That your issue is about the software itself -- either a bug report, feature
+  request, question on how to accomplish a certain defined operation within
+  Blocks, etc. -- and not a general machine learning or neural networks question.
+
 Making a pull request
 =====================
 
@@ -49,6 +72,8 @@ mailing list and the GitHub issues to make sure the answer isn't out there
 already.
 
 .. _Blocks users mailing list: https://groups.google.com/forum/#!forum/blocks-users
+.. _Blocks installation instructions: https://blocks.readthedocs.org/en/latest/setup.html
+.. _Fuel: http://fuel.readthedocs.org/
 .. _quick reference: https://blocks.readthedocs.org/en/latest/development/pull_request.html
 .. _the documentation: https://blocks.readthedocs.org/en/latest/development/index.html#formatting-guidelines
 .. _coding guidelines: https://blocks.readthedocs.org/en/latest/development/index.html#code-guidelines

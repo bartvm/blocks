@@ -1,6 +1,6 @@
 import numpy
 import theano
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_raises
 from theano import tensor
 
 from blocks import bricks
@@ -14,7 +14,7 @@ from fuel.datasets import IndexableDataset
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
 
-from blocks.monitoring.evaluators import DatasetEvaluator
+from blocks.monitoring.evaluators import DatasetEvaluator, AggregationBuffer
 
 
 class TestBrick(bricks.Brick):
@@ -89,3 +89,9 @@ def test_mean_aggregator():
                     numpy.array([8.25, 26.75], dtype=theano.config.floatX))
     assert_allclose(DatasetEvaluator([z]).evaluate(data_stream)['z'],
                     numpy.array([35], dtype=theano.config.floatX))
+
+
+def test_aggregation_buffer():
+    x1 = tensor.matrix('x')
+    x2 = tensor.matrix('x')
+    assert_raises(ValueError, AggregationBuffer, [x1, x2])

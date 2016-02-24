@@ -16,8 +16,12 @@ def setup_mainloop(extension):
     DataStream and a minimal model/cost to optimize.
 
     """
+    # Since progressbar2 3.6.0, the `maxval` kwarg has been replaced by
+    # `max_value`, which has a default value of 100. If we're still using
+    # `maxval` by accident, this test should fail complaining that
+    # the progress bar has received a value out of range.
     features = [numpy.array(f, dtype=theano.config.floatX)
-                for f in [[1, 2], [3, 4], [5, 6]]]
+                for f in [[1, 2]] * 101]
     dataset = IterableDataset(dict(features=features))
 
     W = shared_floatx([0, 0], name='W')

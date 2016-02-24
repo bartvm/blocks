@@ -1,10 +1,10 @@
 Development
 ===========
 
-We want to encourage everyone to contribute to the development of Blocks. To
-ensure the codebase is of high quality, we ask all new developers to have a
-quick read through these rules to make sure that any code you contribute will be
-easy to merge!
+We want to encourage everyone to contribute to the development of Blocks
+and Fuel. To ensure the codebase is of high quality, we ask all new
+developers to have a quick read through these rules to make sure that
+any code you contribute will be easy to merge!
 
 
 .. image:: /_static/code_quality.png
@@ -13,7 +13,9 @@ easy to merge!
 Formatting guidelines
 ---------------------
 Blocks follows the `PEP8 style guide`_ closely, so please make sure you are
-familiar with it. Our `Travis CI buildbot`_ runs flake8_ as part of every build,
+familiar with it. Our Travis CI buildbots (for `Blocks <Blocks buildbot_>`_,
+`Fuel <Fuel buildbot_>`_, and `Blocks-extras <Blocks-extras buildbot_>`_)
+run flake8_ as part of every build,
 which checks for PEP8 compliance (using the pep8_ tool) and for some common
 coding errors using pyflakes_. You might want to install and run flake8_ on your
 code before submitting a PR to make sure that your build doesn't fail because of
@@ -27,7 +29,7 @@ compliant! Some guidelines which aren't checked by flake8_:
 * Variable names should be explanatory and unambiguous.
 
 There are also some style guideline decisions that were made specifically for
-Blocks:
+Blocks and Fuel:
 
 * Do not rename imports i.e. do not use ``import theano.tensor as T`` or
   ``import numpy as np``.
@@ -53,7 +55,9 @@ Blocks:
            self.baz = baz
 
 .. _PEP8 style guide: https://www.python.org/dev/peps/pep-0008/
-.. _Travis CI buildbot: https://travis-ci.org/mila-udem/blocks
+.. _Blocks buildbot: https://travis-ci.org/mila-udem/blocks
+.. _Blocks-extras buildbot: https://travis-ci.org/mila-udem/blocks-extras
+.. _Fuel buildbot: https://travis-ci.org/mila-udem/fuel
 .. _flake8: https://pypi.python.org/pypi/flake8
 .. _pep8: https://pypi.python.org/pypi/pep8
 .. _pyflakes: https://pypi.python.org/pypi/pyflakes
@@ -61,9 +65,10 @@ Blocks:
 
 Code guidelines
 ---------------
-Some guidelines to keep in mind when coding for Blocks. Some of these are simply
-preferences, others stem from particular requirements we have e.g. in order to
-serialize training progress, support Python 2 and 3 simultaneously, etc.
+Some guidelines to keep in mind when coding for Blocks or Fuel. Some of
+these are simply preferences, others stem from particular requirements
+we have, e.g., in order to serialize training progress, support Python 2
+and 3 simultaneously, etc.
 
 Validating function arguments
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -119,10 +124,11 @@ building documentation. To prevent this, make sure to always use the
 
 Python 2 and 3
 ~~~~~~~~~~~~~~
-Blocks aims to be both Python 2 and Python 3 compliant using a single code-base,
-without using 2to3_. There are many online resources which discuss the writing
-of compatible code. For a quick overview see `the cheatsheet from Python
-Charmers`_. For non-trivial cases, we use the six_ compatibility library.
+Blocks and Fuel aim to be both Python 2 and Python 3 compliant using a
+single code-base, without using 2to3_. There are many online resources
+which discuss the writing of compatible code. For a quick overview see
+`the cheatsheet from Python Charmers`_. For non-trivial cases, we use
+the six_ compatibility library.
 
 Documentation should be written to be Python 3 compliant.
 
@@ -143,16 +149,18 @@ Not doing so `clobbers the original traceback`_, making it impossible to use
 
 Serialization
 ~~~~~~~~~~~~~
-To ensure the reproducibility of scientific experiments Blocks tries to make
-sure that stopping and resuming training doesn't affect the final results. In
-order to do so it takes a radical approach, serializing the entire training
-state using pickle_. Some things cannot be pickled, so their use should be
-avoided when the object will be pickled as part of the main loop:
+To ensure the reproducibility of scientific experiments, Blocks and Fuel
+try to make sure that stopping and resuming training doesn't affect
+the final results. In order to do so it takes a radical approach,
+serializing the entire training state using pickle_. Some things cannot
+be pickled, so their use should be avoided when the object will be
+pickled as part of the main loop:
 
 * Lambda functions
 * Iterators and generators (use picklable_itertools_)
 * References to methods as attributes
-* Any variable that lies outside of the global namespace e.g. nested functions
+* Any variable that lies outside of the global namespace, e.g.,
+  nested functions
 * Dynamically generated classes (possible_ but complicated)
 
 .. _pickle: https://docs.python.org/3/library/pickle.html
@@ -210,9 +218,11 @@ the error is being raised for.
 
 Unit testing
 ------------
-Blocks uses unit testing to ensure that individual parts of the library behave
-as intended. It's also essential in ensuring that parts of the library are not
-broken by proposed changes.
+Blocks and Fuel use unit testing to ensure that individual parts of
+the library behave as intended. It's also essential in ensuring that
+parts of the library are not broken by proposed changes. Since Blocks
+and Fuel were designed to be used together, it is important to make sure
+changes in Fuel do not break Blocks.
 
 All new code should be accompanied by extensive unit tests. Whenever a pull
 request is made, the full test suite is run on `Travis CI`_, and pull requests
@@ -236,8 +246,8 @@ The test suite can be executed locally using nose2_ [#]_.
 Writing and building documentation
 ----------------------------------
 The :doc:`documentation guidelines <docs>` outline how to write documentation
-for Blocks, and how to build a local copy of the documentation for testing
-purposes.
+for Blocks and Fuel, and how to build a local copy of the documentation for
+testing purposes.
 
 Internal API
 ------------
@@ -253,7 +263,65 @@ See the instructions at the bottom of the :doc:`installation instructions
 Sending a pull request
 ----------------------
 See our :doc:`pull request workflow <pull_request>` for a refresher on the
-general recipe for sending a pull request to Blocks.
+general recipe for sending a pull request to Blocks or Fuel.
+
+Making a new release
+--------------------
+.. note:
+   This section is targeted for Blocks and Fuel administrators.
+
+Create an initial pull request and copy the following piece of markdown code. 
+This pull request should only change the version number. Then, create a pull 
+request to Fuel which refers the first PR. Follow the instruction carefully 
+and check the boxes in process. 
+```
+- **Stage 1**: Make changes in `master`:
+  - [ ] Freeze other PRs.
+
+        After we agreed to initiate the process of releasing a new version,
+        other PRs shouldn't be merged.
+  - [ ] Increase the version number counter of Blocks.
+
+        Change the version number in `blocks/__init__.py`.
+  - [ ] Increase the version number counter of Fuel.
+        
+        Change the version number in `fuel/version.py`.
+- **Stage 2**: After two PRs merged to Blocks and Fuel:
+  - [ ] Create a pull request to merge `master` into `stable`.
+
+        Add a link to the initial PR in order not to get lost in the numerous
+        pull requests.
+  - [ ] Create a pull request to Fuel.
+
+        This will be a corresponding PR to Fuel which merges its `master` into
+        `stable`. Add a link to  the initial PR.
+  - [ ] Check the Travis CI build log *on both the pull requests merging
+        `master` into `stable`*.
+   
+        Read carefully the Travis CI messages, check that it tests the
+        right version.
+  - [ ] Check the Theano version.
+
+        The `req*.txt` should refer the last development Theano version
+        which is known not to have bugs.
+  - [ ] Check the Fuel version in `req*.txt` files.
+  
+        We should reference the stable version of Fuel. It can be seen
+        in the Travis CI output.
+  - [ ] Merge Fuel pull request.
+  - [ ] Merge this pull request.
+- **Stage 3**: After the PRs are merged:
+  - [ ] Wait the build to pass.
+  - [ ] Check documentation build at ReadTheDocs.
+  - [ ] Double check that the version corresponds `__version__`.
+  - [ ] Create a release of Fuel by going to the
+        [releases page](https://github.com/mila-udem/fuel/releases) and
+        clicking "Draft new release".
+  - [ ] Create a release of Blocks by going to the
+        [releases page](https://github.com/mila-udem/blocks/releases) and
+        clicking "Draft new release".
+
+```
 
 .. toctree::
    :hidden:

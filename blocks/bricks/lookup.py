@@ -1,11 +1,15 @@
 """Introduces Lookup brick."""
-from blocks.bricks import Initializable
+from blocks.bricks import Initializable, Feedforward
 from blocks.bricks.base import application, lazy
+from blocks.roles import WEIGHT, add_role
 from blocks.utils import check_theano_variable, shared_floatx_nans
 
 
-class LookupTable(Initializable):
+class LookupTable(Initializable, Feedforward):
     """Encapsulates representations of a range of integers.
+
+    This brick can be used to embed integers, e.g. word indices,
+    into a vector space.
 
     Parameters
     ----------
@@ -35,11 +39,12 @@ class LookupTable(Initializable):
     def _allocate(self):
         self.parameters.append(shared_floatx_nans((self.length, self.dim),
                                name='W'))
+        add_role(self.parameters[-1], WEIGHT)
 
     def _initialize(self):
         self.weights_init.initialize(self.W, self.rng)
 
-    @application
+    @application(inputs=['indices'], outputs=['output'])
     def apply(self, indices):
         """Perform lookup.
 
@@ -61,3 +66,27 @@ class LookupTable(Initializable):
         output_shape = [indices.shape[i]
                         for i in range(indices.ndim)] + [self.dim]
         return self.W[indices.flatten()].reshape(output_shape)
+
+    def get_dim(self, name):
+        if name == 'output':
+            return self.dim
+        if name == 'indices':
+            return 0
+        return super(LookupTable, self).get_dim(name)
+
+    @property
+    def input_dim(self):
+        return 0
+
+    @input_dim.setter
+    def input_dim(self, dim):
+        if dim != 0:
+            raise ValueError("LookupTable input must be integer")
+
+    @property
+    def output_dim(self):
+        return self.dim
+
+    @output_dim.setter
+    def output_dim(self, dim):
+        self.dim = dim

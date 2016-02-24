@@ -18,7 +18,7 @@ from blocks.extensions.training import SharedVariableModifier, TrackTheBest
 from blocks.extensions.predicates import OnLogRecord
 from blocks.main_loop import MainLoop
 from blocks.utils import shared_floatx
-from blocks.utils.testing import MockMainLoop
+from blocks.utils.testing import MockMainLoop, skip_if_configuration_set
 
 
 def test_shared_variable_modifier():
@@ -129,6 +129,8 @@ class WriteCostExtension(TrainingExtension):
 
 
 def test_save_the_best():
+    skip_if_configuration_set('log_backend', 'sqlite',
+                              "Known to be flaky with SQLite log backend.")
     with NamedTemporaryFile(dir=config.temp_dir) as dst,\
             NamedTemporaryFile(dir=config.temp_dir) as dst_best:
         track_cost = TrackTheBest("cost", after_epoch=False, after_batch=True)

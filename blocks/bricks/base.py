@@ -326,6 +326,13 @@ class Application(object):
             return OrderedDict(zip(bound_application.outputs, outputs))
         return unpack(outputs)
 
+    # Application instances are used instead of usual methods in bricks.
+    # The usual methods are not pickled per-se, similarly to classes
+    # and modules. Instead, a reference to the method is put into the pickle.
+    # Here, we ensure the same behaviour for Application instances.
+    def __reduce__(self):
+        return (getattr, (self.brick, self.application_name))
+
 
 class BoundApplication(object):
     """An application method bound to a :class:`Brick` instance."""
@@ -873,6 +880,7 @@ class ApplicationCall(Annotation):
     """
     def __init__(self, application):
         self.application = application
+        self.metadata = {}
         super(ApplicationCall, self).__init__()
 
     def add_auxiliary_variable(self, variable, roles=None, name=None):

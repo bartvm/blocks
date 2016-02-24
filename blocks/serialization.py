@@ -141,7 +141,7 @@ def dump(obj, file_handler, protocol=DEFAULT_PROTOCOL,
     >>> with open('model.zip', 'rb') as f:
     ...     mlp2 = load(f)
     >>> mlp2  # doctest: +ELLIPSIS
-    <blocks.bricks.MLP object at ...: name=mlp>
+    <blocks.bricks.sequences.MLP object at ...: name=mlp>
 
     """
     with closing(zipfile.ZipFile(file_handler, 'w', zipfile.ZIP_DEFLATED,

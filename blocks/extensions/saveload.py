@@ -6,7 +6,8 @@ from six.moves import cPickle
 
 from blocks.extensions import SimpleExtension, TrainingExtension
 from blocks.utils import reraise_as
-from blocks.serialization import secure_dump, load, load_parameter_values
+from blocks.serialization import (
+    secure_dump, load, load_parameter_values, DEFAULT_PROTOCOL)
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +98,8 @@ class Checkpoint(SimpleExtension):
             filenames = self.save_separately_filenames(path)
             for attribute in self.save_separately:
                 secure_dump(getattr(self.main_loop, attribute),
-                            filenames[attribute], cPickle.dump)
+                            filenames[attribute], cPickle.dump,
+                            protocol=DEFAULT_PROTOCOL)
         except Exception:
             path = None
             raise
