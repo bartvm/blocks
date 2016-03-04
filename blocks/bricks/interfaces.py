@@ -141,31 +141,61 @@ class Initializable(RNGMixin, Brick):
 
     """
     has_biases = True
+    initialization_roles = set([])
 
     @lazy()
-    def __init__(self, weights_init=None, biases_init=None, use_bias=True,
-                 seed=None, **kwargs):
+    def __init__(self,
+                weights_init=None,
+                biases_init=None,
+                use_bias=True,
+                initialization_schemes = None,
+                seed=None,
+                **kwargs):
         super(Initializable, self).__init__(**kwargs)
-        self.weights_init = weights_init
-        if self.has_biases:
-            self.biases_init = biases_init
-        elif biases_init is not None or not use_bias:
-            raise ValueError("This brick does not support biases config")
+
+        self.initialization_schemes = initialization_schemes
+        if self.initialization_schemes is None:
+            self.initialization_schemes = {'weights_init': weights_init}
+            if use_bias:
+                self.initialization_schemes['biases_init'] = biases_init
+        elif weights_init is not None or biases_init is not None:
+            raise ValueError("All initializations are accepted either through"
+                "initialization_schemes or correspodong attribute but not both")
+
+        if not self.has_biases:
+            if initialization_schemes['biases_init'] is not None or not use_bias:
+                raise ValueError("This brick does not support biases config")
         self.use_bias = use_bias
         self.seed = seed
 
     def _push_initialization_config(self):
+        self._collect_roles()
+        for child in self.children:
+                if (isinstance(child, Initializable) and
+                        hasattr(child, 'initialization_schemes')):
+                    for role in child.initialization_schemes:
+                        if role not in self.initialization_roles:
+                            raise ValueError("The initialization role: " +
+                            "{} is not defined in the class ".format(role) +
+                            "initialization roles")
         for child in self.children:
             if isinstance(child, Initializable):
                 child.rng = self.rng
-                if self.weights_init:
-                    child.weights_init = self.weights_init
+                for role in self.initialization_schemes:
+                    if self.initialization_schemes[role]:
+                        child.initialization_schemes[role] = \
+                            self.initialization_schemes[role]
         if hasattr(self, 'biases_init') and self.biases_init:
             for child in self.children:
                 if (isinstance(child, Initializable) and
                         hasattr(child, 'biases_init')):
                     child.biases_init = self.biases_init
+        # import ipdb; ipdb.set_trace()
 
+    def _collect_roles(self):
+        for child in self.children:
+            if isinstance(child, Initializable):
+                self.initialization_roles.update(child.initialization_roles)
 
 class Random(Brick):
     """A mixin class for Bricks which need Theano RNGs.

@@ -38,6 +38,8 @@ class Linear(Initializable, Feedforward):
     .. math:: f(\mathbf{x}) = \mathbf{W}\mathbf{x} + \mathbf{b}
 
     """
+    initialization_roles = set(['weights_init', 'biases_init'])
+
     @lazy(allocation=['input_dim', 'output_dim'])
     def __init__(self, input_dim, output_dim, **kwargs):
         super(Linear, self).__init__(**kwargs)
@@ -66,10 +68,10 @@ class Linear(Initializable, Feedforward):
     def _initialize(self):
         if self.use_bias:
             W, b = self.parameters
-            self.biases_init.initialize(b, self.rng)
+            self.initialization_schemes['biases_init'].initialize(b, self.rng)
         else:
             W, = self.parameters
-        self.weights_init.initialize(W, self.rng)
+        self.initialization_schemes['weights_init'].initialize(W, self.rng)
 
     @application(inputs=['input_'], outputs=['output'])
     def apply(self, input_):
