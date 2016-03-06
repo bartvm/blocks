@@ -13,7 +13,8 @@ from theano import tensor, shared
 from blocks.bricks import MLP, Linear
 from blocks.initialization import Constant
 from blocks.serialization import (load, dump, secure_dump, load_parameters,
-                                  _Renamer, add_to_dump, dump_and_add_to_dump)
+                                  _Renamer, add_to_dump, dump_and_add_to_dump,
+                                  continue_training)
 
 
 def test_renamer():
