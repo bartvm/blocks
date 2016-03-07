@@ -88,7 +88,7 @@ class TestCheckpoint(unittest.TestCase):
     def test_loading_exception(self):
         """Check loading exception."""
         with tempfile.NamedTemporaryFile(delete=False) as f:
-            f.write('a')
+            f.write('a'.encode('utf-8'))
         load = Load(f.name)
         load.main_loop = self.main_loop
         self.assertRaises(tarfile.ReadError, load.before_training)
