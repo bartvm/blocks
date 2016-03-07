@@ -155,11 +155,7 @@ def test_secure_dump():
 def test_dump_and_add_to_dump():
     x = 3
     y = 2
-    path = 'test.tar'
-    with open(path, 'w+b') as f:
+    with NamedTemporaryFile(delete=False) as f:
         dump_and_add_to_dump(x, f, None, {'y': y})
-    with open(path, 'rb') as f:
-        assert load(open(path, 'rb')) == x
-        assert load(open(path, 'rb'), 'y') == y
-    if os.path.exists(path):
-        os.remove(path)
+    assert load(open(f.name, 'rb')) == x
+    assert load(open(f.name, 'rb'), 'y') == y
