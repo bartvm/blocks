@@ -204,11 +204,10 @@ class LinearMaxout(Initializable, Feedforward):
     """
     @lazy(allocation=['input_dim', 'output_dim', 'num_pieces'])
     def __init__(self, input_dim, output_dim, num_pieces, **kwargs):
-        super(LinearMaxout, self).__init__(**kwargs)
         self.linear = Linear()
         self.maxout = Maxout()
-        self.children = [self.linear,
-                         self.maxout]
+        children = [self.linear, self.maxout] + kwargs.get('children', [])
+        super(LinearMaxout, self).__init__(children=children, **kwargs)
 
         self.input_dim = input_dim
         self.output_dim = output_dim
