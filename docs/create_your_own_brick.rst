@@ -57,8 +57,8 @@ of :class:`.Brick` for a precise description of the life-cycle of a brick):
 
 * :meth:`.Brick.__init__`: you should pass by argument the attributes of your
   brick. It is also in this method that you should create the potential
-  "children bricks" that belongs to your brick (in that case, you have to put
-  the children bricks into ``self.children``). The initialization of the
+  "children bricks" that belongs to your brick (in that case, you have to pass
+  the children bricks to ``super().__init__``). The initialization of the
   attributes can be lazy as described later in the tutorial.
 * :meth:`apply`: you need to implement a method that actually
   implements the operation of the brick, taking as arguments the inputs
@@ -210,10 +210,11 @@ specify the ``input_dim`` of ``brick2`` directly at its creation.
     >>> class ChainOfTwoFeedforward(Feedforward):
     ...     """Two sequential Feedforward bricks."""
     ...     def __init__(self, brick1, brick2, **kwargs):
-    ...         super(Feedforward, self).__init__(**kwargs)
     ...         self.brick1 = brick1
     ...         self.brick2 = brick2
-    ...         self.children = [self.brick1, self.brick2]
+    ...         children = [self.brick1, self.brick2]
+    ...         children += kwargs.get('children', [])
+    ...         super(Feedforward, self).__init__(children=children, **kwargs)
     ...
     ...     @property
     ...     def input_dim(self):
@@ -370,12 +371,14 @@ One can also create the brick using :class:`Linear` children bricks, which
     >>> class ParallelLinear2(Initializable):
     ...     def __init__(self, input_dim1, input_dim2, output_dim1, output_dim2,
     ...                  **kwargs):
-    ...         super(ParallelLinear2, self).__init__(**kwargs)
     ...         self.linear1 = Linear(input_dim1, output_dim1,
     ...                               use_bias=False, **kwargs)
     ...         self.linear2 = Linear(input_dim2, output_dim2,
     ...                               use_bias=False, **kwargs)
-    ...         self.children = [self.linear1, self.linear2]
+    ...         children = [self.linear1, self.linear2]
+    ...         children += kwargs.get('children', [])
+    ...         super(ParallelLinear2, self).__init__(children=children,
+    ...                                               **kwargs)
     ...
     ...     @application(inputs=['input1_', 'input2_'], outputs=['output1',
     ...         'output2'])

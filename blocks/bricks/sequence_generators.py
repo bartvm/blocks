@@ -150,12 +150,14 @@ class BaseSequenceGenerator(Initializable):
     """
     @lazy()
     def __init__(self, readout, transition, fork, **kwargs):
-        super(BaseSequenceGenerator, self).__init__(**kwargs)
         self.readout = readout
         self.transition = transition
         self.fork = fork
 
-        self.children = [self.readout, self.fork, self.transition]
+        children = [self.readout, self.fork, self.transition]
+        children += kwargs.get('children', [])
+        super(BaseSequenceGenerator, self).__init__(children=children,
+                                                    **kwargs)
 
     @property
     def _state_names(self):
@@ -508,27 +510,27 @@ class Readout(AbstractReadout):
     def __init__(self, emitter=None, feedback_brick=None,
                  merge=None, merge_prototype=None,
                  post_merge=None, merged_dim=None, **kwargs):
-        super(Readout, self).__init__(**kwargs)
 
         if not emitter:
-            emitter = TrivialEmitter(self.readout_dim)
+            emitter = TrivialEmitter(kwargs['readout_dim'])
         if not feedback_brick:
-            feedback_brick = TrivialFeedback(self.readout_dim)
+            feedback_brick = TrivialFeedback(kwargs['readout_dim'])
         if not merge:
-            merge = Merge(input_names=self.source_names,
+            merge = Merge(input_names=kwargs['source_names'],
                           prototype=merge_prototype)
         if not post_merge:
-            post_merge = Bias(dim=self.readout_dim)
+            post_merge = Bias(dim=kwargs['readout_dim'])
         if not merged_dim:
-            merged_dim = self.readout_dim
+            merged_dim = kwargs['readout_dim']
         self.emitter = emitter
         self.feedback_brick = feedback_brick
         self.merge = merge
         self.post_merge = post_merge
         self.merged_dim = merged_dim
 
-        self.children = [self.emitter, self.feedback_brick,
-                         self.merge, self.post_merge]
+        children = [self.emitter, self.feedback_brick, self.merge,
+                    self.post_merge] + kwargs.get('children', [])
+        super(Readout, self).__init__(children=children, **kwargs)
 
     def _push_allocation_config(self):
         self.emitter.readout_dim = self.get_dim('readouts')
@@ -684,10 +686,10 @@ class SoftmaxEmitter(AbstractEmitter, Initializable, Random):
 
     """
     def __init__(self, initial_output=0, **kwargs):
-        super(SoftmaxEmitter, self).__init__(**kwargs)
         self.initial_output = initial_output
         self.softmax = NDimensionalSoftmax()
-        self.children = [self.softmax]
+        children = [self.softmax] + kwargs.get('children', [])
+        super(SoftmaxEmitter, self).__init__(children=children, **kwargs)
 
     @application
     def probs(self, readouts):
@@ -743,13 +745,12 @@ class LookupFeedback(AbstractFeedback, Initializable):
 
     """
     def __init__(self, num_outputs=None, feedback_dim=None, **kwargs):
-        super(LookupFeedback, self).__init__(**kwargs)
         self.num_outputs = num_outputs
         self.feedback_dim = feedback_dim
 
-        self.lookup = LookupTable(num_outputs, feedback_dim,
-                                  weights_init=self.weights_init)
-        self.children = [self.lookup]
+        self.lookup = LookupTable(num_outputs, feedback_dim)
+        children = [self.lookup] + kwargs.get('children', [])
+        super(LookupFeedback, self).__init__(children=children, **kwargs)
 
     def _push_allocation_config(self):
         self.lookup.length = self.num_outputs
@@ -784,14 +785,15 @@ class FakeAttentionRecurrent(AbstractAttentionRecurrent, Initializable):
 
     """
     def __init__(self, transition, **kwargs):
-        super(FakeAttentionRecurrent, self).__init__(**kwargs)
         self.transition = transition
 
         self.state_names = transition.apply.states
         self.context_names = transition.apply.contexts
         self.glimpse_names = []
 
-        self.children = [self.transition]
+        children = [self.transition] + kwargs.get('children', [])
+        super(FakeAttentionRecurrent, self).__init__(children=children,
+                                                     **kwargs)
 
     @application
     def apply(self, *args, **kwargs):

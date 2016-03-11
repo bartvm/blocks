@@ -546,12 +546,15 @@ class Brick(Annotation):
     #: See :attr:`Brick.print_shapes`
     print_shapes = False
 
-    def __init__(self, name=None):
+    def __init__(self, name=None, children=None):
         if name is None:
             name = self.__class__.__name__.lower()
-        self.name = name
 
-        self.children = []
+        if children is None:
+            children = []
+
+        self.name = name
+        self.children = children
         self.parents = []
 
         self.allocated = False
