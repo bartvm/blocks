@@ -43,6 +43,7 @@ class Linear(LinearLike, Feedforward):
         super(Linear, self).__init__(**kwargs)
         self.input_dim = input_dim
         self.output_dim = output_dim
+        self.parameter_roles = set(['weights_init', 'biases_init'])
 
     def _allocate(self):
         W = shared_floatx_nans((self.input_dim, self.output_dim), name='W')
