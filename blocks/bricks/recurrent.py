@@ -12,7 +12,7 @@ from theano import tensor, Variable
 from blocks.bricks import Initializable, Logistic, Tanh, Linear
 from blocks.bricks.base import Application, application, Brick, lazy
 from blocks.initialization import NdarrayInitialization
-from blocks.roles import add_role, WEIGHT, INITIAL_STATE
+from blocks.roles import add_role, WEIGHT, BIAS, INITIAL_STATE
 from blocks.utils import (pack, shared_floatx_nans, shared_floatx_zeros,
                           dict_union, dict_subset, is_shared_variable)
 from blocks.bricks.parallel import Fork
@@ -412,9 +412,19 @@ class LSTM(BaseRecurrent, Initializable):
             self.W_state, self.W_cell_to_in, self.W_cell_to_forget,
             self.W_cell_to_out, self.initial_state_, self.initial_cells]
 
+        if self.use_bias:
+            self.b_cell_to_forget = shared_floatx_nans((self.dim,),
+                                                       name='b_cell_to_forget')
+            add_role(self.b_cell_to_forget, BIAS)
+            self.parameters.append(self.b_cell_to_forget)
+
     def _initialize(self):
         for weights in self.parameters[:4]:
             self.weights_init.initialize(weights, self.rng)
+
+        if self.use_bias:
+            for biases in self.parameters[-1:]:
+                self.biases_init.initialize(biases, self.rng)
 
     @recurrent(sequences=['inputs', 'mask'], states=['states', 'cells'],
                contexts=[], outputs=['states', 'cells'])
@@ -460,8 +470,12 @@ class LSTM(BaseRecurrent, Initializable):
         activation = tensor.dot(states, self.W_state) + inputs
         in_gate = tensor.nnet.sigmoid(slice_last(activation, 0) +
                                       cells * self.W_cell_to_in)
-        forget_gate = tensor.nnet.sigmoid(slice_last(activation, 1) +
-                                          cells * self.W_cell_to_forget)
+
+        forget_gate = slice_last(activation, 1) + cells * self.W_cell_to_forget
+        if self.use_bias:
+            forget_gate += self.b_cell_to_forget
+        forget_gate = tensor.nnet.sigmoid(forget_gate)
+
         next_cells = (forget_gate * cells +
                       in_gate * nonlinearity(slice_last(activation, 2)))
         out_gate = tensor.nnet.sigmoid(slice_last(activation, 3) +
