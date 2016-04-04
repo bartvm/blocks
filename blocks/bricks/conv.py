@@ -335,9 +335,15 @@ class Pooling(Initializable, Feedforward):
         if name == 'input_':
             return self.input_dim
         if name == 'output':
-            return tuple(Pool.out_shape(
-                self.input_dim, self.pooling_size, st=self.step,
-                ignore_border=self.ignore_border, padding=self.padding))
+            if None in self.input_dim[-2:]:
+                # if input dimensions are unspecified, return similarly
+                # unspecified output dimensions (Theano's Pool.out_shape()
+                # won't take Nones)
+                return self.input_dim
+            else:
+                return tuple(Pool.out_shape(
+                    self.input_dim, self.pooling_size, st=self.step,
+                    ignore_border=self.ignore_border, padding=self.padding))
 
     @property
     def num_output_channels(self):
