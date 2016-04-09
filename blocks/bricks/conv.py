@@ -335,7 +335,7 @@ class Pooling(Initializable, Feedforward):
         if name == 'input_':
             return self.input_dim
         if name == 'output':
-            if None in self.input_dim[-2:]:
+            if self.input_dim[-2:] == (None, None):
                 # if input dimensions are unspecified, return similarly
                 # unspecified output dimensions (Theano's Pool.out_shape()
                 # won't take Nones)
