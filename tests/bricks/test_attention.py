@@ -73,8 +73,8 @@ def test_attention_recurrent():
         state_names=wrapped.apply.states,
         attended_dim=attended_dim, match_dim=attended_dim)
     recurrent = AttentionRecurrent(wrapped, attention, seed=1234)
-    recurrent.weights_init = IsotropicGaussian(0.5)
-    recurrent.biases_init = Constant(0)
+    recurrent.initialization_schemes['WEIGHT'] = IsotropicGaussian(0.5)
+    recurrent.initialization_schemes['BIAS'] = Constant(0)
     recurrent.initialize()
 
     attended = tensor.tensor3("attended")

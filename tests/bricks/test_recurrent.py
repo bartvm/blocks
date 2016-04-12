@@ -502,7 +502,7 @@ class TestBidirectional(unittest.TestCase):
                                        dim=3, activation=Tanh()))
         self.simple = SimpleRecurrent(dim=3, weights_init=Orthogonal(),
                                       activation=Tanh(), seed=1)
-        self.bidir.allocate()
+        self.bidir.initialize()
         self.simple.initialize()
         self.bidir.children[0].parameters[0].set_value(
             self.simple.parameters[0].get_value())
@@ -542,8 +542,8 @@ class TestBidirectionalStack(unittest.TestCase):
             for _ in range(3)]
         self.stack = RecurrentStack(self.layers)
         for fork in self.stack.forks:
-            fork.weights_init = Identity(1)
-            fork.biases_init = Constant(0)
+            fork.initialization_schemes['WEIGHT'] = Identity(1)
+            fork.initialization_schemes['BIAS'] = Constant(0)
         self.stack.initialize()
 
         self.x_val = 0.1 * numpy.asarray(

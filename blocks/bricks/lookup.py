@@ -41,9 +41,6 @@ class LookupTable(Initializable, Feedforward):
                                name='W'))
         add_role(self.parameters[-1], WEIGHT)
 
-    def _initialize(self):
-        self.weights_init.initialize(self.W, self.rng)
-
     @application(inputs=['indices'], outputs=['output'])
     def apply(self, indices):
         """Perform lookup.
