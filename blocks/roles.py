@@ -71,6 +71,9 @@ class VariableRole(object):
         return re.sub(r'(?!^)([A-Z]+)', r'_\1',
                       self.__class__.__name__[:-4]).upper()
 
+    def __hash__(self):
+        return hash(str(self))
+
 
 class InputRole(VariableRole):
     pass

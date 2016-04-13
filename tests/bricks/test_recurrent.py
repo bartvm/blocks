@@ -542,8 +542,8 @@ class TestBidirectionalStack(unittest.TestCase):
             for _ in range(3)]
         self.stack = RecurrentStack(self.layers)
         for fork in self.stack.forks:
-            fork.initialization_schemes['WEIGHT'] = Identity(1)
-            fork.initialization_schemes['BIAS'] = Constant(0)
+            fork.weights_init = Identity(1)
+            fork.biases_init = Constant(0)
         self.stack.initialize()
 
         self.x_val = 0.1 * numpy.asarray(
