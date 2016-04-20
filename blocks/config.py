@@ -71,8 +71,10 @@ The following configurations are supported:
    https://en.wikipedia.org/wiki/Environment_variable
 
 """
+import difflib
 import logging
 import os
+from warnings import warn
 
 import six
 import yaml
@@ -99,10 +101,16 @@ class Configuration(object):
         if os.path.isfile(yaml_file) and os.path.getsize(yaml_file):
             with open(yaml_file) as f:
                 for key, value in yaml.safe_load(f).items():
-                    if key not in self.config:
-                        raise ValueError("Unrecognized config in YAML: {}"
-                                         .format(key))
-                    self.config[key]['yaml'] = value
+                    if key in self.config:
+                        self.config[key]['yaml'] = value
+                    else:
+                        close_matches = difflib.get_close_matches(
+                            key, self.config.keys(), 1
+                        )
+                        if close_matches:
+                            close_match, = close_matches
+                            warn("Unknown configuration in .blocksrc: '{}'. "
+                                 "Did you mean '{}'?".format(key, close_match))
 
     def __getattr__(self, key):
         if key == 'config' or key not in self.config:
