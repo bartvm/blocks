@@ -343,11 +343,13 @@ def test_activations():
     leaky_out_1 = x_val - 0.5
     leaky_out_1[leaky_out_1 < 0] *= 0.01
     assert_allclose(leaky_out_1,
-                    LeakyRectifier().apply(x).eval({x: x_val - 0.5}))
+                    LeakyRectifier().apply(x).eval({x: x_val - 0.5}),
+                    rtol=1e-5)
     leaky_out_2 = x_val - 0.5
     leaky_out_2[leaky_out_2 < 0] *= 0.05
     assert_allclose(leaky_out_2,
-                    LeakyRectifier(leak=0.05).apply(x).eval({x: x_val - 0.5}))
+                    LeakyRectifier(leak=0.05).apply(x).eval({x: x_val - 0.5}),
+                    rtol=1e-5)
 
 
 def test_mlp():
