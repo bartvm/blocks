@@ -281,7 +281,7 @@ class Softplus(Activation):
 class Rectifier(Activation):
     @application(inputs=['input_'], outputs=['output'])
     def apply(self, input_):
-        return tensor.switch(input_ > 0, input_, 0)
+        return tensor.nnet.relu(input_)
 
 
 class LeakyRectifier(Activation):
@@ -300,6 +300,7 @@ class LeakyRectifier(Activation):
     .. Maas, Andrew L., Awni Y. Hannun, and Andrew Y. Ng. Rectifier
        nonlinearities improve neural network acoustic models. Proc.
        ICML. Vol. 30. 2013.
+
     """
     def __init__(self, leak=0.01, **kwargs):
         super(LeakyRectifier, self).__init__(**kwargs)
@@ -307,7 +308,7 @@ class LeakyRectifier(Activation):
 
     @application(inputs=['input_'], outputs=['output'])
     def apply(self, input_):
-        return tensor.switch(input_ > 0, input_, self._leak * input_)
+        return tensor.nnet.relu(input_, alpha=self._leak)
 
 
 class Softmax(Brick):
