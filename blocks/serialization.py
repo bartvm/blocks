@@ -234,8 +234,8 @@ def secure_dump(object_, path, dump_function=dump, **kwargs):
         raise
 
 
-def load(file_, name='_pkl', use_cpickle=False):
-    """Loads an object saved using the `dump` function.
+def load(file_, name='_pkl', use_cpickle=False, **kwargs):
+    r"""Loads an object saved using the `dump` function.
 
     By default, this function loads the object saved by the `dump`
     function. If some objects have been added to the archive using the
@@ -251,6 +251,10 @@ def load(file_, name='_pkl', use_cpickle=False):
         the original object which have been dumped that is loaded.
     use_cpickle : bool
         Use cPickle instead of pickle. Default: False.
+    \*\*kwargs
+        Keyword arguments to be passed to `pickle.Unpickler`.
+        Used for e.g. specifying the encoding so as to load legacy Python
+        pickles under Python 3.x.
 
     Returns
     -------
@@ -264,7 +268,9 @@ def load(file_, name='_pkl', use_cpickle=False):
         unpickler = pickle.Unpickler
     with tarfile.open(fileobj=file_, mode='r') as tar_file:
         p = unpickler(
-            tar_file.extractfile(tar_file.getmember(name)))
+            tar_file.extractfile(tar_file.getmember(name)),
+            **kwargs
+        )
         if '_parameters' in tar_file.getnames():
             p.persistent_load = _PersistentLoad(tar_file)
         return p.load()
