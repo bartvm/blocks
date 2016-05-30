@@ -133,24 +133,32 @@ class Initializable(RNGMixin, Brick):
 
     """
 
-    initializable_roles = [WEIGHT, BIAS, FILTER, INITIAL_STATE]
-
     @lazy()
-    def __init__(self, initialization_schemes=None, use_bias=True,
-                 seed=None, **kwargs):
+    def __init__(self, initialization_schemes=None, parameter_roles=None,
+                 use_bias=True, seed=None, **kwargs):
         self.use_bias = use_bias
         self.seed = seed
         self.initialization_schemes = initialization_schemes
-        self.parameter_roles = set([])
         if self.initialization_schemes is None:
             self.initialization_schemes = {}
+
+        if parameter_roles:
+            self.parameter_roles = parameter_roles
+        else:
+            self.parameter_roles = set([WEIGHT])
+            if use_bias:
+                self.parameter_roles.update(set([BIAS]))
 
         initialization_to_role = {"weights_init": WEIGHT, 'biases_init': BIAS,
                                   'initial_state_init': INITIAL_STATE}
         for key in list(kwargs.keys()):
             if key[-5:] == "_init":
+                if key not in initialization_to_role:
+                    raise ValueError("The initlization scheme: {}".format(key),
+                                     "is not defined by default, pass it"
+                                     "via initialization_schemes")
                 if initialization_to_role[key] in \
-                                            self.initialization_schemes.keys():
+                        self.initialization_schemes.keys():
                     raise ValueError("All initializations are accepted either"
                                      "through initialization schemes or "
                                      "corresponding attribute but not both")
@@ -159,47 +167,47 @@ class Initializable(RNGMixin, Brick):
                                                 key]] = kwargs[key]
                 kwargs.pop(key)
 
-        for key in self.initialization_schemes:
-            if key not in self.initializable_roles:
-                raise ValueError("{} is not member of ".format(key) +
-                                 "initializable_roles")
-
         super(Initializable, self).__init__(**kwargs)
+        self._collect_roles()
 
-    def _validate_roles_schmes(self):
+    def _validate_roles(self):
+        high_level_roles = []
         for role in self.parameter_roles:
             if role not in self.initialization_schemes.keys():
-                found = False
-                for init_role in list(self.initialization_schemes.keys()):
-                    if isinstance(role, type(init_role)):
+                for key in list(self.initialization_schemes.keys()):
+                    if isinstance(role, type(key)):
                         self.initialization_schemes[role] = \
-                                        self.initialization_schemes[init_role]
-                        found = True
-                if not found:
-                    raise ValueError("There is no initialization_schemes"
-                                     " defined for {}".format(role))
+                                            self.initialization_schemes[key]
+                        high_level_roles.append(key)
+
+        for key in high_level_roles:
+            if key not in self.parameter_roles:
+                self.initialization_schemes.pop(key)
+
+        for key in self.initialization_schemes:
+            if key not in self.parameter_roles:
+                raise ValueError("{} is not member of ".format(key) +
+                                 "parameter_roles")
 
     def _push_initialization_config(self):
-        self._collect_roles()
-        self._validate_roles_schmes()
+        self._validate_roles()
         for child in self.children:
             if (isinstance(child, Initializable) and
                     hasattr(child, 'initialization_schemes')):
                 child.rng = self.rng
                 for role, scheme in self.initialization_schemes.items():
-                    child.initialization_schemes[role] = scheme
+                    if role in child.parameter_roles:
+                        child.initialization_schemes[role] = scheme
 
     def _collect_roles(self):
-        if hasattr(self, 'parameters'):
-            for param in self.parameters:
-                for role in param.tag.roles:
-                    if role in self.initializable_roles:
-                        self.parameter_roles.update(set([role]))
+        for child in self.children:
+            if isinstance(child, Initializable):
+                self.parameter_roles.update(child.parameter_roles)
 
     def _initialize(self):
         for param in self.parameters:
             for role in param.tag.roles:
-                if role in self.initializable_roles:
+                if role in self.parameter_roles:
                     self.initialization_schemes[role].initialize(param,
                                                                  self.rng)
 
@@ -210,7 +218,7 @@ class Initializable(RNGMixin, Brick):
         elif name == "biases_init":
             if BIAS in self.initialization_schemes:
                 return self.initialization_schemes[BIAS]
-        raise AttributeError("Attribute {} not found".format(name))
+        super(Initializable, self).__getattr__(name)
 
     def __setattr__(self, name, value):
         if name == 'weights_init':
@@ -235,6 +243,14 @@ class LinearLike(Initializable):
     first and biases (if ``use_bias`` is True) coming second.
 
     """
+
+    def __init__(self, **kwargs):
+        if 'parameter_roles' in kwargs:
+            kwargs['parameter_roles'].update(set([WEIGHT, BIAS]))
+        else:
+            kwargs['parameter_roles'] = set([WEIGHT, BIAS])
+        super(LinearLike, self).__init__(**kwargs)
+
     @property
     def W(self):
         return self.parameters[0]
