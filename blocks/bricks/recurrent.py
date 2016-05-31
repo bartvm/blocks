@@ -796,9 +796,9 @@ class RecurrentStack(BaseRecurrent, Initializable):
     @staticmethod
     def split_suffix(name):
         # Target name with suffix to the correct layer
-        name_level = name.split(RECURRENTSTACK_SEPARATOR)
+        name_level = name.rsplit(RECURRENTSTACK_SEPARATOR, 1)
         if len(name_level) == 2 and name_level[-1].isdigit():
-            name = RECURRENTSTACK_SEPARATOR.join(name_level[:-1])
+            name = name_level[0]
             level = int(name_level[-1])
         else:
             # It must be from bottom layer
