@@ -134,20 +134,13 @@ class Initializable(RNGMixin, Brick):
     """
 
     @lazy()
-    def __init__(self, initialization_schemes=None, parameter_roles=None,
+    def __init__(self, initialization_schemes=None,
                  use_bias=True, seed=None, **kwargs):
         self.use_bias = use_bias
         self.seed = seed
         self.initialization_schemes = initialization_schemes
         if self.initialization_schemes is None:
             self.initialization_schemes = {}
-
-        if parameter_roles:
-            self.parameter_roles = parameter_roles
-        else:
-            self.parameter_roles = set([WEIGHT])
-            if use_bias:
-                self.parameter_roles.update(set([BIAS]))
 
         initialization_to_role = {"weights_init": WEIGHT, 'biases_init': BIAS,
                                   'initial_state_init': INITIAL_STATE}
@@ -168,7 +161,6 @@ class Initializable(RNGMixin, Brick):
                 kwargs.pop(key)
 
         super(Initializable, self).__init__(**kwargs)
-        self._collect_roles()
 
     def _validate_roles(self):
         high_level_roles = []
@@ -190,6 +182,7 @@ class Initializable(RNGMixin, Brick):
                                  "parameter_roles")
 
     def _push_initialization_config(self):
+        self._collect_roles()
         self._validate_roles()
         for child in self.children:
             if (isinstance(child, Initializable) and
@@ -200,8 +193,19 @@ class Initializable(RNGMixin, Brick):
                         child.initialization_schemes[role] = scheme
 
     def _collect_roles(self):
+        def get_param_roles(obj):
+            all_roles = []
+            for param in obj.parameters:
+                roles = param.tag.roles
+                # TODO do something smarter
+                if len(roles) > 0:
+                    all_roles.append(roles[0])
+            return all_roles
+
+        self.parameter_roles = set(get_param_roles(self))
         for child in self.children:
             if isinstance(child, Initializable):
+                child._collect_roles()
                 self.parameter_roles.update(child.parameter_roles)
 
     def _initialize(self):
@@ -243,13 +247,6 @@ class LinearLike(Initializable):
     first and biases (if ``use_bias`` is True) coming second.
 
     """
-
-    def __init__(self, **kwargs):
-        if 'parameter_roles' in kwargs:
-            kwargs['parameter_roles'].update(set([WEIGHT, BIAS]))
-        else:
-            kwargs['parameter_roles'] = set([WEIGHT, BIAS])
-        super(LinearLike, self).__init__(**kwargs)
 
     @property
     def W(self):

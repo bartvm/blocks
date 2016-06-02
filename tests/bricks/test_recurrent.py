@@ -146,8 +146,7 @@ class TestSimpleRecurrent(unittest.TestCase):
 
 class TestLSTM(unittest.TestCase):
     def setUp(self):
-        self.lstm = LSTM(dim=3, weights_init=Constant(2),
-                         biases_init=Constant(0))
+        self.lstm = LSTM(dim=3, weights_init=Constant(2))
         self.lstm.initialize()
 
     def test_one_step(self):
@@ -244,7 +243,6 @@ class TestRecurrentStack(unittest.TestCase):
 
         self.stack2 = RecurrentStack(transitions,
                                      weights_init=Constant(2),
-                                     biases_init=Constant(0),
                                      skip_connections=True)
         self.stack2.initialize()
 

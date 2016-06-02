@@ -72,9 +72,7 @@ class Convolutional(LinearLike):
     def __init__(self, filter_size, num_filters, num_channels, batch_size=None,
                  image_size=(None, None), step=(1, 1), border_mode='valid',
                  tied_biases=False, **kwargs):
-        parameter_roles = set([FILTER, BIAS])
-        super(Convolutional, self).__init__(parameter_roles=parameter_roles,
-                                            **kwargs)
+        super(Convolutional, self).__init__(**kwargs)
 
         self.filter_size = filter_size
         self.num_filters = num_filters
