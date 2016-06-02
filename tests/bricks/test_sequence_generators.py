@@ -160,7 +160,7 @@ def test_integer_sequence_generator():
     assert outputs_val.shape == (n_steps, batch_size)
     assert outputs_val.dtype == 'int64'
     assert costs_val.shape == (n_steps, batch_size)
-    assert_allclose(states_val.sum(), -17.889, rtol=1e-5)
+    assert_allclose(states_val.sum(), -17.854, rtol=1e-5)
     assert_allclose(costs_val.sum(), 482.868, rtol=1e-5)
     assert outputs_val.sum() == 629
 

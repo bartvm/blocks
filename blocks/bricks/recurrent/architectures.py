@@ -6,6 +6,7 @@ from ..base import application, lazy
 from ..simple import Initializable, Logistic, Tanh
 from ...roles import add_role, WEIGHT, INITIAL_STATE
 from ...utils import shared_floatx_nans, shared_floatx_zeros
+from ...initialization import Constant
 from .base import BaseRecurrent, recurrent
 
 
@@ -32,6 +33,7 @@ class SimpleRecurrent(BaseRecurrent, Initializable):
         self.dim = dim
         children = [activation]
         kwargs.setdefault('children', []).extend(children)
+        kwargs.setdefault('initial_state_init', Constant(0.))
         super(SimpleRecurrent, self).__init__(**kwargs)
 
     @property
