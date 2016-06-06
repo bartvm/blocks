@@ -1,5 +1,6 @@
 """Bricks that are interfaces and/or mixins."""
 import numpy
+import inspect
 from six import add_metaclass
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 
@@ -162,24 +163,23 @@ class Initializable(RNGMixin, Brick):
 
         super(Initializable, self).__init__(**kwargs)
 
-    def _validate_roles(self):
-        high_level_roles = []
-        for role in self.parameter_roles:
-            if role not in self.initialization_schemes.keys():
-                for key in list(self.initialization_schemes.keys()):
-                    if isinstance(role, type(key)):
-                        self.initialization_schemes[role] = \
-                                            self.initialization_schemes[key]
-                        high_level_roles.append(key)
+    def get_scheme(role, schemes):
+        for key in schemes:
+            if role == type(key):
+                return key
+        for key in schemes:
+            if isinstance(role, type(key)):
+                return key
 
-        for key in high_level_roles:
-            if key not in self.parameter_roles:
-                self.initialization_schemes.pop(key)
+    def _validate_roles(self):
+        all_parent_roles = []
+        for role in self.parameter_roles:
+            all_parent_roles += list(inspect.getmro(type(role)))
 
         for key in self.initialization_schemes:
-            if key not in self.parameter_roles:
-                raise ValueError("{} is not member of ".format(key) +
-                                 "parameter_roles")
+            if type(key) not in all_parent_roles:
+                raise ValueError("There is no parameter role"
+                                 "for initlization sheme {}".format(key))
 
     def _push_initialization_config(self):
         self._collect_roles()
@@ -209,11 +209,24 @@ class Initializable(RNGMixin, Brick):
                 self.parameter_roles.update(child.parameter_roles)
 
     def _initialize(self):
+        def get_scheme(role, schemes):
+            if role in schemes:
+                return role
+            for key in schemes:
+                if role == type(key):
+                    return key
+            for key in schemes:
+                if isinstance(role, type(key)):
+                    return key
+
         for param in self.parameters:
             for role in param.tag.roles:
                 if role in self.parameter_roles:
-                    self.initialization_schemes[role].initialize(param,
-                                                                 self.rng)
+                    key = get_scheme(role, self.initialization_schemes.keys())
+                    if key is not None:
+                        self.initialization_schemes[key].initialize(param,
+                                                                    self.rng)
+                        continue
 
     def __getattr__(self, name):
         if name == "weights_init":
