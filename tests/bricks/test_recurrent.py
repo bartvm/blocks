@@ -9,7 +9,7 @@ from theano.gof.graph import is_same_graph
 
 from blocks.utils import is_shared_variable
 from blocks.bricks.base import application
-from blocks.bricks import Tanh
+from blocks.bricks import Brick, Tanh
 from blocks.bricks.recurrent import (
     recurrent, BaseRecurrent, GatedRecurrent,
     SimpleRecurrent, Bidirectional, LSTM,
@@ -69,6 +69,48 @@ class TestRecurrentWrapper(unittest.TestCase):
         assert_allclose(h2, .5 * (numpy.arange(5).reshape((5, 1, 1)) + 1))
         assert_allclose(h * 10, out_eval)
         assert_allclose(h2 * 10, out_2_eval)
+
+
+class RecurrentWrapperNoStatesClass(Brick):
+    def __init__(self, dim, ** kwargs):
+        super(RecurrentWrapperNoStatesClass, self).__init__(self, ** kwargs)
+        self.dim = dim
+
+    def get_dim(self, name):
+        if name in ['inputs', 'outputs', 'outputs_2']:
+            return self.dim
+        if name == 'mask':
+            return 0
+        return super(RecurrentWrapperNoStatesClass, self).get_dim(name)
+
+    @recurrent(sequences=['inputs', 'mask'], states=[],
+               outputs=['outputs', 'outputs_2'], contexts=[])
+    def apply(self, inputs=None, mask=None):
+        outputs = inputs * 10
+        outputs_2 = tensor.sqr(inputs)
+        if mask:
+            outputs *= mask
+            outputs_2 *= mask
+        return outputs, outputs_2
+
+
+class TestRecurrentWrapperNoStates(unittest.TestCase):
+    def setUp(self):
+        self.recurrent_examples = RecurrentWrapperNoStatesClass(dim=1)
+
+    def test(self):
+        X = tensor.tensor3('X')
+        out, out_2 = self.recurrent_examples.apply(
+            inputs=X, mask=None)
+
+        x_val = numpy.random.uniform(size=(5, 1, 1))
+        x_val = numpy.asarray(x_val, dtype=theano.config.floatX)
+
+        out_eval = out.eval({X: x_val})
+        out_2_eval = out_2.eval({X: x_val})
+
+        assert_allclose(x_val * 10, out_eval)
+        assert_allclose(numpy.square(x_val), out_2_eval)
 
 
 class RecurrentBrickWithBugInInitialStates(BaseRecurrent):
