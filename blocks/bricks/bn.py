@@ -1,4 +1,5 @@
 import collections
+from functools import partial
 
 import numpy
 from picklable_itertools.extras import equizip
@@ -14,7 +15,7 @@ from ..roles import (BATCH_NORM_POPULATION_MEAN,
                      BATCH_NORM_SHIFT_PARAMETER, BATCH_NORM_SCALE_PARAMETER,
                      add_role)
 from ..utils import (shared_floatx_zeros, shared_floatx,
-                     shared_floatx_nans)
+                     shared_floatx_nans, is_shared_variable)
 from .base import lazy, application
 from .sequences import Sequence, Feedforward, MLP
 from .interfaces import RNGMixin
@@ -43,11 +44,12 @@ class BatchNormalization(RNGMixin, Feedforward):
         Shape of a single input example. It is assumed that a batch axis
         will be prepended to this.
     broadcastable : tuple, optional
-        Tuple the same length as `input_dim` which specifies which of the
-        per-example axes should be averaged over to compute means and
+        Tuple of the same length as `input_dim` which specifies which of
+        the per-example axes should be averaged over to compute means and
         standard deviations. For example, in order to normalize over all
         spatial locations in a `(batch_index, channels, height, width)`
-        image, pass `(False, True, True)`.
+        image, pass `(False, True, True)`. The batch axis is always
+        averaged out.
     conserve_memory : bool, optional
         Use an implementation that stores less intermediate state and
         therefore uses less memory, at the expense of 5-10% speed. Default
@@ -64,6 +66,15 @@ class BatchNormalization(RNGMixin, Feedforward):
     shift_init : object, optional
         Initialization object to use for the learned shift parameter
         ($\\beta$ in [BN]_). By default, uses constant initialization of 0.
+    mean_only : bool, optional
+        Perform "mean-only" batch normalization as described in [SK2016]_.
+    learn_scale : bool, optional
+        Whether to include a learned scale parameter ($\\gamma$ in [BN]_)
+        in this brick. Default is `True`. Has no effect if `mean_only` is
+        `True` (i.e. a scale parameter is never learned in mean-only mode).
+    learn_shift : bool, optional
+        Whether to include a learned shift parameter ($\\beta$ in [BN]_)
+        in this brick. Default is `True`.
 
     Notes
     -----
@@ -106,19 +117,32 @@ class BatchNormalization(RNGMixin, Feedforward):
     the `input_dim` should be omitted at construction, to be inferred from
     the layer below.
 
+
+    .. [BN] Sergey Ioffe and Christian Szegedy. *Batch normalization:
+       accelerating deep network training by reducing internal covariate
+       shift*. ICML (2015), pp. 448-456.
+
+    .. [SK2016] Tim Salimans and Diederik P. Kingma. *Weight
+       normalization: a simple reparameterization to accelerate training
+       of deep neural networks*. arXiv 1602.07868.
+
     """
     @lazy(allocation=['input_dim'])
     def __init__(self, input_dim, broadcastable=None,
                  conserve_memory=True, epsilon=1e-4, scale_init=None,
-                 shift_init=None, **kwargs):
+                 shift_init=None, mean_only=False, learn_scale=True,
+                 learn_shift=True, **kwargs):
         self.input_dim = input_dim
         self.broadcastable = broadcastable
         self.conserve_memory = conserve_memory
         self.epsilon = epsilon
+        self.learn_scale = learn_scale
+        self.learn_shift = learn_shift
         self.scale_init = (Constant(1) if scale_init is None
                            else scale_init)
         self.shift_init = (Constant(0) if shift_init is None
                            else shift_init)
+        self.mean_only = mean_only
         self._training_mode = []
         super(BatchNormalization, self).__init__(**kwargs)
 
@@ -143,10 +167,14 @@ class BatchNormalization(RNGMixin, Feedforward):
         # Give these quantities roles in the graph.
         _add_role_and_annotate(mean, BATCH_NORM_OFFSET,
                                [self, application_call])
-        _add_role_and_annotate(stdev, BATCH_NORM_DIVISOR,
-                               [self, application_call])
-        scale = _add_batch_axis(self.scale)
+        if self.mean_only:
+            stdev = tensor.ones_like(mean)
+        else:
+            # The annotation/role information is useless if it's a constant.
+            _add_role_and_annotate(stdev, BATCH_NORM_DIVISOR,
+                                   [self, application_call])
         shift = _add_batch_axis(self.shift)
+        scale = _add_batch_axis(self.scale)
         # Heavy lifting is done by the Theano utility function.
         normalized = bn.batch_normalization(input_, scale, shift, mean, stdev,
                                             mode=('low_mem'
@@ -166,16 +194,26 @@ class BatchNormalization(RNGMixin, Feedforward):
                             if b)
         mean = input_.mean(axis=axes, keepdims=True)
         assert mean.broadcastable[1:] == self.population_mean.broadcastable
-        stdev = tensor.sqrt(tensor.var(input_, axis=axes, keepdims=True) +
-                            numpy.cast[theano.config.floatX](self.epsilon))
-        assert stdev.broadcastable[1:] == self.population_stdev.broadcastable
         add_role(mean, BATCH_NORM_MINIBATCH_ESTIMATE)
-        add_role(stdev, BATCH_NORM_MINIBATCH_ESTIMATE)
+        if self.mean_only:
+            stdev = tensor.ones_like(mean)
+        else:
+            var = (tensor.sqr(input_).mean(axis=axes, keepdims=True) -
+                   tensor.sqr(mean))
+            eps = numpy.cast[theano.config.floatX](self.epsilon)
+            stdev = tensor.sqrt(var + eps)
+            assert (stdev.broadcastable[1:] ==
+                    self.population_stdev.broadcastable)
+            add_role(stdev, BATCH_NORM_MINIBATCH_ESTIMATE)
         return mean, stdev
 
     def _prepare_population_statistics(self):
         mean = _add_batch_axis(self.population_mean)
-        stdev = _add_batch_axis(self.population_stdev)
+        if self.mean_only:
+            stdev = tensor.ones_like(self.population_mean)
+        else:
+            stdev = self.population_stdev
+        stdev = _add_batch_axis(stdev)
         return mean, stdev
 
     def _allocate(self):
@@ -190,37 +228,53 @@ class BatchNormalization(RNGMixin, Feedforward):
                         equizip(input_dim, broadcastable))
         broadcastable = broadcastable
 
-        # "gamma", from the Ioffe & Szegedy manuscript.
-        self.scale = shared_floatx_nans(var_dim, name='batch_norm_scale',
-                                        broadcastable=broadcastable)
-
         # "beta", from the Ioffe & Szegedy manuscript.
-        self.shift = shared_floatx_nans(var_dim, name='batch_norm_shift',
-                                        broadcastable=broadcastable)
-        add_role(self.scale, BATCH_NORM_SCALE_PARAMETER)
-        add_role(self.shift, BATCH_NORM_SHIFT_PARAMETER)
-        self.parameters.append(self.scale)
-        self.parameters.append(self.shift)
+        if self.learn_shift:
+            self.shift = shared_floatx_nans(var_dim, name='batch_norm_shift',
+                                            broadcastable=broadcastable)
+            add_role(self.shift, BATCH_NORM_SHIFT_PARAMETER)
+            self.parameters.append(self.shift)
+        else:
+            self.shift = tensor.constant(0, dtype=theano.config.floatX)
 
         # These aren't technically parameters, in that they should not be
         # learned using the same cost function as other model parameters.
         self.population_mean = shared_floatx_zeros(var_dim,
                                                    name='population_mean',
                                                    broadcastable=broadcastable)
-        self.population_stdev = shared_floatx(numpy.ones(var_dim),
-                                              name='population_stdev',
-                                              broadcastable=broadcastable)
         add_role(self.population_mean, BATCH_NORM_POPULATION_MEAN)
-        add_role(self.population_stdev, BATCH_NORM_POPULATION_STDEV)
 
         # Normally these would get annotated by an AnnotatingList, but they
         # aren't in self.parameters.
         add_annotation(self.population_mean, self)
-        add_annotation(self.population_stdev, self)
+
+        if self.learn_scale and not self.mean_only:
+            # "gamma", from the Ioffe & Szegedy manuscript.
+            self.scale = shared_floatx_nans(var_dim, name='batch_norm_scale',
+                                            broadcastable=broadcastable)
+
+            add_role(self.scale, BATCH_NORM_SCALE_PARAMETER)
+            self.parameters.append(self.scale)
+        else:
+            self.scale = tensor.constant(1., dtype=theano.config.floatX)
+
+        if not self.mean_only:
+            self.population_stdev = shared_floatx(numpy.ones(var_dim),
+                                                  name='population_stdev',
+                                                  broadcastable=broadcastable)
+            add_role(self.population_stdev, BATCH_NORM_POPULATION_STDEV)
+            add_annotation(self.population_stdev, self)
 
     def _initialize(self):
-        self.shift_init.initialize(self.shift, self.rng)
-        self.scale_init.initialize(self.scale, self.rng)
+        # We gate with is_shared_variable rather than relying on
+        # learn_scale and learn_shift so as to avoid the unlikely but nasty
+        # scenario where those flags are changed post-allocation but
+        # pre-initialization. This ensures that such a change simply has no
+        # effect rather than doing an inconsistent combination of things.
+        if is_shared_variable(self.shift):
+            self.shift_init.initialize(self.shift, self.rng)
+        if is_shared_variable(self.scale):
+            self.scale_init.initialize(self.scale, self.rng)
 
     # Needed for the Feedforward interface.
     @property
@@ -293,7 +347,13 @@ class BatchNormalizedMLP(MLP):
 
     Parameters
     ----------
-    conserve_memory : bool, optional
+    conserve_memory : bool, optional, by keyword only
+        See :class:`BatchNormalization`.
+    mean_only : bool, optional, by keyword only
+        See :class:`BatchNormalization`.
+    learn_scale : bool, optional, by keyword only
+        See :class:`BatchNormalization`.
+    learn_shift : bool, optional, by keyword only
         See :class:`BatchNormalization`.
 
     Notes
@@ -309,13 +369,22 @@ class BatchNormalizedMLP(MLP):
     `use_bias` with a value of `True` if you really want this for some
     reason.
 
+    `mean_only`, `learn_scale` and `learn_shift` are pushed down to
+    all created :class:`BatchNormalization` bricks as allocation
+    config.
+
     """
     @lazy(allocation=['dims'])
     def __init__(self, activations, dims, *args, **kwargs):
-        conserve_memory = kwargs.pop('conserve_memory', True)
+        self._conserve_memory = kwargs.pop('conserve_memory', True)
+        self.mean_only = kwargs.pop('mean_only', False)
+        self.learn_scale = kwargs.pop('learn_scale', True)
+        self.learn_shift = kwargs.pop('learn_shift', True)
+
         activations = [
             Sequence([
-                BatchNormalization(conserve_memory=conserve_memory).apply,
+                (BatchNormalization(conserve_memory=self._conserve_memory)
+                 .apply),
                 act.apply
             ], name='batch_norm_activation_{}'.format(i))
             for i, act in enumerate(activations)
@@ -326,16 +395,23 @@ class BatchNormalizedMLP(MLP):
         super(BatchNormalizedMLP, self).__init__(activations, dims, *args,
                                                  **kwargs)
 
-    @property
-    def conserve_memory(self):
-        return self._conserve_memory
+    def _nested_brick_property_getter(self, property_name):
+        return getattr(self, '_' + property_name)
 
-    @conserve_memory.setter
-    def conserve_memory(self, value):
-        self._conserve_memory = value
+    def _nested_brick_property_setter(self, value, property_name):
+        setattr(self, '_' + property_name, value)
         for act in self.activations:
             assert isinstance(act.children[0], BatchNormalization)
-            act.children[0].conserve_memory = value
+            setattr(act.children[0], property_name, value)
+
+    # conserve_memory is a bit special in that it can be modified
+    # after construction/allocation and still have a valid effect on
+    # apply(). Thus we propagate down all property sets.
+    conserve_memory = property(partial(_nested_brick_property_getter,
+                                       property_name='conserve_memory'),
+                               partial(_nested_brick_property_setter,
+                                       property_name='conserve_memory'),
+                               doc="Conserve memory.")
 
     def _push_allocation_config(self):
         super(BatchNormalizedMLP, self)._push_allocation_config()
@@ -346,3 +422,5 @@ class BatchNormalizedMLP(MLP):
         for act, dim in equizip(self.activations, self.dims[1:]):
             assert isinstance(act.children[0], BatchNormalization)
             act.children[0].input_dim = dim
+            for attr in ['mean_only', 'learn_scale', 'learn_shift']:
+                setattr(act.children[0], attr, getattr(self, attr))

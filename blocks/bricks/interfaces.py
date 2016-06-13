@@ -143,7 +143,7 @@ class Initializable(RNGMixin, Brick):
     has_biases = True
 
     @lazy()
-    def __init__(self, weights_init=None, biases_init=None, use_bias=True,
+    def __init__(self, weights_init=None, biases_init=None, use_bias=None,
                  seed=None, **kwargs):
         super(Initializable, self).__init__(**kwargs)
         self.weights_init = weights_init
@@ -151,7 +151,8 @@ class Initializable(RNGMixin, Brick):
             self.biases_init = biases_init
         elif biases_init is not None or not use_bias:
             raise ValueError("This brick does not support biases config")
-        self.use_bias = use_bias
+        if use_bias is not None:
+            self.use_bias = use_bias
         self.seed = seed
 
     def _push_initialization_config(self):
@@ -165,6 +166,39 @@ class Initializable(RNGMixin, Brick):
                 if (isinstance(child, Initializable) and
                         hasattr(child, 'biases_init')):
                     child.biases_init = self.biases_init
+
+
+class LinearLike(Initializable):
+    """Initializable subclass with logic for :class:`Linear`-like classes.
+
+    Notes
+    -----
+    Provides `W` and `b` properties that can be overridden in subclasses
+    to implement pre-application transformations on the weights and
+    biases.  Application methods should refer to ``self.W`` and ``self.b``
+    rather than accessing the parameters list directly.
+
+    This assumes a layout of the parameters list with the weights coming
+    first and biases (if ``use_bias`` is True) coming second.
+
+    """
+    @property
+    def W(self):
+        return self.parameters[0]
+
+    @property
+    def b(self):
+        if getattr(self, 'use_bias', True):
+            return self.parameters[1]
+        else:
+            raise AttributeError('use_bias is False')
+
+    def _initialize(self):
+        # Use self.parameters[] references in case W and b are overridden
+        # to return non-shared-variables.
+        if getattr(self, 'use_bias', True):
+            self.biases_init.initialize(self.parameters[1], self.rng)
+        self.weights_init.initialize(self.parameters[0], self.rng)
 
 
 class Random(Brick):

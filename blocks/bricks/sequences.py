@@ -1,4 +1,5 @@
 """Bricks that compose together other bricks in linear sequences."""
+import copy
 from toolz import interleave
 from picklable_itertools.extras import equizip
 
@@ -21,12 +22,13 @@ class Sequence(Brick):
 
     """
     def __init__(self, application_methods, **kwargs):
-        super(Sequence, self).__init__(**kwargs)
         self.application_methods = application_methods
 
         seen = set()
-        self.children = [app.brick for app in application_methods
-                         if not (app.brick in seen or seen.add(app.brick))]
+        children = [app.brick for app in application_methods
+                    if not (app.brick in seen or seen.add(app.brick))]
+        kwargs.setdefault('children', []).extend(children)
+        super(Sequence, self).__init__(**kwargs)
 
     @application
     def apply(self, *args):
@@ -72,7 +74,7 @@ class FeedforwardSequence(Sequence, Feedforward):
         self.children[-1].output_dim = value
 
 
-class MLP(Sequence, Initializable, Feedforward):
+class MLP(FeedforwardSequence, Initializable):
     """A simple multi-layer perceptron.
 
     Parameters
@@ -86,12 +88,17 @@ class MLP(Sequence, Initializable, Feedforward):
     dims : list of ints
         A list of input dimensions, as well as the output dimension of the
         last layer. Required for :meth:`~.Brick.allocate`.
+    prototype : :class:`.Brick`, optional
+        The transformation prototype. A copy will be created for every
+        activation. If not provided, an instance of :class:`~simple.Linear`
+        will be used.
 
     Notes
     -----
     See :class:`Initializable` for initialization parameters.
 
-    Note that the ``weights_init``, ``biases_init`` and ``use_bias``
+    Note that the ``weights_init``, ``biases_init`` (as well as
+    ``use_bias`` if set to a value other than the default of ``None``)
     configurations will overwrite those of the layers each time the
     :class:`MLP` is re-initialized. For more fine-grained control, push the
     configuration to the child layers manually before initialization.
@@ -107,11 +114,15 @@ class MLP(Sequence, Initializable, Feedforward):
 
     """
     @lazy(allocation=['dims'])
-    def __init__(self, activations, dims, **kwargs):
+    def __init__(self, activations, dims, prototype=None, **kwargs):
         self.activations = activations
-
-        self.linear_transformations = [Linear(name='linear_{}'.format(i))
-                                       for i in range(len(activations))]
+        self.prototype = Linear() if prototype is None else prototype
+        self.linear_transformations = []
+        for i in range(len(activations)):
+            linear = copy.deepcopy(self.prototype)
+            name = self.prototype.__class__.__name__.lower()
+            linear.name = '{}_{}'.format(name, i)
+            self.linear_transformations.append(linear)
         # Interleave the transformations and activations
         application_methods = []
         for entity in interleave([self.linear_transformations, activations]):
@@ -150,4 +161,5 @@ class MLP(Sequence, Initializable, Feedforward):
                         self.linear_transformations):
             layer.input_dim = input_dim
             layer.output_dim = output_dim
-            layer.use_bias = self.use_bias
+            if getattr(self, 'use_bias', None) is not None:
+                layer.use_bias = self.use_bias

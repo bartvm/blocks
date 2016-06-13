@@ -5,8 +5,9 @@ from numpy.testing import assert_allclose
 from theano import tensor
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 
-from blocks.bricks import MLP, Identity, Logistic
+from blocks.bricks import MLP, Identity, Logistic, Tanh
 from blocks.bricks.cost import SquaredError
+from blocks.bricks.recurrent import SimpleRecurrent
 from blocks.filter import VariableFilter
 from blocks.graph import (apply_dropout, apply_noise, collect_parameters,
                           ComputationGraph)
@@ -203,3 +204,13 @@ def test_collect():
     assert numpy.all(W1.eval() == 1.)
     assert W2.eval().shape == (100, 784)
     assert numpy.all(W2.eval() == 2.)
+
+
+def test_similar_scans():
+    x = tensor.tensor3('x')
+    r1 = SimpleRecurrent(activation=Tanh(), dim=10)
+    y1 = r1.apply(x)
+    r2 = SimpleRecurrent(activation=Tanh(), dim=10)
+    y2 = r2.apply(x)
+    cg = ComputationGraph([y1, y2])
+    assert len(cg.scans) == 2

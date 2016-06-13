@@ -32,7 +32,7 @@ Bricks ingredients and recipe
 -----------------------------
 
 All the bricks in Blocks inherit directly or indirectly from the
-:class:`.Brick`. There is already a rich inheritance hierarchy of
+:class:`~.bricks.Brick`. There is already a rich inheritance hierarchy of
 bricks implemented in Blocks and thus, you should consider which brick level
 to inherit from. Bear in mind that multiple inheritance is often possible and
 advocated whenever it makes sense.
@@ -51,20 +51,21 @@ Here are examples of possible bricks to inherit from:
 * many more!
 
 Let's say that you want to create a brick from scratch, simply inheriting
-from :class:`.Brick`, then you should consider overwriting the following
-methods (strictly speaking, all these methods are optional, check the docstring
-of :class:`.Brick` for a precise description of the life-cycle of a brick):
+from :class:`~.bricks.Brick`, then you should consider overwriting the
+following methods (strictly speaking, all these methods are optional, check the
+docstring of :class:`~.bricks.Brick` for a precise description of the
+life-cycle of a brick):
 
 * :meth:`.Brick.__init__`: you should pass by argument the attributes of your
   brick. It is also in this method that you should create the potential
-  "children bricks" that belongs to your brick (in that case, you have to put
-  the children bricks into ``self.children``). The initialization of the
+  "children bricks" that belongs to your brick (in that case, you have to pass
+  the children bricks to ``super().__init__``). The initialization of the
   attributes can be lazy as described later in the tutorial.
 * :meth:`apply`: you need to implement a method that actually
   implements the operation of the brick, taking as arguments the inputs
   of the brick and returning its outputs. It can have any name and for simple
   bricks is often named ``apply``. You should decorate it with the
-  :func:`.application` decorator, as explained in the next section. If you
+  :func:`~.bricks.application` decorator, as explained in the next section. If you
   design a recurrent brick, you should instead decorate it with the
   :func:`.recurrent` decorator as explained in the
   :doc:`tutorial about rnns</rnn>`.
@@ -86,7 +87,8 @@ of :class:`.Brick` for a precise description of the life-cycle of a brick):
   automatically pushes the initialization schemes of your brick (provided as
   arguments ``weights_init`` and ``biases_init`` of the constructor) to the
   children bricks.
-* :meth:`.Brick.get_dim`: implementing this function is useful if you want
+* :meth:`~.bricks.Brick.get_dim`: implementing this function is
+  useful if you want
   to provide a simple way to get the dimensions of the inputs and outputs of
   the brick.
 
@@ -99,7 +101,7 @@ Application methods
 The :meth:`apply` method listed above is probably the most
 important method of your brick because it is the one that actually takes
 theano tensors as inputs, process them and return output tensors. You should
-decorate it with the :func:`.application` decorator, which names variables
+decorate it with the :func:`~.bricks.application` decorator, which names variables
 and register auxiliary variables of the operation you implement.
 It is used as follows:
 
@@ -177,10 +179,10 @@ interest, as shown in this example:
     ...         application_call.add_auxiliary_variable(x.mean())
     ...         return x + 1
 
-``add_auxiliary_variable`` annotates the variable ``x.mean()`` as an auxiliary 
+``add_auxiliary_variable`` annotates the variable ``x.mean()`` as an auxiliary
 variable and you can thus later retrieve it with the computational graph 
 :class:`.ComputationGraph` and filters :class:`.VariableFilter`. In the
-case of the ``Foo`` Brick defined above, we retrieve ``x.mean() as follows:
+case of the ``Foo`` Brick defined above, we retrieve ``x.mean()`` as follows:
 
     >>> from blocks.graph import ComputationGraph
     >>> x = tensor.fmatrix('x')
@@ -196,7 +198,7 @@ Instead of forcing the user to provide all the brick attributes as arguments
 to the :meth:`.Brick.__init__` method, you could let him/her specify them
 later, after the creation of the brick. To enable this mechanism,
 called lazy initialization, you need to decorate the constructor with the 
-:func:`.lazy` decorator:
+:func:`~.bricks.lazy` decorator:
 
     >>> @lazy(allocation=['attr1', 'attr2']) # doctest: +SKIP
     ... def __init__(self, attr1, attr1)
@@ -210,10 +212,11 @@ specify the ``input_dim`` of ``brick2`` directly at its creation.
     >>> class ChainOfTwoFeedforward(Feedforward):
     ...     """Two sequential Feedforward bricks."""
     ...     def __init__(self, brick1, brick2, **kwargs):
-    ...         super(Feedforward, self).__init__(**kwargs)
     ...         self.brick1 = brick1
     ...         self.brick2 = brick2
-    ...         self.children = [self.brick1, self.brick2]
+    ...         children = [self.brick1, self.brick2]
+    ...         kwargs.setdefault('children', []).extend(children)
+    ...         super(Feedforward, self).__init__(**kwargs)
     ...
     ...     @property
     ...     def input_dim(self):
@@ -370,12 +373,13 @@ One can also create the brick using :class:`Linear` children bricks, which
     >>> class ParallelLinear2(Initializable):
     ...     def __init__(self, input_dim1, input_dim2, output_dim1, output_dim2,
     ...                  **kwargs):
-    ...         super(ParallelLinear2, self).__init__(**kwargs)
     ...         self.linear1 = Linear(input_dim1, output_dim1,
     ...                               use_bias=False, **kwargs)
     ...         self.linear2 = Linear(input_dim2, output_dim2,
     ...                               use_bias=False, **kwargs)
-    ...         self.children = [self.linear1, self.linear2]
+    ...         children = [self.linear1, self.linear2]
+    ...         kwargs.setdefault('children', []).extend(children)
+    ...         super(ParallelLinear2, self).__init__(**kwargs)
     ...
     ...     @application(inputs=['input1_', 'input2_'], outputs=['output1',
     ...         'output2'])

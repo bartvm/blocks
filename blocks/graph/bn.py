@@ -266,4 +266,7 @@ def get_batch_normalization_updates(training_graph, allow_duplicates=False):
 
     mean_pair = partial(extract_pair, 'population_mean', 'offset')
     stdev_pair = partial(extract_pair, 'population_stdev', 'divisor')
-    return sum([[mean_pair(a), stdev_pair(a)] for a in train_app_calls], [])
+    return sum([[mean_pair(a), stdev_pair(a)]
+                if not a.application.brick.mean_only
+                else [mean_pair(a)]
+                for a in train_app_calls], [])

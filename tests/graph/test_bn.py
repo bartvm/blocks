@@ -77,7 +77,8 @@ class TestSimpleGetBatchNormalizationUpdates(object):
         self.mlp = BatchNormalizedMLP([Tanh(), Tanh()], [5, 7, 9])
         self.x = tensor.matrix()
 
-    def simple_assertions(self, updates, num_bricks=2, num_updates=4):
+    def simple_assertions(self, updates, num_bricks=2, num_updates=4,
+                          mean_only=False):
         """Shared assertions for simple tests."""
         assert len(updates) == num_updates
         assert all(is_shared_variable(u[0]) for u in updates)
@@ -88,7 +89,10 @@ class TestSimpleGetBatchNormalizationUpdates(object):
                      if has_roles(u[0], [BATCH_NORM_POPULATION_STDEV]))
         assert means.isdisjoint(stdevs)
         assert len(set(get_brick(v) for v in means)) == num_bricks
-        assert len(set(get_brick(v) for v in stdevs)) == num_bricks
+        if not mean_only:
+            assert len(set(get_brick(v) for v in stdevs)) == num_bricks
+        else:
+            assert len(stdevs) == 0
 
     def test_get_batch_normalization_updates(self):
         """Test that get_batch_normalization_updates works as expected."""
@@ -97,6 +101,15 @@ class TestSimpleGetBatchNormalizationUpdates(object):
         graph = ComputationGraph([y_bn])
         updates = get_batch_normalization_updates(graph)
         self.simple_assertions(updates)
+
+    def test_get_batch_normalization_updates_mean_only(self):
+        """Test get_batch_normalization_updates with mean_only bricks."""
+        mlp = BatchNormalizedMLP([Tanh(), Tanh()], [5, 7, 9], mean_only=True)
+        with batch_normalization(mlp):
+            y_bn = mlp.apply(self.x)
+        graph = ComputationGraph([y_bn])
+        updates = get_batch_normalization_updates(graph)
+        self.simple_assertions(updates, num_updates=2, mean_only=True)
 
     def test_get_batch_normalization_updates_non_training_applications(self):
         """Test updates extracton in graph with non-training apply."""

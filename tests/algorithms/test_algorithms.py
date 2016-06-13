@@ -2,14 +2,15 @@ from collections import OrderedDict
 
 import numpy
 import theano
-from numpy.testing import assert_allclose, assert_raises
+from numpy.testing import assert_allclose, assert_raises, assert_raises_regex
 from theano import tensor
 from theano.compile.profiling import ProfileStats
 
 from blocks.algorithms import (GradientDescent, StepClipping, VariableClipping,
                                CompositeRule, Scale, StepRule, BasicMomentum,
                                Momentum, AdaDelta, BasicRMSProp, RMSProp, Adam,
-                               AdaGrad, RemoveNotFinite, Restrict)
+                               AdaGrad, RemoveNotFinite, Restrict,
+                               UpdatesAlgorithm)
 from blocks.utils import shared_floatx, shared_floatx_zeros
 
 
@@ -33,6 +34,42 @@ def verify_broadcastable_handling(step_rule):
                               broadcastable=(True, False, True)))
 
 
+def test_updates_algorithm():
+    n = shared_floatx(1)
+    algorithm = UpdatesAlgorithm(updates=[(n, n + 1)])
+    algorithm.initialize()
+    algorithm.process_batch({})
+    assert_allclose(n.get_value(), 2)
+    algorithm.process_batch({})
+    assert_allclose(n.get_value(), 3)
+
+
+def test_updates_algorithm_data():
+    n = shared_floatx(1)
+    m = tensor.scalar('m')
+    algorithm = UpdatesAlgorithm(updates=[(n, m + 1)])
+    algorithm.initialize()
+    algorithm.process_batch({'m': 5})
+    assert_allclose(n.get_value(), 6)
+    algorithm.process_batch({'m': 3})
+    assert_allclose(n.get_value(), 4)
+
+
+def test_updates_algorithm_add_updates():
+    n = shared_floatx(1)
+    m = shared_floatx(0)
+    algorithm = UpdatesAlgorithm(updates=[(n, n + 1)])
+    algorithm.add_updates([(m, n % 2)])
+    assert len(algorithm.updates) == 2
+    algorithm.initialize()
+    algorithm.process_batch({})
+    assert_allclose(n.get_value(), 2)
+    assert_allclose(m.get_value(), 1)
+    algorithm.process_batch({})
+    assert_allclose(n.get_value(), 3)
+    assert_allclose(m.get_value(), 0)
+
+
 def test_gradient_descent():
     W = shared_floatx(numpy.array([[1, 2], [3, 4]]))
     W_start_value = W.get_value()
@@ -52,11 +89,87 @@ def test_gradient_descent_with_gradients():
     gradients = OrderedDict()
     gradients[W] = tensor.grad(cost, W)
 
-    algorithm = GradientDescent(cost=cost, gradients=gradients)
+    algorithm = GradientDescent(gradients=gradients)
     algorithm.step_rule.learning_rate.set_value(0.75)
     algorithm.initialize()
     algorithm.process_batch(dict())
     assert_allclose(W.get_value(), -0.5 * W_start_value)
+
+
+def test_gradient_descent_multiple_initialize():
+    W = shared_floatx(numpy.array([[1, 2], [3, 4]]))
+    W_start_value = W.get_value()
+    cost = tensor.sum(W ** 2)
+    gradients = OrderedDict()
+    gradients[W] = tensor.grad(cost, W)
+
+    algorithm = GradientDescent(gradients=gradients)
+    algorithm.step_rule.learning_rate.set_value(0.75)
+    algorithm.initialize()
+    algorithm.initialize()
+    algorithm.initialize()
+
+    assert len(algorithm.updates) == 1
+    algorithm.process_batch(dict())
+    assert_allclose(W.get_value(), -0.5 * W_start_value)
+
+
+def test_gradient_descent_finds_inputs_additional_updates():
+    W = shared_floatx(numpy.array([[1, 2], [3, 4]]))
+    n = shared_floatx(1)
+    m = tensor.scalar('m')
+    algorithm = GradientDescent(gradients=OrderedDict([(W, W + 1)]))
+    algorithm.add_updates([(n, n + m)])
+    algorithm.initialize()
+    assert m in algorithm.inputs
+
+
+def test_gradient_descent_parameters_inferred():
+    W = shared_floatx(numpy.array([[1, 2], [3, 4]]))
+    algorithm = GradientDescent(gradients=OrderedDict([(W, W + 1)]))
+    assert algorithm.parameters == [W]
+
+
+def test_gradient_descent_parameters_no_cost():
+    W = shared_floatx(numpy.array([[1, 2], [3, 4]]))
+    assert_raises_regex(ValueError, "no cost", GradientDescent, parameters=[W])
+
+
+def test_gradient_descent_parameters_no_parameters():
+    W = shared_floatx(numpy.array([[1, 2], [3, 4]]))
+    assert_raises_regex(ValueError, "no parameters",
+                        GradientDescent, cost=W.sum())
+
+
+def test_gradient_descent_infer_parameters_gradients_not_ordered():
+    W = shared_floatx(numpy.array([[1, 2], [3, 4]]))
+    assert_raises_regex(ValueError, "fixed order",
+                        GradientDescent, gradients={W: 2 * W})
+
+
+def test_gradient_descent_non_match_parameters_gradients_not_ordered():
+    W = shared_floatx(numpy.array([[1, 2], [3, 4]]))
+    z = shared_floatx(5)
+    assert_raises_regex(ValueError, "fixed order",
+                        GradientDescent, parameters=[z],
+                        gradients={W: 2 * W})
+
+
+def test_gradient_descent_non_match_parameters_gradients_ordered():
+    W = shared_floatx(numpy.array([[1, 2], [3, 4]]))
+    z = shared_floatx(5)
+    algorithm = GradientDescent(parameters=[z],
+                                gradients=OrderedDict([(W, W/2)]))
+    assert algorithm.parameters == [W]
+
+
+def test_gradient_descent_updates_keyword():
+    W = shared_floatx(numpy.array([[1, 2], [3, 4]]))
+    z = shared_floatx(5)
+    algorithm = GradientDescent(gradients=OrderedDict([(W, W/2)]),
+                                updates=[(z, z + 1)])
+    assert len(algorithm.updates) == 2
+    assert z in dict(algorithm.updates)
 
 
 def test_gradient_descent_spurious_sources():

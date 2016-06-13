@@ -6,22 +6,32 @@ from numpy.testing import assert_raises
 from blocks.config import Configuration, ConfigurationError
 
 
-def test_config():
-    _environ = dict(os.environ)
-    try:
+def load_config(contents):
+    with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+        f.write(contents)
+        filename = f.name
+    os.environ['BLOCKS_CONFIG'] = filename
+    if 'BLOCKS_DATA_PATH' in os.environ:
+        del os.environ['BLOCKS_DATA_PATH']
+    config = Configuration()
+    config.add_config('data_path', str, env_var='BLOCKS_DATA_PATH')
+    config.add_config('config_with_default', int, default='1',
+                      env_var='BLOCKS_CONFIG_TEST')
+    config.add_config('config_without_default', str)
+    config.load_yaml()
+    return config
 
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
-            f.write('data_path: yaml_path')
-            filename = f.name
-        os.environ['BLOCKS_CONFIG'] = filename
-        if 'BLOCKS_DATA_PATH' in os.environ:
-            del os.environ['BLOCKS_DATA_PATH']
-        config = Configuration()
-        config.add_config('data_path', str, env_var='BLOCKS_DATA_PATH')
-        config.add_config('config_with_default', int, default='1',
-                          env_var='BLOCKS_CONFIG_TEST')
-        config.add_config('config_without_default', str)
-        config.load_yaml()
+
+class TestConfig(object):
+    def setUp(self):
+        self._environ = dict(os.environ)
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self._environ)
+
+    def test_config(self):
+        config = load_config('data_path: yaml_path')
         assert config.data_path == 'yaml_path'
         os.environ['BLOCKS_DATA_PATH'] = 'env_path'
         assert config.data_path == 'env_path'
@@ -36,6 +46,6 @@ def test_config():
         assert config.data_path == 'manual_path'
         config.new_config = 'new_config'
         assert config.new_config == 'new_config'
-    finally:
-        os.environ.clear()
-        os.environ.update(_environ)
+
+    def test_empty_config(self):
+        load_config('')

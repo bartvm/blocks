@@ -168,8 +168,13 @@ Iterate (or not)
 ----------------
 
 The ``apply`` method of a recurrent brick accepts an ``iterate`` argument,
-which defaults to ``True``. Setting it to ``False`` causes the ``apply`` method
-to compute only one step in the sequence.
+which defaults to ``True``. It is the reason for passing above a tensor of one
+more dimension than described in :meth:`.recurrent.SimpleRecurrent.apply` - the
+extra first dimension corresponds to the length of the sequence we are iterating
+over.
+
+Setting ``iterate`` to ``False`` causes the ``apply`` method to compute only
+one step in the sequence.
 
 This is very useful when you're trying to combine multiple recurrent layers in
 a network.
@@ -294,3 +299,12 @@ implementation.
     When looking at a recurrent brick's documentation, keep in mind that the
     parameters to its ``apply`` method are explained in terms of a single
     iteration, *i.e.* with the assumption that ``iterate = False``.
+
+See Also
+--------
+
+- LSTM implementation: :class:`.bricks.recurrent.LSTM`
+- GRU implementation: :class:`.bricks.recurrent.GatedRecurrent`
+- Bidirectional RNNs: :class:`.bricks.recurrent.Bidirectional`
+- Deep recurrent networks (stacked RNNs):
+  :class:`.bricks.recurrent.RecurrentStack`

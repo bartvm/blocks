@@ -98,7 +98,8 @@ class Configuration(object):
             yaml_file = os.path.expanduser('~/.blocksrc')
         if os.path.isfile(yaml_file) and os.path.getsize(yaml_file):
             with open(yaml_file) as f:
-                for key, value in yaml.safe_load(f).items():
+                config_dict = yaml.safe_load(f) or {}
+                for key, value in config_dict.items():
                     if key not in self.config:
                         raise ValueError("Unrecognized config in YAML: {}"
                                          .format(key))

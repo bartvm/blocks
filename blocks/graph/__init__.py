@@ -70,7 +70,7 @@ class ComputationGraph(object):
     def __init__(self, outputs):
         if isinstance(outputs, Variable):
             outputs = [outputs]
-        self.outputs = outputs
+        self.outputs = list(outputs)
         self._get_variables()
         self._has_inputs = {}
 
@@ -125,7 +125,8 @@ class ComputationGraph(object):
             inputs = graph.inputs(self.outputs)
             sorted_apply_nodes = graph.io_toposort(inputs, usual_outputs)
             self.scans = list(unique([node.op for node in sorted_apply_nodes
-                                     if isinstance(node.op, Scan)]))
+                                     if isinstance(node.op, Scan)],
+                                     key=lambda op: id(op)))
             self._scan_graphs = [ComputationGraph(scan.outputs)
                                  for scan in self.scans]
 

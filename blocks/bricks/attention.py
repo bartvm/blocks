@@ -288,7 +288,7 @@ class SequenceContentAttention(GenericSequenceAttention, Initializable):
         The dimension of the sequence elements.
     match_dim : int
         The dimension of the match vector.
-    state_transformer : :class:`.Brick`
+    state_transformer : :class:`~.bricks.Brick`
         A prototype for state transformations. If ``None``,
         a linear transformation is used.
     attended_transformer : :class:`.Feedforward`
@@ -309,13 +309,12 @@ class SequenceContentAttention(GenericSequenceAttention, Initializable):
     @lazy(allocation=['match_dim'])
     def __init__(self, match_dim, state_transformer=None,
                  attended_transformer=None, energy_computer=None, **kwargs):
-        super(SequenceContentAttention, self).__init__(**kwargs)
         if not state_transformer:
             state_transformer = Linear(use_bias=False)
         self.match_dim = match_dim
         self.state_transformer = state_transformer
 
-        self.state_transformers = Parallel(input_names=self.state_names,
+        self.state_transformers = Parallel(input_names=kwargs['state_names'],
                                            prototype=state_transformer,
                                            name="state_trans")
         if not attended_transformer:
@@ -325,8 +324,10 @@ class SequenceContentAttention(GenericSequenceAttention, Initializable):
         self.attended_transformer = attended_transformer
         self.energy_computer = energy_computer
 
-        self.children = [self.state_transformers, attended_transformer,
-                         energy_computer]
+        children = [self.state_transformers, attended_transformer,
+                    energy_computer]
+        kwargs.setdefault('children', []).extend(children)
+        super(SequenceContentAttention, self).__init__(**kwargs)
 
     def _push_allocation_config(self):
         self.state_transformers.input_dims = self.state_dims
@@ -502,9 +503,9 @@ class AttentionRecurrent(AbstractAttentionRecurrent, Initializable):
     ----------
     transition : :class:`.BaseRecurrent`
         The recurrent transition.
-    attention : :class:`.Brick`
+    attention : :class:`~.bricks.Brick`
         The attention mechanism.
-    distribute : :class:`.Brick`, optional
+    distribute : :class:`~.bricks.Brick`, optional
         Distributes the information from glimpses across the input
         sequences of the transition. By default a :class:`.Distribute` is
         used, and those inputs containing the "mask" substring in their
@@ -540,7 +541,6 @@ class AttentionRecurrent(AbstractAttentionRecurrent, Initializable):
                  add_contexts=True,
                  attended_name=None, attended_mask_name=None,
                  **kwargs):
-        super(AttentionRecurrent, self).__init__(**kwargs)
         self._sequence_names = list(transition.apply.sequences)
         self._state_names = list(transition.apply.states)
         self._context_names = list(transition.apply.contexts)
@@ -575,7 +575,9 @@ class AttentionRecurrent(AbstractAttentionRecurrent, Initializable):
             name for name in self._glimpse_names
             if name in self.attention.take_glimpses.inputs]
 
-        self.children = [self.transition, self.attention, self.distribute]
+        children = [self.transition, self.attention, self.distribute]
+        kwargs.setdefault('children', []).extend(children)
+        super(AttentionRecurrent, self).__init__(**kwargs)
 
     def _push_allocation_config(self):
         self.attention.state_dims = self.transition.get_dims(

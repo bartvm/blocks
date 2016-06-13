@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import OrderedDict, Counter
 import logging
 
 from picklable_itertools.extras import equizip
@@ -14,19 +14,34 @@ from blocks.utils import reraise_as
 logger = logging.getLogger(__name__)
 
 
+def _validate_variable_names(variables):
+    """Check for missing and duplicate variable names."""
+    variable_names = [v.name for v in variables]
+    name_counts = Counter(variable_names)
+    if None in name_counts:
+        none_names = [v for v in variables if v.name is None]
+        raise ValueError('Variables must have names: {}'.format(none_names))
+
+    if any(v > 1 for v in name_counts.values()):
+        raise ValueError("Variables should have unique names."
+                         " Duplicates: {}"
+                         .format(', '.join(k for k, v in name_counts.items()
+                                           if v > 1)))
+
+
 class MonitoredQuantityBuffer(object):
     """Intermediate results of aggregating values of monitored-quantity.
 
-    Accumulate results for a list of monitored-quantity for every
+    Aggregate results for a list of monitored-quantity for every
     single batch. Provides initialization and readout routines to
-    initialize each quantity and capture its accumulated results.
+    initialize each quantity and capture its aggregated results.
 
 
     Parameters
     ----------
     quantities : list of :class:`MonitoredQuantity`
         The quantity names are used as record names in the logs. Hence, all
-        the quantity names must be different.
+        the quantity names must be unique.
 
     Attributes
     ----------
@@ -50,29 +65,29 @@ class MonitoredQuantityBuffer(object):
         self._computation_graph = ComputationGraph(self.requires)
         self.inputs = self._computation_graph.inputs
 
-    def initialize(self):
+    def initialize_quantities(self):
         """Initialize the quantities."""
         self._initialized = True
         for quantity in self.quantities:
             quantity.initialize()
 
     def get_aggregated_values(self):
-        """Readout the accumulated values."""
+        """Get the aggregated values."""
         if not self._initialized:
             raise Exception("To readout you must first initialize, then"
                             "process batches!")
         else:
-            ret_vals = [q.readout() for q in self.quantities]
+            ret_vals = [q.get_aggregated_value() for q in self.quantities]
             return dict(zip(self.quantity_names, ret_vals))
 
-    def accumulate_quantities(self, numerical_values):
-        """Accumulate the results for every batch."""
+    def aggregate_quantities(self, numerical_values):
+        """Aggregate the results for every batch."""
         if not self._initialized:
             raise Exception("To readout you must first initialize, then"
                             "process batches!")
         else:
             for quantity in self.quantities:
-                quantity.accumulate(
+                quantity.aggregate(
                     *[numerical_values[self.requires.index(requirement)]
                         for requirement in quantity.requires])
 
@@ -89,7 +104,7 @@ class AggregationBuffer(object):
     ----------
     variables : list of :class:`~tensor.TensorVariable`
         The variable names are used as record names in the logs. Hence, all
-        the variable names must be different.
+        the variable names must be unique.
     use_take_last : bool
         When ``True``, the :class:`TakeLast` aggregation scheme is used
         instead of :class:`_DataIndependent` for those variables that
@@ -109,17 +124,10 @@ class AggregationBuffer(object):
 
     """
     def __init__(self, variables, use_take_last=False):
+        _validate_variable_names(variables)
         self.variables = variables
-        self.use_take_last = use_take_last
-
         self.variable_names = [v.name for v in self.variables]
-        if len(set(self.variable_names)) < len(self.variables):
-            duplicates = []
-            for vname in set(self.variable_names):
-                if self.variable_names.count(vname) > 1:
-                    duplicates.append(vname)
-            raise ValueError("variables should have different names!"
-                             " Duplicates: {}".format(', '.join(duplicates)))
+        self.use_take_last = use_take_last
         self._computation_graph = ComputationGraph(self.variables)
         self.inputs = self._computation_graph.inputs
 
@@ -190,10 +198,10 @@ class AggregationBuffer(object):
     def get_aggregated_values(self):
         """Readout the aggregated values."""
         if not self._initialized:
-            raise Exception("To readout you must first initialize, then"
+            raise Exception("To readout you must first initialize, then "
                             "process batches!")
         ret_vals = self._readout_fun()
-        return dict(equizip(self.variable_names, ret_vals))
+        return OrderedDict(equizip(self.variable_names, ret_vals))
 
 
 class DatasetEvaluator(object):
@@ -217,7 +225,7 @@ class DatasetEvaluator(object):
     variables : list of :class:`~tensor.TensorVariable` and
         :class:`MonitoredQuantity`
         The variable names are used as record names in the logs. Hence, all
-        the names must be different.
+        the names must be unique.
 
         Each variable can be tagged with an :class:`AggregationScheme` that
         specifies how the value can be computed for a data set by
@@ -233,6 +241,7 @@ class DatasetEvaluator(object):
 
     """
     def __init__(self, variables, updates=None):
+        _validate_variable_names(variables)
         theano_variables = []
         monitored_quantities = []
         for variable in variables:
@@ -242,9 +251,6 @@ class DatasetEvaluator(object):
                 theano_variables.append(variable)
         self.theano_variables = theano_variables
         self.monitored_quantities = monitored_quantities
-        variable_names = [v.name for v in variables]
-        if len(set(variable_names)) < len(variables):
-            raise ValueError("variables should have different names")
         self.theano_buffer = AggregationBuffer(theano_variables)
         self.monitored_quantities_buffer = MonitoredQuantityBuffer(
             monitored_quantities)
@@ -281,15 +287,15 @@ class DatasetEvaluator(object):
 
         if inputs != []:
             self.unique_inputs = list(set(inputs))
-            self._accumulate_fun = theano.function(self.unique_inputs,
-                                                   outputs,
-                                                   updates=updates)
+            self._aggregate_fun = theano.function(self.unique_inputs,
+                                                  outputs,
+                                                  updates=updates)
         else:
-            self._accumulate_fun = None
+            self._aggregate_fun = None
 
     def initialize_aggregators(self):
         self.theano_buffer.initialize_aggregators()
-        self.monitored_quantities_buffer.initialize()
+        self.monitored_quantities_buffer.initialize_quantities()
 
     def process_batch(self, batch):
         try:
@@ -300,9 +306,9 @@ class DatasetEvaluator(object):
                 "Not all data sources required for monitoring were"
                 " provided. The list of required data sources:"
                 " {}.".format(input_names))
-        if self._accumulate_fun is not None:
-            numerical_values = self._accumulate_fun(**batch)
-            self.monitored_quantities_buffer.accumulate_quantities(
+        if self._aggregate_fun is not None:
+            numerical_values = self._aggregate_fun(**batch)
+            self.monitored_quantities_buffer.aggregate_quantities(
                 numerical_values)
 
     def get_aggregated_values(self):
@@ -326,7 +332,7 @@ class DatasetEvaluator(object):
 
         """
         self.initialize_aggregators()
-        if self._accumulate_fun is not None:
+        if self._aggregate_fun is not None:
             for batch in data_stream.get_epoch_iterator(as_dict=True):
                 self.process_batch(batch)
         else:

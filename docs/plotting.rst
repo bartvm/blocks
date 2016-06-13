@@ -57,7 +57,7 @@ Now let's train with gradient descent and plot the results.
 >>> from blocks.algorithms import GradientDescent, Scale
 >>> from blocks.extensions import FinishAfter
 >>> from blocks.extensions.monitoring import TrainingDataMonitoring
->>> from blocks.extras.extensions.plot import Plot  # doctest: +SKIP
+>>> from blocks_extras.extensions.plot import Plot  # doctest: +SKIP
 >>> main_loop = MainLoop(
 ...     model=None, data_stream=data_stream,
 ...     algorithm=GradientDescent(cost=cost,

@@ -26,8 +26,9 @@ The life-cycle of a brick is as follows:
    Theano variable is created in this phase.
 
 2. **Allocation:** (optional) allocate the Theano shared variables for the
-   *parameters* of the Brick. When :meth:`.Brick.allocate` is called, the
-   required Theano variables are allocated and initialized by default to ``NaN``.
+   *parameters* of the Brick. When :meth:`~.bricks.Brick.allocate` is
+   called, the required Theano variables are allocated and initialized by
+   default to ``NaN``.
 
 3. **Application:** instantiate a part of the Theano computational graph,
    linking the inputs and the outputs of the brick through its *parameters*
@@ -41,7 +42,7 @@ The life-cycle of a brick is as follows:
 .. note::
    If the Theano variables of the brick object have not been allocated when 
    :meth:`~.Application.apply` is called, Blocks will quietly call 
-   :meth:`.Brick.allocate`.
+   :meth:`~.bricks.Brick.allocate`.
 
 Example
 ^^^^^^^
@@ -82,8 +83,8 @@ of a brick we refer to this as *allocation*.
     array([ nan,  nan,  nan,  nan,  nan])
 
 By default, all our parameters are set to ``NaN``. To initialize them, simply
-call the :meth:`.Brick.initialize` method. This is the last step in the
-brick lifecycle: *initialization*.
+call the :meth:`~.bricks.Brick.initialize` method. This is the last
+step in the brick lifecycle: *initialization*.
 
     >>> linear.initialize()
     >>> linear.parameters[1].get_value() # doctest: +SKIP
@@ -166,11 +167,11 @@ sensible defaults for a particular use case.
     >>> mlp.children[0].input_dim
     16
 
-We can see that the :class:`.MLP` brick automatically constructed two child
-bricks to perform the linear transformations. When we applied the MLP to
-``x``, it automatically configured the input and output dimensions of its
-children. Likewise, when we call :meth:`.Brick.initialize`, it
-automatically pushed the weight matrix and biases initialization
+We can see that the :class:`~.bricks.MLP` brick automatically constructed
+two child bricks to perform the linear transformations. When we applied the MLP
+to ``x``, it automatically configured the input and output dimensions of its
+children. Likewise, when we call :meth:`~.bricks.Brick.initialize`,
+it automatically pushed the weight matrix and biases initialization
 configuration to its children.
 
     >>> mlp.initialize()
@@ -192,9 +193,11 @@ brick:
 
 When dealing with children, the life cycle actually becomes a bit more
 complicated. (The full life cycle is documented as part of the
-:class:`.Brick` class.) Before allocating or initializing parameters, the
-parent brick calls its :meth:`.Brick.push_allocation_config` and
-:meth:`.Brick.push_initialization_config` methods, which configure the
+:class:`~.bricks.Brick` class.) Before allocating or initializing
+parameters, the parent brick calls its
+:meth:`~.bricks.Brick.push_allocation_config` and
+:meth:`~.bricks.Brick.push_initialization_config`
+methods, which configure the
 children. If you want to override the child configuration, you will need to
 call these methods manually, after which you can override the child bricks'
 configuration.

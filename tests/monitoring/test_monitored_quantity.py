@@ -1,3 +1,4 @@
+from numpy.testing import assert_raises_regex
 import numpy
 import theano
 from fuel.datasets import IterableDataset
@@ -14,12 +15,12 @@ class CrossEntropy(MonitoredQuantity):
     def initialize(self):
         self.total_cross_entropy, self.examples_seen = 0.0, 0
 
-    def accumulate(self, target, predicted):
+    def aggregate(self, target, predicted):
         import numpy
         self.total_cross_entropy += -(target * numpy.log(predicted)).sum()
         self.examples_seen += 1
 
-    def readout(self):
+    def get_aggregated_value(self):
         res = self.total_cross_entropy / self.examples_seen
         return res
 
@@ -44,3 +45,14 @@ def test_dataset_evaluators():
     numpy.testing.assert_allclose(
         values['monitored_cross_entropy1'],
         values['categoricalcrossentropy_apply_cost'])
+
+
+def test_dataset_evaluator_name_none():
+    assert_raises_regex(ValueError, 'must have names',
+                        DatasetEvaluator, [theano.tensor.scalar()])
+
+
+def test_dataset_evaluator_name_uniqueness():
+    assert_raises_regex(ValueError, 'unique',
+                        DatasetEvaluator, [theano.tensor.scalar('A'),
+                                           theano.tensor.scalar('A')])

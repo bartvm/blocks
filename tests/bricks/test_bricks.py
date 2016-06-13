@@ -6,7 +6,8 @@ from theano import tensor
 from six.moves import cPickle
 
 from blocks.bricks import (Identity, Linear, Maxout, LinearMaxout, MLP, Tanh,
-                           Sequence, Random, Logistic, Softplus, Softmax)
+                           Sequence, Random, Logistic, Softplus, Softmax,
+                           LeakyRectifier)
 from blocks.bricks.base import application, Brick, lazy, NoneAllocation
 from blocks.bricks.parallel import Parallel, Fork
 from blocks.filter import get_application_call, get_brick
@@ -339,6 +340,16 @@ def test_activations():
                     Softmax(x).apply(x).eval({x: x_val}).flatten(), rtol=1e-6)
     assert_allclose(1.0 / (1.0 + numpy.exp(-x_val)),
                     Logistic(x).apply(x).eval({x: x_val}), rtol=1e-6)
+    leaky_out_1 = x_val - 0.5
+    leaky_out_1[leaky_out_1 < 0] *= 0.01
+    assert_allclose(leaky_out_1,
+                    LeakyRectifier().apply(x).eval({x: x_val - 0.5}),
+                    rtol=1e-5)
+    leaky_out_2 = x_val - 0.5
+    leaky_out_2[leaky_out_2 < 0] *= 0.05
+    assert_allclose(leaky_out_2,
+                    LeakyRectifier(leak=0.05).apply(x).eval({x: x_val - 0.5}),
+                    rtol=1e-5)
 
 
 def test_mlp():
@@ -360,6 +371,31 @@ def test_mlp():
     assert_allclose(x_val.dot(numpy.ones((16, 8))),
                     y.eval({x: x_val}), rtol=1e-06)
     assert mlp.rng == mlp.linear_transformations[0].rng
+
+
+def test_mlp_prototype_argument():
+    class MyLinear(Linear):
+        pass
+    mlp = MLP(activations=[Tanh(), Tanh(), None],
+              dims=[4, 5, 6, 7], prototype=MyLinear())
+    assert all(isinstance(lt, MyLinear) for lt in mlp.linear_transformations)
+    assert all(lt.name == 'mylinear_{}'.format(i)
+               for i, lt in enumerate(mlp.linear_transformations))
+
+
+def test_mlp_use_bias_pushed_when_not_explicitly_specified():
+    mlp = MLP(activations=[Tanh(), Tanh(), None],
+              dims=[4, 5, 6, 7], prototype=Linear(use_bias=False),
+              use_bias=True)
+    mlp.push_allocation_config()
+    assert [lin.use_bias for lin in mlp.linear_transformations]
+
+
+def test_mlp_use_bias_not_pushed_when_not_explicitly_specified():
+    mlp = MLP(activations=[Tanh(), Tanh(), None],
+              dims=[4, 5, 6, 7], prototype=Linear(use_bias=False))
+    mlp.push_allocation_config()
+    assert [not lin.use_bias for lin in mlp.linear_transformations]
 
 
 def test_mlp_apply():

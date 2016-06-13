@@ -5,7 +5,7 @@ from theano import tensor
 
 from blocks.bricks.base import application, Brick, lazy
 from blocks.bricks.interfaces import Activation, Feedforward, Initializable
-from blocks.bricks.interfaces import Random  # noqa
+from blocks.bricks.interfaces import LinearLike, Random  # noqa
 
 from blocks.bricks.wrappers import WithExtraDims
 from blocks.roles import add_role, WEIGHT, BIAS
@@ -14,7 +14,7 @@ from blocks.utils import shared_floatx_nans
 logger = logging.getLogger(__name__)
 
 
-class Linear(Initializable, Feedforward):
+class Linear(LinearLike, Feedforward):
     r"""A linear transformation with optional bias.
 
     Brick which applies a linear (affine) transformation by multiplying
@@ -44,32 +44,16 @@ class Linear(Initializable, Feedforward):
         self.input_dim = input_dim
         self.output_dim = output_dim
 
-    @property
-    def W(self):
-        return self.parameters[0]
-
-    @property
-    def b(self):
-        return self.parameters[1]
-
     def _allocate(self):
         W = shared_floatx_nans((self.input_dim, self.output_dim), name='W')
         add_role(W, WEIGHT)
         self.parameters.append(W)
         self.add_auxiliary_variable(W.norm(2), name='W_norm')
-        if self.use_bias:
+        if getattr(self, 'use_bias', True):
             b = shared_floatx_nans((self.output_dim,), name='b')
             add_role(b, BIAS)
             self.parameters.append(b)
             self.add_auxiliary_variable(b.norm(2), name='b_norm')
-
-    def _initialize(self):
-        if self.use_bias:
-            W, b = self.parameters
-            self.biases_init.initialize(b, self.rng)
-        else:
-            W, = self.parameters
-        self.weights_init.initialize(W, self.rng)
 
     @application(inputs=['input_'], outputs=['output'])
     def apply(self, input_):
@@ -86,13 +70,9 @@ class Linear(Initializable, Feedforward):
             The transformed input plus optional bias
 
         """
-        if self.use_bias:
-            W, b = self.parameters
-        else:
-            W, = self.parameters
-        output = tensor.dot(input_, W)
-        if self.use_bias:
-            output += b
+        output = tensor.dot(input_, self.W)
+        if getattr(self, 'use_bias', True):
+            output += self.b
         return output
 
     def get_dim(self, name):
@@ -224,11 +204,11 @@ class LinearMaxout(Initializable, Feedforward):
     """
     @lazy(allocation=['input_dim', 'output_dim', 'num_pieces'])
     def __init__(self, input_dim, output_dim, num_pieces, **kwargs):
-        super(LinearMaxout, self).__init__(**kwargs)
         self.linear = Linear()
         self.maxout = Maxout()
-        self.children = [self.linear,
-                         self.maxout]
+        children = [self.linear, self.maxout]
+        kwargs.setdefault('children', []).extend(children)
+        super(LinearMaxout, self).__init__(**kwargs)
 
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -302,7 +282,34 @@ class Softplus(Activation):
 class Rectifier(Activation):
     @application(inputs=['input_'], outputs=['output'])
     def apply(self, input_):
-        return tensor.switch(input_ > 0, input_, 0)
+        return tensor.nnet.relu(input_)
+
+
+class LeakyRectifier(Activation):
+    r"""Leaky ReLU
+
+    Like Rectifier, but inputs are scaled by small constant for negative
+    inputs.
+
+    .. math:: f(x) = \text{max}(x, ax)
+
+    Parameters
+    ----------
+    leak : float, optional
+        The scalar to multiply negative values by. Named 'a' above.
+
+    .. Maas, Andrew L., Awni Y. Hannun, and Andrew Y. Ng. Rectifier
+       nonlinearities improve neural network acoustic models. Proc.
+       ICML. Vol. 30. 2013.
+
+    """
+    def __init__(self, leak=0.01, **kwargs):
+        super(LeakyRectifier, self).__init__(**kwargs)
+        self._leak = leak
+
+    @application(inputs=['input_'], outputs=['output'])
+    def apply(self, input_):
+        return tensor.nnet.relu(input_, alpha=self._leak)
 
 
 class Softmax(Brick):

@@ -1,5 +1,9 @@
 import inspect
+import logging
 from blocks.extensions import SimpleExtension
+
+
+logger = logging.getLogger(__name__)
 
 
 class SharedVariableModifier(SimpleExtension):
@@ -26,14 +30,38 @@ class SharedVariableModifier(SimpleExtension):
         In the second case, it is a function which takes number of
         iterations done (``int``) and old value of the shared variable
         (with the same dtype as `parameter`).
+    num_args : int, optional
+        The number of arguments to pass to the function. If unspecified,
+        it will be inferred. This is useful if you are using function-like
+        objects for which the arity of the function cannot be inferred.
+
+    Notes
+    -----
+    This class includes a method ``function`` that calls the function
+    passed in the constructor and a ``num_args`` property which computes
+    the number of arguments to use by inspecting the function object.
+    Subclasses may override a method called ``function`` and/or
+    the ``num_args`` property and instead pass ``None`` to the superclass
+    constructor. This can be used to bypass certain serialization issues
+    on Legacy Python regarding the unpicklability of instance
+    method objects.
 
     """
-    def __init__(self, parameter, function, **kwargs):
+    def __init__(self, parameter, function, num_args=None, **kwargs):
         kwargs.setdefault("after_batch", True)
         super(SharedVariableModifier, self).__init__(**kwargs)
         self.parameter = parameter
-        self.function = function
-        self.num_args = len(inspect.getargspec(function).args)
+        self._function = function
+        self._num_args = num_args
+
+    @property
+    def num_args(self):
+        if self._num_args is None:
+            self._num_args = len(inspect.getargspec(self._function).args)
+        return self._num_args
+
+    def function(self, *args):
+        return self._function(*args)
 
     def do(self, which_callback, *args):
         iterations_done = self.main_loop.log.status['iterations_done']
@@ -89,13 +117,23 @@ class TrackTheBest(SimpleExtension):
         super(TrackTheBest, self).__init__(**kwargs)
 
     def do(self, which_callback, *args):
+        clsname = self.__class__.__name__
         current_value = self.main_loop.log.current_row.get(self.record_name)
+        logger.debug('%s: current value of log.current_row["%s"] = %s',
+                     clsname, self.record_name, str(current_value))
         if current_value is None:
             return
         best_value = self.main_loop.status.get(self.best_name, None)
+        logger.debug('%s: current value of status["%s"] = %s',
+                     clsname, self.best_name, str(best_value))
         if (best_value is None or
                 (current_value != best_value and
                  self.choose_best(current_value, best_value) ==
                  current_value)):
+            logger.debug('%s: New best obtained at iteration %d!',
+                         clsname, self.main_loop.log.status['iterations_done'])
+            logger.debug('%s: Updating status["%s"], adding notification '
+                         'to log (%s)', clsname, self.best_name,
+                         self.notification_name)
             self.main_loop.status[self.best_name] = current_value
             self.main_loop.log.current_row[self.notification_name] = True

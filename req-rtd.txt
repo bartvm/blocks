@@ -1,8 +1,8 @@
 picklable-itertools==0.1.1
-progressbar2==3.6.0
+progressbar2==3.6.2
 pyyaml==3.11
-six==1.9.0
-toolz==0.7.2
+six==1.10.0
+toolz==0.7.4
 
 --allow-external theano
 --allow-unverified theano
