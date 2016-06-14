@@ -104,7 +104,15 @@ class ComputationGraph(object):
     @property
     def scan_variables(self):
         """Variables of Scan ops."""
-        return list(chain(*[g.variables for g in self._scan_graphs]))
+        # BFS
+        scan_graphs = self._scan_graphs
+        var_list = []
+        while scan_graphs:
+            g = scan_graphs.pop(0)
+            var_list.append(g.variables)
+            if g._scan_graphs:
+                scan_graphs.extend(g._scan_graphs)
+        return list(chain(*var_list))
 
     def _get_variables(self):
         """Collect variables, updates and auxiliary variables.
