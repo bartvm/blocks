@@ -71,7 +71,7 @@ class TestRecurrentWrapper(unittest.TestCase):
         assert_allclose(h2 * 10, out_2_eval)
 
 
-class RecurrentWrapperNoStatesClass(Brick):
+class RecurrentWrapperNoStatesClass(BaseRecurrent):
     def __init__(self, dim, ** kwargs):
         super(RecurrentWrapperNoStatesClass, self).__init__(self, ** kwargs)
         self.dim = dim

@@ -46,6 +46,9 @@ class BaseRecurrent(Brick):
             The keyword arguments of the application call.
 
         """
+        if not hasattr(self, 'apply') or not self.apply.states:
+            return
+
         result = []
         for state in self.apply.states:
             dim = self.get_dim(state)
@@ -168,31 +171,28 @@ def recurrent(*args, **kwargs):
                     logger.warning("unknown input {}".format(value) +
                                    unknown_scan_input)
 
-            if len(application.states):
-                # Ensure that all initial states are available.
-                initial_states = brick.initial_states(batch_size, as_dict=True,
-                                                      *args, **kwargs)
-                for state_name in application.states:
-                    dim = brick.get_dim(state_name)
-                    if state_name in kwargs:
-                        if isinstance(kwargs[state_name], NdarrayInitialization):
-                            kwargs[state_name] = tensor.alloc(
-                                kwargs[state_name].generate(brick.rng, (1, dim)),
-                                batch_size, dim)
-                        elif isinstance(kwargs[state_name], Application):
-                            kwargs[state_name] = (
-                                kwargs[state_name](state_name, batch_size,
-                                                   *args, **kwargs))
-                    else:
-                        try:
-                            kwargs[state_name] = initial_states[state_name]
-                        except KeyError:
-                            raise KeyError(
-                                "no initial state for '{}' of the brick {}".format(
-                                    state_name, brick.name))
-                states_given = dict_subset(kwargs, application.states)
-            else:
-                states_given = {}
+            # Ensure that all initial states are available.
+            initial_states = brick.initial_states(batch_size, as_dict=True,
+                                                  *args, **kwargs)
+            for state_name in application.states:
+                dim = brick.get_dim(state_name)
+                if state_name in kwargs:
+                    if isinstance(kwargs[state_name], NdarrayInitialization):
+                        kwargs[state_name] = tensor.alloc(
+                            kwargs[state_name].generate(brick.rng, (1, dim)),
+                            batch_size, dim)
+                    elif isinstance(kwargs[state_name], Application):
+                        kwargs[state_name] = (
+                            kwargs[state_name](state_name, batch_size,
+                                               *args, **kwargs))
+                else:
+                    try:
+                        kwargs[state_name] = initial_states[state_name]
+                    except KeyError:
+                        raise KeyError(
+                            "no initial state for '{}' of the brick {}".format(
+                                state_name, brick.name))
+            states_given = dict_subset(kwargs, application.states)
 
             # Theano issue 1772
             for name, state in states_given.items():

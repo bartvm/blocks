@@ -1,6 +1,6 @@
 """Annotated computation graph management."""
 import logging
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from itertools import chain
 import warnings
 
@@ -103,15 +103,14 @@ class ComputationGraph(object):
 
     @property
     def scan_variables(self):
-        """Variables of Scan ops."""
-        # BFS
-        scan_graphs = self._scan_graphs
+        """Variables of Scan ops. Breadth-first search"""
+        sg_que = deque(self._scan_graphs)
         var_list = []
-        while scan_graphs:
-            g = scan_graphs.pop(0)
+        while sg_que:
+            g = sg_que.popleft()
             var_list.append(g.variables)
             if g._scan_graphs:
-                scan_graphs.extend(g._scan_graphs)
+                sg_que.extend(g._scan_graphs)
         return list(chain(*var_list))
 
     def _get_variables(self):

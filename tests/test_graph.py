@@ -2,7 +2,7 @@ import numpy
 import theano
 import warnings
 from numpy.testing import assert_allclose
-from theano import tensor
+from theano import function, tensor
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 
 from blocks.bricks import MLP, Identity, Logistic, Tanh
@@ -72,6 +72,56 @@ def test_computation_graph():
     cg6 = ComputationGraph(s)
     assert cg6.scans == [scan]
     assert all(v in cg6.scan_variables for v in scan.inputs + scan.outputs)
+
+
+def test_computation_graph_nested_scan():
+    inner_x = tensor.matrix('inner_x')
+    outer_x = tensor.matrix('outer_x')
+    factor = tensor.matrix('factor')
+
+    def inner_scan(inner_x_, outer_x_one_step):
+        inner_o, _ = theano.scan(fn=lambda inp, ctx: inp + ctx,
+                                 sequences=inner_x_,
+                                 non_sequences=outer_x_one_step)
+        return inner_o.sum(axis=0)
+
+    outer_o, _ = theano.scan(fn=lambda inp, ctx: inner_scan(ctx, inp),
+                             sequences=outer_x,
+                             non_sequences=inner_x)
+
+    outs = outer_o * factor
+
+    nested_scan = outs.owner.inputs[0].owner.op
+    cg = ComputationGraph(outer_o)
+
+    assert cg.scans == [nested_scan]
+    assert all(var in cg.scan_variables
+               for var in nested_scan.inputs + nested_scan.outputs)
+
+    func = function(inputs=[inner_x, outer_x, factor], outputs=outs,
+                    allow_input_downcast=True)
+
+    in_len = 9
+    out_len = 7
+    dim = 3
+
+    floatX = theano.config.floatX
+    x_val = numpy.asarray(numpy.random.uniform(size=(in_len, dim)),
+                          dtype=floatX)
+    y_val = numpy.asarray(numpy.random.uniform(size=(out_len, dim)),
+                          dtype=floatX)
+    factor_val = numpy.asarray(numpy.random.uniform(size=(out_len, dim)),
+                               dtype=floatX)
+
+    results = func(x_val, y_val, factor_val)
+
+    results2 = numpy.zeros(shape=(out_len, dim))
+    for i, y in enumerate(y_val):
+        for x in x_val:
+            results2[i] += (x + y)
+    results2 = results2 * factor_val
+
+    assert_allclose(results, results2)
 
 
 def test_computation_graph_variable_duplicate():
