@@ -9,7 +9,7 @@ from theano.gof.graph import is_same_graph
 
 from blocks.utils import is_shared_variable
 from blocks.bricks.base import application
-from blocks.bricks import Brick, Tanh
+from blocks.bricks import Tanh
 from blocks.bricks.recurrent import (
     recurrent, BaseRecurrent, GatedRecurrent,
     SimpleRecurrent, Bidirectional, LSTM,
