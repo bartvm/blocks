@@ -46,9 +46,6 @@ class BaseRecurrent(Brick):
             The keyword arguments of the application call.
 
         """
-        if not hasattr(self, 'apply') or not self.apply.states:
-            return
-
         result = []
         for state in self.apply.states:
             dim = self.get_dim(state)
