@@ -1,3 +1,4 @@
+from numpy.testing import assert_raises_regex
 import numpy
 import theano
 from fuel.datasets import IterableDataset
@@ -44,3 +45,14 @@ def test_dataset_evaluators():
     numpy.testing.assert_allclose(
         values['monitored_cross_entropy1'],
         values['categoricalcrossentropy_apply_cost'])
+
+
+def test_dataset_evaluator_name_none():
+    assert_raises_regex(ValueError, 'must have names',
+                        DatasetEvaluator, [theano.tensor.scalar()])
+
+
+def test_dataset_evaluator_name_uniqueness():
+    assert_raises_regex(ValueError, 'unique',
+                        DatasetEvaluator, [theano.tensor.scalar('A'),
+                                           theano.tensor.scalar('A')])

@@ -274,54 +274,53 @@ Create an initial pull request and copy the following piece of markdown code.
 This pull request should only change the version number. Then, create a pull 
 request to Fuel which refers the first PR. Follow the instruction carefully 
 and check the boxes in process. 
-```
-- **Stage 1**: Make changes in `master`:
-  - [ ] Freeze other PRs.
+::
 
-        After we agreed to initiate the process of releasing a new version,
-        other PRs shouldn't be merged.
-  - [ ] Increase the version number counter of Blocks.
+    - **Stage 1**: Make changes in `master`:
+      - [ ] Freeze other PRs.
 
-        Change the version number in `blocks/__init__.py`.
-  - [ ] Increase the version number counter of Fuel.
-        
-        Change the version number in `fuel/version.py`.
-- **Stage 2**: After two PRs merged to Blocks and Fuel:
-  - [ ] Create a pull request to merge `master` into `stable`.
+            After we agreed to initiate the process of releasing a new version,
+            other PRs shouldn't be merged.
+      - [ ] Increase the version number counter of Blocks.
 
-        Add a link to the initial PR in order not to get lost in the numerous
-        pull requests.
-  - [ ] Create a pull request to Fuel.
+            Change the version number in `blocks/__init__.py`.
+      - [ ] Increase the version number counter of Fuel.
 
-        This will be a corresponding PR to Fuel which merges its `master` into
-        `stable`. Add a link to  the initial PR.
-  - [ ] Check the Travis CI build log *on both the pull requests merging
-        `master` into `stable`*.
-   
-        Read carefully the Travis CI messages, check that it tests the
-        right version.
-  - [ ] Check the Theano version.
+            Change the version number in `fuel/version.py`.
+    - **Stage 2**: After two PRs merged to Blocks and Fuel:
+      - [ ] Create a pull request to merge `master` into `stable`.
 
-        The `req*.txt` should refer the last development Theano version
-        which is known not to have bugs.
-  - [ ] Check the Fuel version in `req*.txt` files.
-  
-        We should reference the stable version of Fuel. It can be seen
-        in the Travis CI output.
-  - [ ] Merge Fuel pull request.
-  - [ ] Merge this pull request.
-- **Stage 3**: After the PRs are merged:
-  - [ ] Wait the build to pass.
-  - [ ] Check documentation build at ReadTheDocs.
-  - [ ] Double check that the version corresponds `__version__`.
-  - [ ] Create a release of Fuel by going to the
-        [releases page](https://github.com/mila-udem/fuel/releases) and
-        clicking "Draft new release".
-  - [ ] Create a release of Blocks by going to the
-        [releases page](https://github.com/mila-udem/blocks/releases) and
-        clicking "Draft new release".
+            Add a link to the initial PR in order not to get lost in the numerous
+            pull requests.
+      - [ ] Create a pull request to Fuel.
 
-```
+            This will be a corresponding PR to Fuel which merges its `master` into
+            `stable`. Add a link to  the initial PR.
+      - [ ] Check the Travis CI build log *on both the pull requests merging
+            `master` into `stable`*.
+
+            Read carefully the Travis CI messages, check that it tests the
+            right version.
+      - [ ] Check the Theano version.
+
+            The `req*.txt` should refer the last development Theano version
+            which is known not to have bugs.
+      - [ ] Check the Fuel version in `req*.txt` files.
+
+            We should reference the stable version of Fuel. It can be seen
+            in the Travis CI output.
+      - [ ] Merge Fuel pull request.
+      - [ ] Merge this pull request.
+    - **Stage 3**: After the PRs are merged:
+      - [ ] Wait the build to pass.
+      - [ ] Check documentation build at ReadTheDocs.
+      - [ ] Double check that the version corresponds `__version__`.
+      - [ ] Create a release of Fuel by going to the
+            [releases page](https://github.com/mila-udem/fuel/releases) and
+            clicking "Draft new release".
+      - [ ] Create a release of Blocks by going to the
+            [releases page](https://github.com/mila-udem/blocks/releases) and
+            clicking "Draft new release".
 
 .. toctree::
    :hidden:

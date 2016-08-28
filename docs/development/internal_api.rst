@@ -14,10 +14,16 @@ Bricks
    :show-inheritance:
 
 .. automodule:: blocks.bricks
-   :members: Activation, ActivationDocumentation
+   :members: Activation
    :undoc-members:
    :private-members:
    :show-inheritance:
+
+.. automodule:: blocks.bricks.interfaces
+      :members: ActivationDocumentation
+      :undoc-members:
+      :private-members:
+      :show-inheritance:
 
 Extensions
 ----------

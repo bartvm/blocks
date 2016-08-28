@@ -12,6 +12,8 @@ def test_l2_norm():
     assert_allclose(l2_norm([3, [1, 2]]).eval(), 14.0 ** 0.5)
     assert_allclose(
         l2_norm([3, [1, 2], [[1, 2], [3, 4]]]).eval(), 44.0 ** 0.5)
+    assert_allclose(
+        l2_norm([3, [1, 2], [[1, 2], [3, 4]]], squared=True).eval(), 44.0)
 
 
 def test_hessian_times_vector():

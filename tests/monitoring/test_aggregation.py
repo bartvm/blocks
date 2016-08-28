@@ -1,6 +1,6 @@
 import numpy
 import theano
-from numpy.testing import assert_allclose, assert_raises
+from numpy.testing import assert_allclose, assert_raises_regex
 from theano import tensor
 
 from blocks import bricks
@@ -91,7 +91,12 @@ def test_mean_aggregator():
                     numpy.array([35], dtype=theano.config.floatX))
 
 
-def test_aggregation_buffer():
-    x1 = tensor.matrix('x')
-    x2 = tensor.matrix('x')
-    assert_raises(ValueError, AggregationBuffer, [x1, x2])
+def test_aggregation_buffer_name_uniqueness():
+    x1 = tensor.scalar('x')
+    x2 = tensor.scalar('x')
+    assert_raises_regex(ValueError, 'unique', AggregationBuffer, [x1, x2])
+
+
+def test_aggregation_buffer_name_none():
+    assert_raises_regex(ValueError, 'must have names',
+                        AggregationBuffer, [theano.tensor.scalar()])

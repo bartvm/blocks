@@ -3,8 +3,8 @@ import copy
 
 from picklable_itertools.extras import equizip
 
-from blocks.bricks import Initializable, Linear
 from blocks.bricks.base import lazy, application
+from blocks.bricks.simple import Initializable, Linear
 from blocks.utils import pack, extract_args
 
 

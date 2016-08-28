@@ -195,7 +195,7 @@ def test_no_input_size():
                          c.initialize)
 
 
-def test_tied_biases():
+def test_untied_biases():
     x = tensor.tensor4('x')
     num_channels = 4
     num_filters = 3
@@ -203,10 +203,49 @@ def test_tied_biases():
     filter_size = (3, 3)
     conv = Convolutional(filter_size, num_filters, num_channels,
                          weights_init=Constant(1.), biases_init=Constant(2.),
-                         tied_biases=True)
+                         image_size=(28, 30), tied_biases=False)
+    conv.initialize()
+
+    y = conv.apply(x)
+    func = function([x], y)
+
+    # Untied biases provide a bias for every individual output
+    assert_allclose(conv.b.eval().shape, (3, 26, 28))
+
+    # Untied biases require images of a specific size
+    x_val_1 = numpy.ones((batch_size, num_channels, 28, 30),
+                          dtype=theano.config.floatX)
+
+    assert_allclose(func(x_val_1),
+                    numpy.prod(filter_size) * num_channels *
+                    numpy.ones((batch_size, num_filters, 26, 28)) + 2)
+
+    x_val_2 = numpy.ones((batch_size, num_channels, 23, 19),
+                          dtype=theano.config.floatX)
+
+    def wrongsize():
+        func(x_val_2)
+
+    assert_raises_regexp(ValueError, 'Input dimension mis-match.*',
+                         wrongsize)
+
+
+def test_tied_biases():
+    x = tensor.tensor4('x')
+    num_channels = 4
+    num_filters = 3
+    batch_size = 5
+    filter_size = (3, 3)
+
+    # Tied biases are the default
+    conv = Convolutional(filter_size, num_filters, num_channels,
+                         weights_init=Constant(1.), biases_init=Constant(2.))
     conv.initialize()
     y = conv.apply(x)
     func = function([x], y)
+
+    # Tied biases only provide one bias for each filter
+    assert_allclose(conv.b.eval().shape, (3,))
 
     # Tied biases allows to pass images of different sizes
     x_val_1 = numpy.ones((batch_size, num_channels, 10,

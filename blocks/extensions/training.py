@@ -1,5 +1,9 @@
 import inspect
+import logging
 from blocks.extensions import SimpleExtension
+
+
+logger = logging.getLogger(__name__)
 
 
 class SharedVariableModifier(SimpleExtension):
@@ -113,13 +117,23 @@ class TrackTheBest(SimpleExtension):
         super(TrackTheBest, self).__init__(**kwargs)
 
     def do(self, which_callback, *args):
+        clsname = self.__class__.__name__
         current_value = self.main_loop.log.current_row.get(self.record_name)
+        logger.debug('%s: current value of log.current_row["%s"] = %s',
+                     clsname, self.record_name, str(current_value))
         if current_value is None:
             return
         best_value = self.main_loop.status.get(self.best_name, None)
+        logger.debug('%s: current value of status["%s"] = %s',
+                     clsname, self.best_name, str(best_value))
         if (best_value is None or
                 (current_value != best_value and
                  self.choose_best(current_value, best_value) ==
                  current_value)):
+            logger.debug('%s: New best obtained at iteration %d!',
+                         clsname, self.main_loop.log.status['iterations_done'])
+            logger.debug('%s: Updating status["%s"], adding notification '
+                         'to log (%s)', clsname, self.best_name,
+                         self.notification_name)
             self.main_loop.status[self.best_name] = current_value
             self.main_loop.log.current_row[self.notification_name] = True

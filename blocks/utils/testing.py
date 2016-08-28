@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+import time
 from six import wraps
 from importlib import import_module
 from unittest.case import SkipTest
@@ -103,8 +104,9 @@ class MockAlgorithm(TrainingAlgorithm):
     Also checks that the initialization routine is only called once.
 
     """
-    def __init__(self):
+    def __init__(self, delay_time=0):
         self._initialized = False
+        self.delay_time = delay_time
 
     def initialize(self):
         assert not self._initialized
@@ -112,6 +114,7 @@ class MockAlgorithm(TrainingAlgorithm):
 
     def process_batch(self, batch):
         self.batch = batch
+        time.sleep(self.delay_time)
 
 
 class MockMainLoop(MainLoop):
@@ -121,8 +124,8 @@ class MockMainLoop(MainLoop):
     which calls were made.
 
     """
-    def __init__(self, **kwargs):
+    def __init__(self, delay_time=0, **kwargs):
         kwargs.setdefault('data_stream',
                           IterableDataset(range(10)).get_example_stream())
-        kwargs.setdefault('algorithm', MockAlgorithm())
+        kwargs.setdefault('algorithm', MockAlgorithm(delay_time))
         super(MockMainLoop, self).__init__(**kwargs)

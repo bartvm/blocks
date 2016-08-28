@@ -21,6 +21,10 @@ matrix:
       env: TESTS=blocks-examples FLOATX=float32 DB=sqlite
     - python: 3.4
       env: TESTS=blocks-examples FLOATX=float64
+    - python: 2.7
+      env: TESTS=documentation FLOATX=float32
+    - python: 3.4
+      env: TESTS=documentation FLOATX=float64
 before_install:
   - # Setup Python environment with BLAS libraries
   - wget -q http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
@@ -32,7 +36,15 @@ before_install:
 install:
   # Install all Python dependencies
   - conda install -q --yes python=$TRAVIS_PYTHON_VERSION --file req-travis-conda.txt
+  - |
+      if [[ $TESTS == 'documentation' ]]; then
+        conda install -q --yes python=$TRAVIS_PYTHON_VERSION graphviz==2.38.0
+      fi
   - pip install -q -r req-travis-pip.txt
+  - |
+      if [[ $TESTS == 'documentation' ]]; then
+        pip install -q -r req-travis-docs-pip.txt
+      fi
 script:
   - pip install -e . -r requirements.txt # Tests setup.py
   - curl https://raw.githubusercontent.com/mila-udem/fuel/master/.travis-data.sh | bash -s -- mnist
@@ -55,6 +67,10 @@ script:
         git clone https://github.com/mila-udem/blocks-examples.git
         cd blocks-examples
         nose2 tests
+      fi
+  - |
+      if [[ $TESTS == 'documentation' ]]; then
+        sphinx-build -vW docs html
       fi
 after_script:
   - |

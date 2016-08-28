@@ -3,6 +3,7 @@ import logging
 import itertools
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
+from collections import Mapping
 from six.moves import reduce
 
 from picklable_itertools.extras import equizip
@@ -221,9 +222,10 @@ class GradientDescent(UpdatesAlgorithm):
         remember a weighted sum of gradients from previous steps like it is
         done in gradient descent with momentum. If ``None``, an instance of
         :class:`Scale` is created.
-    gradients : OrderedDict, optional
+    gradients : OrderedDict or list of 2-tuples, optional
         A dictionary mapping a parameter to an expression for the cost's
-        gradient with respect to the parameter. If ``None``, the gradient
+        gradient with respect to the parameter, or equivalently, a list of
+        (parameter, gradient) tuples. If ``None``, the gradient
         are taken automatically using :func:`theano.gradient.grad`.
     known_grads : dict, optional
         A passthrough to `theano.tensor.grad`'s `known_grads` argument.
@@ -266,6 +268,11 @@ class GradientDescent(UpdatesAlgorithm):
         # Set initial values for cost, parameters, gradients.
         self.cost = cost
         self.parameters = parameters
+        # Coerce lists of tuples to OrderedDict. Do not coerce Mappings,
+        # as we don't want to convert dict -> OrderedDict and give it
+        # an arbitrary, non-deterministic order.
+        if gradients is not None and not isinstance(gradients, Mapping):
+            gradients = OrderedDict(gradients)
         self.gradients = gradients
 
         # If we don't have gradients, we'll need to infer them from the
@@ -798,9 +805,9 @@ class AdaGrad(StepRule):
     -----
     For more information, see [ADAGRAD]_.
 
-    .. [ADADGRAD] Duchi J, Hazan E, Singer Y.,
+    .. [ADAGRAD] Duchi J, Hazan E, Singer Y.,
        *Adaptive subgradient methods for online learning and
-        stochastic optimization*,
+       stochastic optimization*,
        http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf
 
     """

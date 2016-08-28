@@ -5,7 +5,7 @@ import theano
 from numpy.testing import assert_equal, assert_allclose, assert_raises
 
 from blocks.initialization import Constant, IsotropicGaussian, Sparse
-from blocks.initialization import Uniform, Orthogonal
+from blocks.initialization import Uniform, Orthogonal, Identity
 
 
 def test_constant():
@@ -25,6 +25,12 @@ def test_constant():
     yield (check_constant, numpy.array([[1], [2], [3]]), (3, 2),
            numpy.array([[1, 1], [2, 2], [3, 3]], dtype=theano.config.floatX))
 
+    assert str(Constant(1.0)).endswith(' constant=1.0>')
+
+
+def test_identity():
+    assert str(Identity(2.0)).endswith(' mult=2.0>')
+
 
 def test_gaussian():
     rng = numpy.random.RandomState(1)
@@ -37,6 +43,8 @@ def test_gaussian():
         assert_allclose(weights.std(), std, atol=1e-2)
     yield check_gaussian, rng, 0, 1, (500, 600)
     yield check_gaussian, rng, 5, 3, (600, 500)
+
+    assert str(IsotropicGaussian(1.0, 2.0)).endswith(' mean=2.0, std=1.0>')
 
 
 def test_uniform():
@@ -58,6 +66,8 @@ def test_uniform():
     yield check_uniform, rng, 5, None, 0.004, (700, 300)
 
     assert_raises(ValueError, Uniform, 0, 1, 1)
+
+    assert str(Uniform(1.0, 2.0)).endswith(' mean=1.0, width=2.0>')
 
 
 def test_sparse():
@@ -124,3 +134,5 @@ def test_orthogonal():
     yield check_orthogonal, rng, (50, 50), .5
     yield check_orthogonal, rng, (50, 51), .5
     yield check_orthogonal, rng, (51, 50), .5
+
+    assert str(Orthogonal(3.0)).endswith(' scale=3.0>')

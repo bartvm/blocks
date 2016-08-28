@@ -9,8 +9,10 @@ from blocks.bricks import (BatchNormalization, SpatialBatchNormalization,
 from blocks.bricks.conv import (Convolutional, ConvolutionalSequence,
                                 MaxPooling, AveragePooling)
 from blocks.initialization import Constant
+from blocks.filter import VariableFilter
 from blocks.graph import (ComputationGraph, batch_normalization,
                           get_batch_normalization_updates)
+from blocks.roles import BATCH_NORM_MINIBATCH_ESTIMATE
 
 
 def random_unif(rng, dim, low=1, high=10):
@@ -64,10 +66,11 @@ def test_batch_normalization_allocation_initialization():
 
 
 def apply_setup(input_dim, broadcastable, conserve_memory,
-                mean_only):
+                mean_only, learn_scale, learn_shift):
     """Common setup code."""
     bn = BatchNormalization(input_dim, broadcastable, conserve_memory,
-                            epsilon=1e-4, mean_only=mean_only)
+                            epsilon=1e-4, mean_only=mean_only,
+                            learn_scale=learn_scale, learn_shift=learn_shift)
     bn.initialize()
     b_len = (len(input_dim) if isinstance(input_dim, collections.Sequence)
              else 1)
@@ -79,9 +82,10 @@ def apply_setup(input_dim, broadcastable, conserve_memory,
 def test_batch_normalization_inference_apply():
     """Test that BatchNormalization.apply works in inference mode."""
     def check(input_dim, variable_dim, broadcastable=None,
-              conserve_memory=True, mean_only=False):
+              conserve_memory=True, mean_only=False, learn_scale=True,
+              learn_shift=True):
         bn, x = apply_setup(input_dim, broadcastable, conserve_memory,
-                            mean_only)
+                            mean_only, learn_scale, learn_shift)
         y = bn.apply(x)
         rng = numpy.random.RandomState((2015, 12, 16))
         input_ = random_unif(rng,
@@ -107,21 +111,30 @@ def test_batch_normalization_inference_apply():
                             rtol=1e-4)
 
             # Test learned scale is applied.
-            gamma = random_unif(rng, variable_dim)
-            bn.scale.set_value(gamma)
+            if learn_scale:
+                gamma = random_unif(rng, variable_dim)
+                bn.scale.set_value(gamma)
+            else:
+                gamma = 1
             assert_allclose(y.eval({x: input_}),
                             (input_ - pop_mean) * (gamma / pop_stdev),
                             rtol=1e-4)
 
             # Test learned offset is applied.
-            beta = random_unif(rng, variable_dim)
-            bn.shift.set_value(beta)
+            if learn_shift:
+                beta = random_unif(rng, variable_dim)
+                bn.shift.set_value(beta)
+            else:
+                beta = 0.
             assert_allclose(y.eval({x: input_}),
                             (input_ - pop_mean) * (gamma / pop_stdev) + beta,
                             rtol=1e-4)
         else:
-            beta = random_unif(rng, variable_dim)
-            bn.shift.set_value(beta)
+            if learn_shift:
+                beta = random_unif(rng, variable_dim)
+                bn.shift.set_value(beta)
+            else:
+                beta = 0.
             assert_allclose(y.eval({x: input_}), input_ - pop_mean + beta,
                             rtol=1e-4)
 
@@ -131,15 +144,24 @@ def test_batch_normalization_inference_apply():
     yield check, (5, 4), (5, 4), None, False, True
     yield check, (2, 9, 7), (2, 1, 1), (False, True, True)
     yield check, (2, 9, 7), (2, 1, 1), (False, True, True), True, True
+    yield check, (6, 7), (6, 7), None, False, False, False, False
+    yield check, (9, 2), (9, 2), None, False, True, False, False
+    yield check, (3,), (3,), None, False, False, True, False
+    yield check, (6, 5, 4), (6, 5, 4), None, False, True, True, False
+    yield check, (2, 9, 1, 4), (2, 9, 1, 4), None, False, False, False, True
+    yield check, (3, 1), (3, 1), None, False, True, False, True
+    yield check, (6,), (6,), None, False, False, True, True
+    yield check, (1,), (1,), None, False, True, True, True
 
 
 def test_batch_normalization_train_apply():
     def check(input_dim, variable_dim, broadcastable=None,
-              conserve_memory=True, mean_only=False):
+              conserve_memory=True, mean_only=False, learn_scale=True,
+              learn_shift=True):
         # Default epsilon value.
         epsilon = numpy.cast[theano.config.floatX](1e-4)
         bn, x = apply_setup(input_dim, broadcastable, conserve_memory,
-                            mean_only)
+                            mean_only, learn_scale, learn_shift)
         with bn:
             y_hat = bn.apply(x)
 
@@ -171,15 +193,20 @@ def test_batch_normalization_train_apply():
 
         if not mean_only:
             # Check that the scale parameters are still getting applied.
-            gamma = random_unif(rng, variable_dim)
-            bn.scale.set_value(gamma)
+            if learn_scale:
+                gamma = random_unif(rng, variable_dim)
+                bn.scale.set_value(gamma)
+            else:
+                gamma = 1.
             assert_allclose(y_hat.eval({x: input_}),
                             normalize(input_, mean_only) * gamma,
                             atol=(1e-3 if theano.config.floatX == 'float32'
                                   else 1e-7))
-
-            beta = random_unif(rng, variable_dim)
-            bn.shift.set_value(beta)
+            if learn_shift:
+                beta = random_unif(rng, variable_dim)
+                bn.shift.set_value(beta)
+            else:
+                beta = 0.
             # Check that the shift parameters are still getting applied.
             assert_allclose(y_hat.eval({x: input_}),
                             normalize(input_, mean_only) * gamma + beta,
@@ -197,8 +224,11 @@ def test_batch_normalization_train_apply():
                             atol=(1e-3 if theano.config.floatX == 'float32'
                                   else 1e-7))
         else:
-            beta = random_unif(rng, variable_dim)
-            bn.shift.set_value(beta)
+            if learn_shift:
+                beta = random_unif(rng, variable_dim)
+                bn.shift.set_value(beta)
+            else:
+                beta = 0.
             # Check that the shift parameters are still getting applied.
             assert_allclose(y_hat.eval({x: input_}),
                             normalize(input_, mean_only) + beta,
@@ -219,6 +249,14 @@ def test_batch_normalization_train_apply():
     yield check, (5, 4), (5, 4), None, False, True
     yield check, (2, 9, 7), (2, 1, 1), (False, True, True)
     yield check, (2, 9, 7), (2, 1, 1), (False, True, True), True, True
+    yield check, (6, 7), (6, 7), None, False, False, False, False
+    yield check, (9, 2), (9, 2), None, False, True, False, False
+    yield check, (3,), (3,), None, False, False, True, False
+    yield check, (6, 5, 4), (6, 5, 4), None, False, True, True, False
+    yield check, (2, 9, 1, 4), (2, 9, 1, 4), None, False, False, False, True
+    yield check, (3, 1), (3, 1), None, False, True, False, True
+    yield check, (6,), (6,), None, False, False, True, True
+    yield check, (1,), (1,), None, False, True, True, True
 
 
 def test_batch_normalization_image_size_setter():
@@ -344,12 +382,40 @@ def test_batch_normalized_mlp_conserve_memory_propagated():
     assert all(act.children[0].conserve_memory for act in mlp.activations)
 
 
-def test_batch_normalized_mlp_mean_only_propagated():
+def test_batch_normalized_mlp_mean_only_propagated_at_alloc():
     """Test that setting mean_only on a BatchNormalizedMLP works."""
     mlp = BatchNormalizedMLP([Tanh(), Tanh()], [5, 7, 9],
-                             mean_only=False)
-    assert not mlp.mean_only
-    assert not any(act.children[0].mean_only for act in mlp.activations)
-    mlp.mean_only = True
+                             mean_only=True)
     assert mlp.mean_only
+    assert not any(act.children[0].mean_only for act in mlp.activations)
+    mlp.allocate()
     assert all(act.children[0].mean_only for act in mlp.activations)
+
+
+def test_batch_normalized_mlp_learn_shift_propagated_at_alloc():
+    """Test that setting learn_shift on a BatchNormalizedMLP works."""
+    mlp = BatchNormalizedMLP([Tanh(), Tanh()], [5, 7, 9],
+                             learn_shift=False)
+    assert not mlp.learn_shift
+    assert all(act.children[0].learn_shift for act in mlp.activations)
+    mlp.allocate()
+    assert not any(act.children[0].learn_shift for act in mlp.activations)
+
+
+def test_batch_normalized_mlp_learn_scale_propagated_at_alloc():
+    """Test that setting learn_scale on a BatchNormalizedMLP works."""
+    mlp = BatchNormalizedMLP([Tanh(), Tanh()], [5, 7, 9],
+                             learn_scale=False)
+    assert not mlp.learn_scale
+    assert all(act.children[0].learn_scale for act in mlp.activations)
+    mlp.allocate()
+    assert not any(act.children[0].learn_scale for act in mlp.activations)
+
+
+def test_batch_normalization_broadcastable_sanity():
+    bn = BatchNormalization((5, 3, 2), broadcastable=(False, True, False))
+    with bn:
+        cg = ComputationGraph([bn.apply(tensor.tensor4('abc'))])
+    vars = VariableFilter(roles=[BATCH_NORM_MINIBATCH_ESTIMATE])(cg)
+    assert all(v.broadcastable[1:] == bn.population_mean.broadcastable
+               for v in vars)

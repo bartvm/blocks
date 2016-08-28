@@ -75,14 +75,14 @@ class VariableRole(object):
 class InputRole(VariableRole):
     pass
 
-#: The input of a :class:`.Brick`
+#: The input of a :class:`~.bricks.Brick`
 INPUT = InputRole()
 
 
 class OutputRole(VariableRole):
     pass
 
-#: The output of a :class:`.Brick`
+#: The output of a :class:`~.bricks.Brick`
 OUTPUT = OutputRole()
 
 

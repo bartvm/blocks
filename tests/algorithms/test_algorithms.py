@@ -83,17 +83,23 @@ def test_gradient_descent():
 
 
 def test_gradient_descent_with_gradients():
-    W = shared_floatx(numpy.array([[1, 2], [3, 4]]))
-    W_start_value = W.get_value()
-    cost = tensor.sum(W ** 2)
-    gradients = OrderedDict()
-    gradients[W] = tensor.grad(cost, W)
+    def _test(f):
+        W = shared_floatx(numpy.array([[1, 2], [3, 4]]))
+        W_start_value = W.get_value()
+        cost = tensor.sum(W ** 2)
+        gradients = OrderedDict()
+        gradients[W] = tensor.grad(cost, W)
+        algorithm = GradientDescent(gradients=f(gradients))
+        algorithm.step_rule.learning_rate.set_value(0.75)
+        algorithm.initialize()
+        algorithm.process_batch(dict())
+        assert_allclose(W.get_value(), -0.5 * W_start_value)
 
-    algorithm = GradientDescent(gradients=gradients)
-    algorithm.step_rule.learning_rate.set_value(0.75)
-    algorithm.initialize()
-    algorithm.process_batch(dict())
-    assert_allclose(W.get_value(), -0.5 * W_start_value)
+    # With OrderedDict
+    yield (_test, lambda g: g)
+
+    # With list of pairs
+    yield (_test, lambda g: list(g.items()))
 
 
 def test_gradient_descent_multiple_initialize():

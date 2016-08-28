@@ -10,7 +10,9 @@ Bricks
 
 .. automodule:: blocks.bricks
     :members:
-    :exclude-members: Activation, ActivationDocumentation
+    :exclude-members: Activation, ActivationDocumentation, BaseRecurrent,
+                      recurrent, SimpleRecurrent, LSTM, GatedRecurrent,
+                      Bidirectional, RecurrentStack, RECURRENTSTACK_SEPARATOR
     :undoc-members:
     :show-inheritance:
 
@@ -38,7 +40,26 @@ Routing bricks
 Recurrent bricks
 ----------------
 
-.. automodule:: blocks.bricks.recurrent
+Recurrent architectures
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: blocks.bricks.recurrent.architectures
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Helper bricks for recurrent networks
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: blocks.bricks.recurrent.misc
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Base definitions for recurrent bricks
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: blocks.bricks.recurrent.base
     :members:
     :undoc-members:
     :show-inheritance:

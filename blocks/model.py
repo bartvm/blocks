@@ -20,7 +20,6 @@ from collections import OrderedDict, Counter
 from itertools import chain
 
 from blocks.graph import ComputationGraph
-from blocks.select import Selector
 from blocks.filter import get_brick
 
 logger = logging.getLogger(__name__)
@@ -75,14 +74,12 @@ class Model(ComputationGraph):
         if repeated_names:
             raise ValueError("top bricks with the same name:"
                              " {}".format(', '.join(repeated_names)))
-        brick_parameter_names = {
-            v: k for k, v in Selector(
-                self.top_bricks).get_parameters().items()}
         parameter_list = []
         for parameter in self.parameters:
-            if parameter in brick_parameter_names:
-                parameter_list.append((brick_parameter_names[parameter],
-                                       parameter))
+            if get_brick(parameter):
+                parameter_list.append(
+                    (get_brick(parameter).get_hierarchical_name(parameter),
+                     parameter))
             else:
                 parameter_list.append((parameter.name, parameter))
         self._parameter_dict = OrderedDict(parameter_list)

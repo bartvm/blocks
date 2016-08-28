@@ -5,7 +5,7 @@ from itertools import count
 from multiprocessing import Process
 
 from fuel.datasets import IterableDataset
-from mock import MagicMock
+from mock import MagicMock, ANY
 from numpy.testing import assert_raises
 from six.moves import cPickle
 
@@ -102,11 +102,11 @@ def test_error():
     ext.on_error = MagicMock()
     main_loop = MockMainLoop(extensions=[ext, FinishAfter(after_epoch=True)])
     assert_raises(KeyError, main_loop.run)
-    ext.on_error.assert_called_once_with()
+    ext.on_error.assert_called_once_with(ANY)
     assert 'got_exception' in main_loop.log.current_row
 
     ext.on_error = MagicMock(side_effect=AttributeError)
     main_loop = MockMainLoop(extensions=[ext, FinishAfter(after_epoch=True)])
     assert_raises(KeyError, main_loop.run)
-    ext.on_error.assert_called_once_with()
+    ext.on_error.assert_called_once_with(ANY)
     assert 'got_exception' in main_loop.log.current_row

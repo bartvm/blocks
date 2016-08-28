@@ -44,8 +44,8 @@ class VariableFilter(object):
     ----------
     roles : list of :class:`.VariableRole` instances, optional
         Matches any variable which has one of the roles given.
-    bricks : list of :class:`.Brick` classes or list of instances of
-             :class:`.Brick`, optional
+    bricks : list of :class:`~.bricks.Brick` classes or list of
+             instances of :class:`~.bricks.Brick`, optional
         Matches any variable that is instance of any of the given classes
         or that is owned by any of the given brick instances.
     each_role : bool, optional

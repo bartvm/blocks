@@ -94,6 +94,25 @@ def test_bug_in_initial_states():
     assert_raises(KeyError, do)
 
 
+class RecurrentBrickWithOutputs(BaseRecurrent):
+
+    @recurrent(sequences=[], contexts=[],
+               states=['states'], outputs=['outputs', 'states'])
+    def apply(self, states):
+        return states + 1, states + 1
+
+    def get_dim(self, name):
+        return 4
+
+
+def test_return_initial_states_with_outputs():
+    brick = RecurrentBrickWithOutputs()
+    outputs, states = brick.apply(
+        n_steps=3, batch_size=5, return_initial_states=True)
+    assert_allclose(outputs.eval()[0], numpy.ones((5, 4)))
+    assert_allclose(states.eval()[0], numpy.zeros((5, 4)))
+
+
 class TestSimpleRecurrent(unittest.TestCase):
     def setUp(self):
         self.simple = SimpleRecurrent(dim=3, weights_init=Constant(2),

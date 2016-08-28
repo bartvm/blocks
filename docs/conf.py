@@ -15,6 +15,8 @@
 import inspect
 import sys
 import os
+import sphinx.environment
+from docutils.utils import get_source_line
 from mock import Mock as MagicMock
 from sphinx.ext.autodoc import cut_lines
 
@@ -351,3 +353,11 @@ def linkcode_resolve(domain, info):
     github = "https://github.com/mila-udem/blocks/blob/master/blocks/{}{}"
     return github.format(fn, linespec)
 
+
+# Suppress "nonlocal image URI" warnings
+# http://stackoverflow.com/questions/12772927
+def _warn_node(self, msg, node, **kwargs):
+    if not msg.startswith('nonlocal image URI found:'):
+        self._warnfunc(msg, '%s:%s' % get_source_line(node), **kwargs)
+
+sphinx.environment.BuildEnvironment.warn_node = _warn_node

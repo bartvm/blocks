@@ -189,7 +189,7 @@ class MainLoop(object):
                 self.log.current_row['got_exception'] = traceback.format_exc()
                 logger.error("Error occured during training." + error_message)
                 try:
-                    self._run_extensions('on_error')
+                    self._run_extensions('on_error', e)
                 except Exception:
                     logger.error(traceback.format_exc())
                     logger.error("Error occured when running extensions." +

@@ -110,7 +110,8 @@ class BeamSearch(object):
             applications=[self.generator.readout.emit], roles=[OUTPUT])(
                 self.inner_cg.variables)
         self.next_state_computer = function(
-            self.contexts + self.input_states + next_outputs, next_states)
+            self.contexts + self.input_states + next_outputs, next_states,
+            on_unused_input='ignore')
 
     def _compile_logprobs_computer(self):
         # This filtering should return identical variables

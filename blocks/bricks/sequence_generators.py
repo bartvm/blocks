@@ -137,7 +137,7 @@ class BaseSequenceGenerator(Initializable):
         The readout component of the sequence generator.
     transition : instance of :class:`AbstractAttentionRecurrent`
         The transition component of the sequence generator.
-    fork : :class:`.Brick`
+    fork : :class:`~.bricks.Brick`
         The brick to compute the transition's inputs from the feedback.
 
     See Also
@@ -479,7 +479,7 @@ class Readout(AbstractReadout):
         The emitter component.
     feedback_brick : an instance of :class:`AbstractFeedback`
         The feedback component.
-    merge : :class:`.Brick`, optional
+    merge : :class:`~.bricks.Brick`, optional
         A brick that takes the sources given in `source_names` as an input
         and combines them into a single output. If given, `merge_prototype`
         cannot be given.

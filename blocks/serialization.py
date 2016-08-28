@@ -136,11 +136,12 @@ except:
 from blocks.config import config
 from blocks.filter import get_brick
 from blocks.utils import change_recursion_limit
+from blocks.bricks.base import BRICK_DELIMITER
 
 
 logger = logging.getLogger(__name__)
 
-BRICK_DELIMITER = '|'
+SERIALIZATION_BRICK_DELIMITER = '|'
 MAIN_MODULE_WARNING = """WARNING: Main loop depends on the function `{}` in \
 `__main__` namespace.
 
@@ -258,7 +259,7 @@ def load(file_, name='_pkl', use_cpickle=False, **kwargs):
 
     Returns
     -------
-    The object saved in file_.
+    The object saved in ``file_``.
 
     """
     file_.seek(0)  # To be able to read several objects in one file
@@ -293,7 +294,8 @@ def load_parameters(file_):
 
     """
     with closing(_load_parameters_npzfile(file_)) as npz_file:
-        return {name.replace(BRICK_DELIMITER, '/'): value
+        return {name.replace(SERIALIZATION_BRICK_DELIMITER,
+                             BRICK_DELIMITER): value
                 for name, value in npz_file.items()}
 
 
@@ -527,11 +529,8 @@ class _Renamer(object):
     def __call__(self, parameter):
         # Standard Blocks parameter
         if get_brick(parameter) is not None:
-            name = '{}.{}'.format(
-                BRICK_DELIMITER.join(
-                    [""] + [brick.name for brick in
-                            get_brick(parameter).get_unique_path()]),
-                parameter.name)
+            name = get_brick(parameter).get_hierarchical_name(
+                parameter, SERIALIZATION_BRICK_DELIMITER)
         # Shared variables with tag.name
         elif hasattr(parameter.tag, 'name'):
             name = parameter.tag.name
