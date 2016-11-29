@@ -1,5 +1,5 @@
 import sys
-from StringIO import StringIO
+from six import StringIO
 
 from blocks.extensions import FinishAfter, Printing
 from blocks.utils.testing import MockMainLoop
