@@ -24,7 +24,6 @@ def test_printing_status():
         assert 'Training status' in output
     finally:
         sys.stdout = stdout
-        print output
 
 def test_printing_no_status():
     main_loop = setup_mainloop(print_status=False)
