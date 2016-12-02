@@ -56,6 +56,7 @@ script:
   - # Must export environment variable so that the subprocess is aware of it
   - export THEANO_FLAGS=floatX=$FLOATX,optimizer=fast_compile
   - export FUEL_FLOATX=$FLOATX
+  - bokeh-server & #start bokeh-server
   - "if [[ $DB == 'sqlite' ]]; then echo 'log_backend: sqlite' > ~/.blocksrc; fi"
   - # Running nose2 within coverage makes imports count towards coverage
   - function fail { export FAILED=1; }
@@ -69,8 +70,9 @@ script:
   - |
       if [[ $TESTS == 'blocks-examples' ]]; then
         cd $TRAVIS_BUILD_DIR
-        git clone https://github.com/mila-udem/blocks-examples.git
+        git clone https://github.com/mila-udem/blocks-examples
         cd blocks-examples
+        git checkout rizar-patch-1
         nose2 tests
       fi
   - |
