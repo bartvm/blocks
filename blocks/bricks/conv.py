@@ -336,8 +336,8 @@ class Pooling(Initializable, Feedforward):
             return self.input_dim
         if name == 'output':
             return tuple(Pool.out_shape(
-                self.input_dim, self.pooling_size, st=self.step,
-                ignore_border=self.ignore_border, padding=self.padding))
+                (None,) + self.input_dim, self.pooling_size, st=self.step,
+                ignore_border=self.ignore_border, padding=self.padding))[1:]
 
     @property
     def num_output_channels(self):
