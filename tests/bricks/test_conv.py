@@ -526,4 +526,10 @@ def test_convolutional_sequence_with_no_input_size():
     except TypeError:
         assert False, "This should have succeeded"
 
+    assert seq.get_dim('output') == (num_filters, None, None)
     assert out.ndim == 4
+
+
+def test_pooling_with_no_input_size():
+    pool = MaxPooling((1, 1))
+    assert pool.get_dim('output') == (None, None, None)
