@@ -1,3 +1,14 @@
+Installing in the Development Mode
+----------------------------------
+
+If you want to install Blocks from a repository clone and have your changes
+immediately visible in the installed version, run the following command
+from the root directory of your clone:
+
+.. code-block:: bash
+
+   $ pip install -r requirements.txt --user -e .
+
 Building documentation
 ----------------------
 
