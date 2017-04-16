@@ -214,12 +214,14 @@ class Application(object):
         if 'properties' in self.__dict__ and name in self.properties:
             return property(create_unbound_method(
                 getattr(self, self.properties[name]), self.brick))
-        raise AttributeError
+        raise AttributeError("Cannot find '%s' property in brick %s" %
+                             (name, str(self)))
 
     def __setattr__(self, name, value):
         # Mimic behavior of read-only properties
         if 'properties' in self.__dict__ and name in self.properties:
-            raise AttributeError("can't set attribute")
+            raise AttributeError("Can't set attribute '%s' in brick %s" %
+                                 (name, str(self)))
         super(Application, self).__setattr__(name, value)
 
     @property_
