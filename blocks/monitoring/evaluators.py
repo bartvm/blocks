@@ -143,7 +143,13 @@ class AggregationBuffer(object):
 
         for v in self.variables:
             logger.debug('variable to evaluate: %s', v.name)
-            if not hasattr(v.tag, 'aggregation_scheme'):
+            if hasattr(v.tag, 'aggregation_scheme'):
+                logger.debug('Using %s aggregation scheme'
+                             ' for %s based on the aggregation_scheme tag',
+                             v.tag.aggregation_scheme.__class__.__name__,
+                             v.name
+                             )
+            else:
                 if not self._computation_graph.has_inputs(v):
                     scheme = (TakeLast if self.use_take_last
                               else _DataIndependent)

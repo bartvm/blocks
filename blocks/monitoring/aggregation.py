@@ -143,11 +143,62 @@ class Mean(AggregationScheme):
         return aggregator
 
 
-def mean(numerator, denominator=1.):
+def mean(numerator, denominator=1., name=None):
     """Mean of quantity (numerator) over a number (denominator) values."""
     variable = numerator / denominator
     variable.tag.aggregation_scheme = Mean(numerator, denominator)
-    variable.name = numerator.name
+    if name is not None:
+        variable.name = name
+    else:
+        variable.name = numerator.name
+    return variable
+
+
+class Sum_(AggregationScheme):
+    """Aggregation scheme which computes the sum.
+
+    Parameters
+    ----------
+    summand : :class:`~tensor.TensorVariable`
+        Theano variable to be summed
+
+    """
+    def __init__(self, summand):
+        self.summand = summand
+
+    def get_aggregator(self):
+        initialized = shared_like(0.)
+        summand_acc = shared_like(self.summand)
+
+        # Dummy default expression to use as the previously-accumulated
+        # value, that has the same shape as the new result
+        summand_zeros = tensor.as_tensor(self.summand).zeros_like()
+
+        conditional_update_sum = self.summand + tensor.switch(initialized,
+                                                              summand_acc,
+                                                              summand_zeros)
+
+        initialization_updates = [(summand_acc,
+                                   tensor.zeros_like(summand_acc)),
+                                  (initialized, 0.)]
+        accumulation_updates = [(summand_acc,
+                                 conditional_update_sum),
+                                (initialized, 1.)]
+        aggregator = Aggregator(aggregation_scheme=self,
+                                initialization_updates=initialization_updates,
+                                accumulation_updates=accumulation_updates,
+                                readout_variable=summand_acc)
+        return aggregator
+
+
+def sum_(summand, name=None):
+    """Sum of a variable over batches."""
+    variable = summand.copy()
+    variable.tag.aggregation_scheme = Sum_(summand)
+    if name is not None:
+        variable.name = name
+    else:
+        variable.name = summand.name
     return variable
 
 
