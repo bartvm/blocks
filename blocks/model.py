@@ -156,3 +156,4 @@ class Model(ComputationGraph):
 
         """
         return self.top_bricks
+
