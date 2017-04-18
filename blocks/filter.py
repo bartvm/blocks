@@ -3,6 +3,7 @@ import re
 
 from blocks.bricks.base import ApplicationCall, BoundApplication, Brick
 from blocks.roles import has_roles
+from theano.tensor import TensorVariable
 
 
 def get_annotation(var, cls):
@@ -120,14 +121,32 @@ class VariableFilter(object):
         self.theano_name_regex = theano_name_regex
         self.applications = applications
 
-    def __call__(self, variables):
+    def __call__(self, variables, graph=False):
         """Filter the given variables.
 
         Parameters
         ----------
-        variables : list of :class:`~tensor.TensorVariable`
+        variables : :class:`~tensor.TensorVariable` or iterable
+            If an instance of :class:`~tensor.TensorVariable`,
+            operate on a :class:`~blocks.graph.ComputationGraph`
+            built from that variable. If an iterable (e.g. a list,
+            or :class:`~blocks.graph.ComputationGraph`) containing
+            :class:`~tensor.TensorVariable`s, operate on those variables.
+        graph : bool, optional
+            If `True`, build a `~blocks.graph.ComputationGraph` instance
+            with `variables` as the output. Default: `False`. Note that
+            `False` has no effect if `variables` is a
+            :class:`~tensor.TensorVariable` (i.e. the result is the same,
+            an instance of :class:`~blocks.graph.ComputationGraph` is
+            built).
 
         """
+        if isinstance(variables, TensorVariable):
+            graph = True
+            variables = [variables]
+        if graph:
+            from blocks.graph import ComputationGraph
+            variables = ComputationGraph(variables)
         if self.roles:
             variables = [var for var in variables
                          if has_roles(var, self.roles, self.each_role)]

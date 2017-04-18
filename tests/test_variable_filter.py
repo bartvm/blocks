@@ -4,7 +4,7 @@ from blocks.bricks import Bias, Linear, Logistic
 from blocks.bricks.parallel import Merge
 from blocks.filter import VariableFilter
 from blocks.graph import ComputationGraph
-from blocks.roles import BIAS, FILTER, PARAMETER, OUTPUT
+from blocks.roles import BIAS, FILTER, PARAMETER, OUTPUT, INPUT
 
 from theano import tensor
 
@@ -89,6 +89,16 @@ def test_variable_filter():
     outputs_application = VariableFilter(
         roles=[OUTPUT], applications=[merge.apply])(merge_cg.variables)
     assert outputs_application == [merged]
+
+    # Test graph=True keyword.
+    inputs_application = VariableFilter(
+        roles=[INPUT], applications=[merge.apply])([merged], graph=True)
+    assert len(inputs_application) == 2
+
+    # Test single variable behaviour.
+    inputs_application = VariableFilter(
+        roles=[INPUT], applications=[merge.apply])(merged)
+    assert len(inputs_application) == 2
 
 
 @raises(TypeError)
