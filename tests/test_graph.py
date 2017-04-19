@@ -186,7 +186,7 @@ def test_snapshot():
 
 def test_collect():
     x = tensor.matrix()
-    mlp = MLP(activations=[Logistic(), Logistic()], dims=[784, 100, 784],
+    mlp = MLP(activations=[Logistic(), Logistic()], dims=[784, 100, 512],
               use_bias=False)
     cost = SquaredError().apply(x, mlp.apply(x))
     cg = ComputationGraph(cost)
@@ -196,13 +196,13 @@ def test_collect():
         W.set_value(numpy.ones_like(W.get_value()) * (i + 1))
     new_cg = collect_parameters(cg, cg.shared_variables)
     collected_parameters, = new_cg.shared_variables
-    assert numpy.all(collected_parameters.get_value()[:784 * 100] == 1.)
+    assert numpy.all(collected_parameters.get_value()[:512 * 100] == 1.)
     assert numpy.all(collected_parameters.get_value()[784 * 100:] == 2.)
     assert collected_parameters.ndim == 1
     W1, W2 = VariableFilter(roles=[COLLECTED])(new_cg.variables)
     assert W1.eval().shape == (784, 100)
     assert numpy.all(W1.eval() == 1.)
-    assert W2.eval().shape == (100, 784)
+    assert W2.eval().shape == (100, 512)
     assert numpy.all(W2.eval() == 2.)
 
 
