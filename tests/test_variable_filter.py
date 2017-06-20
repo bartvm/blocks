@@ -28,16 +28,16 @@ def test_variable_filter():
 
     # Testing filtering by role
     role_filter = VariableFilter(roles=[PARAMETER])
-    assert parameters == role_filter(cg.variables)
+    assert set(parameters) == set(role_filter(cg.variables))
     role_filter = VariableFilter(roles=[FILTER])
     assert [] == role_filter(cg.variables)
 
     # Testing filtering by role using each_role flag
     role_filter = VariableFilter(roles=[PARAMETER, BIAS])
-    assert parameters == role_filter(cg.variables)
+    assert set(parameters) == set(role_filter(cg.variables))
     role_filter = VariableFilter(roles=[PARAMETER, BIAS], each_role=True)
-    assert not parameters == role_filter(cg.variables)
-    assert bias == role_filter(cg.variables)
+    assert not set(parameters) == set(role_filter(cg.variables))
+    assert set(bias) == set(role_filter(cg.variables))
 
     # Testing filtering by bricks classes
     brick_filter = VariableFilter(roles=[BIAS], bricks=[Linear])
@@ -61,20 +61,24 @@ def test_variable_filter():
 
     # Testing filtering by theano name
     theano_name_filter = VariableFilter(theano_name='h2act')
-    assert [cg.variables[11]] == theano_name_filter(cg.variables)
+    assert 1 == len(theano_name_filter(cg.variables))
+    assert theano_name_filter(cg.variables)[0].name == 'h2act'
 
     # Testing filtering by theano name regex
     theano_name_filter_regex = VariableFilter(theano_name_regex='h2a.?t')
-    assert [cg.variables[11]] == theano_name_filter_regex(cg.variables)
+    assert 1 == len(theano_name_filter_regex(cg.variables))
+    assert theano_name_filter_regex(cg.variables)[0].name == 'h2act'
 
     # Testing filtering by application
     appli_filter = VariableFilter(applications=[brick1.apply])
-    variables = [cg.variables[1], cg.variables[8]]
-    assert variables == appli_filter(cg.variables)
+    names = ['linear1_apply_input_', 'linear1_apply_output']
+    assert set(names) == set([v.name for v in appli_filter(cg.variables)])
 
     # Testing filtering by application
-    appli_filter_list = VariableFilter(applications=[brick1.apply])
-    assert variables == appli_filter_list(cg.variables)
+    appli_filter_list = VariableFilter(
+        applications=[brick1.apply, activation.apply])
+    names.extend(['h2act', 'sigm_apply_input_'])
+    assert set(names) == set([v.name for v in appli_filter_list(cg.variables)])
 
     input1 = tensor.matrix('input1')
     input2 = tensor.matrix('input2')
