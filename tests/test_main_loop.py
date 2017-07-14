@@ -9,6 +9,7 @@ from mock import MagicMock, ANY
 from numpy.testing import assert_raises
 from six.moves import cPickle
 
+from blocks.log import TrainingLog
 from blocks.main_loop import MainLoop
 from blocks.extensions import TrainingExtension, FinishAfter, Printing
 from blocks.utils import unpack
@@ -37,8 +38,8 @@ def test_main_loop():
     assert_raises(AttributeError, getattr, main_loop, 'model')
 
     assert main_loop.log.status['iterations_done'] == 20
-    assert main_loop.log.status['_epoch_ends'] == [10, 20]
-    assert len(main_loop.log) == 20
+    if type(main_loop.log) == TrainingLog:
+        assert len(main_loop.log) == 20
     for i in range(20):
         assert main_loop.log[i + 1]['batch'] == {'data': i % 10}
 

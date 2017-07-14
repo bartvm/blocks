@@ -19,6 +19,14 @@ Dictionary backend
     :undoc-members:
     :show-inheritance:
 
+JSON Lines backend
+------------------
+
+.. automodule:: blocks.log.json
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Sqlite backend
 --------------
 

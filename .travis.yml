@@ -13,12 +13,18 @@ matrix:
       env: TESTS=blocks FLOATX=float32
     - python: 2.7
       env: TESTS=blocks FLOATX=float32 DB=sqlite
+    - python: 2.7
+      env: TESTS=blocks FLOATX=float32 DB=mimir
     - python: 3.4
       env: TESTS=blocks FLOATX=float64
+    - python: 2.7
+      env: TESTS=blocks FLOATX=float64 DB=mimir
     - python: 2.7
       env: TESTS=blocks-examples FLOATX=float32
     - python: 2.7
       env: TESTS=blocks-examples FLOATX=float32 DB=sqlite
+    - python: 2.7
+      env: TESTS=blocks-examples FLOATX=float32 DB=mimir
     - python: 3.4
       env: TESTS=blocks-examples FLOATX=float64
     - python: 2.7
@@ -57,6 +63,10 @@ script:
   - export THEANO_FLAGS=floatX=$FLOATX,optimizer=fast_compile
   - export FUEL_FLOATX=$FLOATX
   - "if [[ $DB == 'sqlite' ]]; then echo 'log_backend: sqlite' > ~/.blocksrc; fi"
+  - |
+      if [[ $DB == 'mimir' ]]; then
+        echo 'log_backend: mimir' > ~/.blocksrc;
+      fi
   - # Running nose2 within coverage makes imports count towards coverage
   - function fail { export FAILED=1; }
   - |

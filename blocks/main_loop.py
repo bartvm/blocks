@@ -94,7 +94,7 @@ class MainLoop(object):
         if log is None:
             if log_backend is None:
                 log_backend = config.log_backend
-            log = BACKENDS[log_backend]()
+            log = BACKENDS[log_backend](**config.log_arguments)
         if extensions is None:
             extensions = []
 
@@ -153,7 +153,7 @@ class MainLoop(object):
         if hasattr(self._model, 'check_sanity'):
             self._model.check_sanity(self.algorithm)
 
-        with change_recursion_limit(config.recursion_limit):
+        with change_recursion_limit(config.recursion_limit), self.log:
             self.original_sigint_handler = signal.signal(
                 signal.SIGINT, self._handle_epoch_interrupt)
             self.original_sigterm_handler = signal.signal(

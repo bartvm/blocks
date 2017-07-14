@@ -12,3 +12,7 @@ git+https://github.com/Theano/Theano.git#egg=theano
 --allow-external fuel
 --allow-unverified fuel
 git+https://github.com/mila-udem/fuel#egg=fuel
+
+--allow-external mimir
+--allow-unverified mimir
+git+https://github.com/bartvm/mimir#egg=mimir

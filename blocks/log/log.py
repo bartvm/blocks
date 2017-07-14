@@ -63,6 +63,12 @@ class TrainingLogBase(object):
                 'resumed_from': None
             })
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
     @property
     def h_uuid(self):
         """Return a hexadecimal version of the UUID bytes.
