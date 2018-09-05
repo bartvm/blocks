@@ -1,7 +1,7 @@
-coveralls==1.1
-nose2[coverage_plugin]==0.6.5
+coveralls==1.5.0
+nose2[coverage_plugin]==0.8.0
 picklable-itertools==0.1.1
-progressbar2==3.10.0
+progressbar2==3.38.0
 
 --allow-external theano
 --allow-unverified theano

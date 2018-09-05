@@ -1,9 +1,9 @@
-numpy==1.11.1
+numpy==1.15.1
 picklable-itertools==0.1.1
-progressbar2==3.10.0
-pyyaml==3.11
-six==1.10.0
-toolz==0.8.0
+progressbar2==3.38.0
+pyyaml==3.13
+six==1.11.0
+toolz==0.9.0
 
 --allow-external theano
 --allow-unverified theano
