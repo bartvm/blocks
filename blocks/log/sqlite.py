@@ -117,7 +117,8 @@ class SQLiteLog(TrainingLogBase, Mapping):
         if database is None:
             database = config.sqlite_database
         self.database = database
-        self.conn = sqlite3.connect(database)
+        self.status = SQLiteStatus(self)
+        self.conn = sqlite3.connect(self.database)
         sqlite3.register_adapter(numpy.ndarray, adapt_ndarray)
         with self.conn:
             self.conn.execute("""CREATE TABLE IF NOT EXISTS entries (
@@ -133,7 +134,6 @@ class SQLiteLog(TrainingLogBase, Mapping):
                                    value,
                                    PRIMARY KEY(uuid, "key")
                                  );""")
-        self.status = SQLiteStatus(self)
         super(SQLiteLog, self).__init__(**kwargs)
 
     @property
@@ -175,6 +175,18 @@ class SQLiteLog(TrainingLogBase, Mapping):
             ANCESTORS_QUERY + "SELECT COUNT(DISTINCT time) FROM entries "
             "WHERE uuid IN ancestors ORDER BY time ASC", (self.h_uuid,)
         ).fetchone()[0]
+
+    def writer(self):
+        return self
+
+    def reader(self):
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
 
 
 class SQLiteStatus(MutableMapping):

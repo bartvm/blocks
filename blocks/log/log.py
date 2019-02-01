@@ -1,5 +1,5 @@
 """The event-based main loop of Blocks."""
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from numbers import Integral
 from uuid import uuid4
@@ -101,6 +101,40 @@ class TrainingLogBase(object):
     def last_epoch_row(self):
         return self[self.status['_epoch_ends'][-1]]
 
+    @abstractmethod
+    def writer(self):
+        """Creates a read+write log.
+
+        Returns
+        -------
+        manager : context manager
+            The log which will be opened in a read+write regime.
+
+        """
+
+    @abstractmethod
+    def reader(self):
+        """Creates a read-only log.
+
+        Returns
+        -------
+        manager : context manager
+            The log which will be opened in a read-only regime.
+
+        """
+
+    def new_iteration(self):
+        """Starts a new iteration."""
+        pass
+
+    def __enter__(self):
+        # Do nothing by default
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # Do nothing by default
+        pass
+
 
 class TrainingLog(defaultdict, TrainingLogBase):
     """Training log using a `defaultdict` as backend.
@@ -133,3 +167,9 @@ class TrainingLog(defaultdict, TrainingLogBase):
     def __setitem__(self, time, value):
         self._check_time(time)
         return super(TrainingLog, self).__setitem__(time, value)
+
+    def writer(self):
+        return self
+
+    def reader(self):
+        return self

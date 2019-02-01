@@ -10,6 +10,7 @@ from numpy.testing import assert_raises
 from six.moves import cPickle
 
 from blocks.main_loop import MainLoop
+from blocks.log import TrainingLog
 from blocks.extensions import TrainingExtension, FinishAfter, Printing
 from blocks.utils import unpack
 from blocks.config import config
@@ -36,11 +37,12 @@ def test_main_loop():
     main_loop.run()
     assert_raises(AttributeError, getattr, main_loop, 'model')
 
-    assert main_loop.log.status['iterations_done'] == 20
-    assert main_loop.log.status['_epoch_ends'] == [10, 20]
-    assert len(main_loop.log) == 20
-    for i in range(20):
-        assert main_loop.log[i + 1]['batch'] == {'data': i % 10}
+    with main_loop.log.reader() as log:
+        assert log.status['iterations_done'] == 20
+        assert log.status['_epoch_ends'] == [10, 20]
+        assert len(log) == 20
+        for i in range(20):
+            assert log[i + 1]['batch'] == {'data': i % 10}
 
     config.profile = old_config_profile_value
 
@@ -53,7 +55,8 @@ def test_training_resumption():
             extensions=[WriteBatchExtension(),
                         FinishAfter(after_n_batches=14)])
         main_loop.run()
-        assert main_loop.log.status['iterations_done'] == 14
+        with main_loop.log.reader() as log:
+            assert log.status['iterations_done'] == 14
 
         if with_serialization:
             main_loop = cPickle.loads(cPickle.dumps(main_loop))
@@ -65,13 +68,27 @@ def test_training_resumption():
             ["after_batch"],
             predicate=lambda log: log.status['iterations_done'] == 27)
         main_loop.run()
-        assert main_loop.log.status['iterations_done'] == 27
-        assert main_loop.log.status['epochs_done'] == 2
+        with main_loop.log.reader() as log:
+            assert log.status['iterations_done'] == 27
+            assert log.status['epochs_done'] == 2
         for i in range(27):
-            assert main_loop.log[i + 1]['batch'] == {"data": i % 10}
+            assert log[i + 1]['batch'] == {"data": i % 10}
 
     do_test(False)
     do_test(True)
+
+
+def test_new_iteration_call():
+    data_stream = IterableDataset(range(10)).get_example_stream()
+    log = TrainingLog()
+
+    log.new_iteration = MagicMock()
+    main_loop = MainLoop(
+        MockAlgorithm(), data_stream, log=log,
+        extensions=[FinishAfter(after_n_epochs=1)])
+    main_loop.run()
+
+    assert log.new_iteration.call_args_list == [()]*11
 
 
 def test_training_interrupt():
