@@ -447,13 +447,14 @@ class FinishAfter(SimpleExtension):
 
 class Printing(SimpleExtension):
     """Prints log messages to the screen."""
-    def __init__(self, **kwargs):
+    def __init__(self, print_status=True, **kwargs):
         kwargs.setdefault("before_first_epoch", True)
         kwargs.setdefault("on_resumption", True)
         kwargs.setdefault("after_training", True)
         kwargs.setdefault("after_epoch", True)
         kwargs.setdefault("on_interrupt", True)
         super(Printing, self).__init__(**kwargs)
+        self.print_status = print_status
 
     def _print_attributes(self, attribute_tuples):
         for attr, value in sorted(attribute_tuples.items(), key=first):
@@ -462,7 +463,6 @@ class Printing(SimpleExtension):
 
     def do(self, which_callback, *args):
         log = self.main_loop.log
-        print_status = True
 
         print()
         print("".join(79 * "-"))
@@ -478,12 +478,12 @@ class Printing(SimpleExtension):
             print("TRAINING HAS BEEN INTERRUPTED")
             print_status = False
         print("".join(79 * "-"))
-        if print_status:
+        if self.print_status:
             print("Training status:")
             self._print_attributes(log.status)
-            print("Log records from the iteration {}:".format(
-                log.status['iterations_done']))
-            self._print_attributes(log.current_row)
+        print("Log records from the iteration {}:".format(
+            log.status['iterations_done']))
+        self._print_attributes(log.current_row)
         print()
 
 
