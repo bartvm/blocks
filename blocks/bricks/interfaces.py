@@ -1,10 +1,12 @@
 """Bricks that are interfaces and/or mixins."""
 import numpy
+import inspect
 from six import add_metaclass
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 
 from ..config import config
 from .base import _Brick, Brick, lazy
+from blocks.roles import WEIGHT, BIAS, FILTER, INITIAL_STATE
 
 
 class ActivationDocumentation(_Brick):
@@ -127,45 +129,121 @@ class Initializable(RNGMixin, Brick):
         ``True``.
     use_bias : :obj:`bool`, optional
         Whether to use a bias. Defaults to `True`. Required by
-        :meth:`~.Brick.initialize`. Only supported by bricks for which
-        :attr:`has_biases` is ``True``.
+        :meth:`~.Brick.initialize`.
     rng : :class:`numpy.random.RandomState`
 
-    Attributes
-    ----------
-    has_biases : bool
-        ``False`` if the brick does not support biases, and only has
-        :attr:`weights_init`.  For an example of this, see
-        :class:`.Bidirectional`. If this is ``False``, the brick does not
-        support the arguments ``biases_init`` or ``use_bias``.
-
     """
-    has_biases = True
 
     @lazy()
-    def __init__(self, weights_init=None, biases_init=None, use_bias=None,
-                 seed=None, **kwargs):
-        super(Initializable, self).__init__(**kwargs)
-        self.weights_init = weights_init
-        if self.has_biases:
-            self.biases_init = biases_init
-        elif biases_init is not None or not use_bias:
-            raise ValueError("This brick does not support biases config")
-        if use_bias is not None:
-            self.use_bias = use_bias
+    def __init__(self, initialization_schemes=None,
+                 use_bias=True, seed=None, **kwargs):
+        self.use_bias = use_bias
         self.seed = seed
+        self.initialization_schemes = initialization_schemes
+        if self.initialization_schemes is None:
+            self.initialization_schemes = {}
+
+        initialization_to_role = {"weights_init": WEIGHT, 'biases_init': BIAS,
+                                  'initial_state_init': INITIAL_STATE}
+        for key in list(kwargs.keys()):
+            if key[-5:] == "_init":
+                if key not in initialization_to_role:
+                    raise ValueError("The initlization scheme: {}".format(key),
+                                     "is not defined by default, pass it"
+                                     "via initialization_schemes")
+                if initialization_to_role[key] in \
+                        self.initialization_schemes.keys():
+                    raise ValueError("All initializations are accepted either"
+                                     "through initialization schemes or "
+                                     "corresponding attribute but not both")
+                else:
+                    self.initialization_schemes[initialization_to_role[
+                                                key]] = kwargs[key]
+                kwargs.pop(key)
+
+        super(Initializable, self).__init__(**kwargs)
+
+    def get_scheme(role, schemes):
+        for key in schemes:
+            if role == type(key):
+                return key
+        for key in schemes:
+            if isinstance(role, type(key)):
+                return key
+
+    def _validate_roles(self):
+        all_parent_roles = []
+        for role in self.parameter_roles:
+            all_parent_roles += list(inspect.getmro(type(role)))
+
+        for key in self.initialization_schemes:
+            if type(key) not in all_parent_roles:
+                raise ValueError("There is no parameter role"
+                                 "for initlization sheme {}".format(key))
 
     def _push_initialization_config(self):
+        self._collect_roles()
+        self._validate_roles()
+        for child in self.children:
+            if (isinstance(child, Initializable) and
+                    hasattr(child, 'initialization_schemes')):
+                child.rng = self.rng
+                for role, scheme in self.initialization_schemes.items():
+                    if role in child.parameter_roles:
+                        child.initialization_schemes[role] = scheme
+
+    def _collect_roles(self):
+        def get_param_roles(obj):
+            all_roles = []
+            for param in obj.parameters:
+                roles = param.tag.roles
+                # TODO do something smarter
+                if len(roles) > 0:
+                    all_roles.append(roles[0])
+            return all_roles
+
+        self.parameter_roles = set(get_param_roles(self))
         for child in self.children:
             if isinstance(child, Initializable):
-                child.rng = self.rng
-                if self.weights_init:
-                    child.weights_init = self.weights_init
-        if hasattr(self, 'biases_init') and self.biases_init:
-            for child in self.children:
-                if (isinstance(child, Initializable) and
-                        hasattr(child, 'biases_init')):
-                    child.biases_init = self.biases_init
+                child._collect_roles()
+                self.parameter_roles.update(child.parameter_roles)
+
+    def _initialize(self):
+        def get_scheme(role, schemes):
+            if role in schemes:
+                return role
+            for key in schemes:
+                if role == type(key):
+                    return key
+            for key in schemes:
+                if isinstance(role, type(key)):
+                    return key
+
+        for param in self.parameters:
+            for role in param.tag.roles:
+                if role in self.parameter_roles:
+                    key = get_scheme(role, self.initialization_schemes.keys())
+                    if key is not None:
+                        self.initialization_schemes[key].initialize(param,
+                                                                    self.rng)
+                        continue
+
+    def __getattr__(self, name):
+        if name == "weights_init":
+            if WEIGHT in self.initialization_schemes:
+                return self.initialization_schemes[WEIGHT]
+        elif name == "biases_init":
+            if BIAS in self.initialization_schemes:
+                return self.initialization_schemes[BIAS]
+        super(Initializable, self).__getattr__(name)
+
+    def __setattr__(self, name, value):
+        if name == 'weights_init':
+            self.initialization_schemes[WEIGHT] = value
+        elif name == 'biases_init':
+            self.initialization_schemes[BIAS] = value
+        else:
+            super(Initializable, self).__setattr__(name, value)
 
 
 class LinearLike(Initializable):
@@ -182,6 +260,7 @@ class LinearLike(Initializable):
     first and biases (if ``use_bias`` is True) coming second.
 
     """
+
     @property
     def W(self):
         return self.parameters[0]
@@ -192,13 +271,6 @@ class LinearLike(Initializable):
             return self.parameters[1]
         else:
             raise AttributeError('use_bias is False')
-
-    def _initialize(self):
-        # Use self.parameters[] references in case W and b are overridden
-        # to return non-shared-variables.
-        if getattr(self, 'use_bias', True):
-            self.biases_init.initialize(self.parameters[1], self.rng)
-        self.weights_init.initialize(self.parameters[0], self.rng)
 
 
 class Random(Brick):

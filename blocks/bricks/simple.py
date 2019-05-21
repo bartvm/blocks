@@ -95,10 +95,6 @@ class Bias(Feedforward, Initializable):
         add_role(b, BIAS)
         self.parameters.append(b)
 
-    def _initialize(self):
-        b, = self.parameters
-        self.biases_init.initialize(b, self.rng)
-
     @application(inputs=['input_'], outputs=['output'])
     def apply(self, input_):
         """Apply the linear transformation.

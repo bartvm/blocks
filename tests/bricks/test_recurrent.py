@@ -165,8 +165,7 @@ class TestSimpleRecurrent(unittest.TestCase):
 
 class TestLSTM(unittest.TestCase):
     def setUp(self):
-        self.lstm = LSTM(dim=3, weights_init=Constant(2),
-                         biases_init=Constant(0))
+        self.lstm = LSTM(dim=3, weights_init=Constant(2))
         self.lstm.initialize()
 
     def test_one_step(self):
@@ -263,7 +262,6 @@ class TestRecurrentStack(unittest.TestCase):
 
         self.stack2 = RecurrentStack(transitions,
                                      weights_init=Constant(2),
-                                     biases_init=Constant(0),
                                      skip_connections=True)
         self.stack2.initialize()
 
@@ -595,7 +593,7 @@ class TestBidirectional(unittest.TestCase):
                                        dim=3, activation=Tanh()))
         self.simple = SimpleRecurrent(dim=3, weights_init=Orthogonal(),
                                       activation=Tanh(), seed=1)
-        self.bidir.allocate()
+        self.bidir.initialize()
         self.simple.initialize()
         self.bidir.children[0].parameters[0].set_value(
             self.simple.parameters[0].get_value())
